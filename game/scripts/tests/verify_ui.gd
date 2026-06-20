@@ -109,19 +109,19 @@ func _init() -> void:
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
 		if not auto_ok: fails += 1
 
-		# Drawer plancia: una scheda lo apre/chiude (toggle), e l'interazione con
-		# la mappa lo richiude automaticamente.
+		# Drawer plancia: la scheda della potenza la apre/chiude (toggle) e mostra
+		# la mano del giocatore di turno; l'interazione con la mappa la richiude.
 		board.drawer_open = false
-		board._on_tab_pressed(2)  # scheda "Mano"
-		var opened: bool = board.drawer_open and board.drawer_tab == 2 \
+		board._on_power_tab(ac.power)
+		var opened: bool = board.drawer_open and board.drawer_power == ac.power \
 			and board.hand_box != null and board.hand_box.get_child_count() == ac.hand.size()
-		print("[%s] scheda Mano apre il cassetto con le carte (%d)" % ["OK" if opened else "FAIL", ac.hand.size()])
+		print("[%s] scheda potenza apre la plancia con la mano (%d carte)" % ["OK" if opened else "FAIL", ac.hand.size()])
 		if not opened: fails += 1
-		board._on_tab_pressed(2)  # ri-tocco la stessa scheda -> chiude
+		board._on_power_tab(ac.power)  # ri-tocco la stessa scheda -> chiude
 		var toggled: bool = board.drawer_open == false
 		print("[%s] ri-toccando la scheda attiva il cassetto si chiude" % ["OK" if toggled else "FAIL"])
 		if not toggled: fails += 1
-		board._on_tab_pressed(2)  # riapro per il test di auto-chiusura
+		board._on_power_tab(ac.power)  # riapro per il test di auto-chiusura
 		ac.resources["diplomacy"] = 20
 		var card_close := {"display_name": "Engage close", "effect_ops": [{"op": "engage"}]}
 		ac.hand.append(card_close)
