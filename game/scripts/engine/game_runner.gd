@@ -47,37 +47,56 @@ static func score_majority_tokens(gs: GameState) -> Dictionary:
 
 ## Esegue una partita completa con policy semplice. Ritorna il GameState finale.
 static func run_game(powers: Array, seed: int = 1) -> GameState:
+	return run_game_logged(powers, seed)["state"]
+
+
+## Come run_game ma ritorna anche un log testuale ({"state":.., "log":[...]}).
+static func run_game_logged(powers: Array, seed: int = 1) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var gs := GameSetup.new_game(powers)
+	var log: Array[String] = []
+	log.append("Partita: %s (seed %d)" % [", ".join(powers), seed])
 
 	for round_no in range(1, GameState.TOTAL_ROUNDS + 1):
 		gs.round = round_no
 		gs.phase = WO.Phase.PREPARATION
-		# Preparation (saltata nel round 1 nella sua interezza, ma produrre/ordine ok).
 		GamePhases.determine_turn_order(gs)
 		GamePhases.produce_primary_resources(gs)
 
-		# Action Phase: 4 turni per giocatore (policy semplice).
 		gs.phase = WO.Phase.ACTION
 		for _turn in range(4):
 			for seat in gs.turn_order:
 				_simple_turn(gs, gs.players[seat], rng)
 
-		# Aftermath.
 		gs.phase = WO.Phase.AFTERMATH
-		# scoring intermedio nei round 3 e 6
 		if gs.is_scoring_round():
 			var rs := score_all_regions(gs)
 			for power in rs:
 				gs.add_vp(power, int(rs[power]))
+			log.append("— Scoring round %d — " % round_no + _vp_line(gs))
 
-	# Game End: token Maggioranza + abilita' speciali semplificate.
 	var mt := score_majority_tokens(gs)
 	for power in mt:
 		gs.add_vp(power, int(mt[power]))
+	log.append("— Token Maggioranza — " + _fmt(mt))
+	log.append("Classifica finale: " + _vp_line(gs))
+	log.append("Vincitore: %s" % winner(gs))
+	return {"state": gs, "log": log}
 
-	return gs
+
+static func _vp_line(gs: GameState) -> String:
+	var parts := []
+	for p in gs.players:
+		parts.append("%s=%d" % [p.power, p.victory_points])
+	return ", ".join(parts)
+
+
+static func _fmt(d: Dictionary) -> String:
+	var parts := []
+	for k in d:
+		parts.append("%s=%d" % [k, int(d[k])])
+	return ", ".join(parts)
 
 
 ## Potenza con piu' VP (spareggio semplice: ordine di inserimento).
