@@ -159,7 +159,7 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
 - [x] **Micro-DSL degli effetti** (`effect_executor.gd`): vocabolario di operazioni (improve_relations, engage, trade, invest, move, build_base, get_growth, produce, gain_*, choice) che esegue le carte tramite le 8 azioni. Resta da codificare l'`effect` (op) di ciascuna delle 204 carte.
 **Deliverable:** dataset completo + libreria di asset pronti. *(carte + tabellone ✅; resta la codifica DSL degli effetti)*
 
-### Fase 1 — Motore di regole (core engine) — *in corso* (82/82 test pass, Godot 4.3)
+### Fase 1 — Motore di regole (core engine) — *in corso* (88/88 test pass, Godot 4.3)
 **Obiettivo:** simulare una partita completa senza UI.
 - [x] **Simulazione end-to-end** (`game_runner.gd`): partita completa headless (setup → 6 round → scoring Regioni + token Maggioranza → vincitore) con policy semplice. Test d'integrazione che gira un game a 4 giocatori.
 - [x] **Le 8 azioni** della fase di Azione (`actions.gd`): Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce — costi e effetti, verificati sugli esempi del regolamento.

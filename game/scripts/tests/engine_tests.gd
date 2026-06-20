@@ -25,6 +25,18 @@ static func run_all() -> Dictionary:
 	check.call("temp pieno: push = 0 VP", t.add("e", "temporary") == 0)
 	check.call("FIFO: 'a' spinto fuori", t.temp == ["b", "c", "d", "e"])
 
+	# --- 1b. Reset e Convert dell'Influenza temporanea ---
+	var rt := InfluenceTrack.new([1, 1], [4, 3, 2, 1])
+	rt.temp = ["x", "a", "b", "c"]  # 'a' (idx 1) con cubi a destra
+	check.call("Reset: sposta il cubo protetto a destra", rt.reset_temporary("a"))
+	check.call("Reset: 'a' ora all'ultima posizione", rt.temp == ["x", "b", "c", "a"])
+	check.call("Reset senza cubi a destra: nessun effetto", not rt.reset_temporary("a"))
+	var ct := InfluenceTrack.new([1, 1], [4, 3, 2, 1])
+	ct.temp = ["a", "b", "c", null]
+	check.call("Convert temp->perm riuscita", ct.convert_temp_to_permanent("a"))
+	check.call("Convert: 'a' in permanente", ct.perm[0] == "a")
+	check.call("Convert: temporanei scorrono a sinistra", ct.temp == ["b", "c", null, null])
+
 	# --- 2. Scoring Regione: esempio MENA (regolamento pag. 20) ---
 	# Alex(usa) 4, Anna(eu) 3, Jim(russia) 3, Kate(china) 1; armate Jim 4, Anna 1;
 	# 1 cubo locale (nero) pari con Kate. Stato costruito direttamente (lo scoring

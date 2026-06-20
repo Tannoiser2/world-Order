@@ -45,15 +45,14 @@ func add(owner: String, slot_type: String = "") -> int:
 
 
 ## Converte una Influenza temporanea dell'owner in permanente (senza VP).
+## I cubi temporanei a destra scorrono di uno verso sinistra.
 func convert_temp_to_permanent(owner: String) -> bool:
-	var idx := temp.rfind(owner)
+	var idx := temp.find(owner)
 	if idx == -1:
 		return false
-	temp.remove_at(idx)
-	temp.append(null)  # mantiene la dimensione della fila
-	# shift: rimuovo il null appena aggiunto se c'erano cubi a destra gia' gestiti
-	temp.pop_back()
-	# colloca in permanente
+	temp.remove_at(idx)   # i cubi a destra scorrono a sinistra
+	temp.append(null)     # mantiene la dimensione della fila
+	# colloca in permanente (slot libero, altrimenti forza oltre la linea)
 	for i in perm.size():
 		if perm[i] == null:
 			perm[i] = owner
