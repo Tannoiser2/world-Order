@@ -93,21 +93,22 @@ con:
 - **bot/IA** opzionale per giocare in solitaria e per completare i tavoli 2–3 giocatori
   (le regole già prevedono le Auto-Influence card per i "non giocatori").
 
-### 3.2 Stack consigliato (raccomandato)
+### 3.2 Stack scelto: **Godot 4**
 
-**Web-first con TypeScript**, perché gli asset sono immagini 2D e il multiplayer è centrale:
+> ✅ **Deciso**: motore **[Godot 4](https://godotengine.org)** (GDScript), per una versione **a uso personale**.
 
-- **Logica di gioco**: motore in **TypeScript**, deterministico, framework **[boardgame.io](https://boardgame.io)**.
-  - Pensato per giochi a turni: gestisce stato immutabile, ordine di turno, fasi, log mosse, multiplayer e bot out-of-the-box.
-  - Server Node.js + client React già integrati.
-- **UI**: **React** + **PixiJS** (o Canvas/SVG) per il tabellone e il drag&drop di carte/token.
-- **Server multiplayer**: Node.js (server boardgame.io) + persistenza (Postgres/SQLite); lobby e matchmaking custom.
-- **Packaging**: web (PWA) come base; **Electron/Tauri** per desktop; eventuale wrapper per mobile.
-
-**Alternativa** (se si preferisce un client più "ricco"/3D o un singolo binario): **Godot 4**
-(GDScript/C#) — ottimo per export multipiattaforma, ma il multiplayer e l'IA vanno costruiti più a mano.
-
-> Decisione da confermare con il committente prima della Fase 1 (vedi §8 "Decisioni aperte").
+- **Engine**: **Godot 4.x**, linguaggio **GDScript** (passaggio a C# valutabile in seguito solo se servisse).
+- **Modello dati**: classi **`Resource`** custom di Godot (`.gd` + asset `.tres`), così le carte/Regioni
+  sono editabili nell'editor e serializzabili nativamente. I dati estratti dal prototipo sono
+  conservati anche come **JSON** (`data/`) come fonte neutra, importabile in `Resource`.
+- **Architettura**: motore di regole come **insieme di script puri** (nessun nodo di scena), separato
+  dalla scena di gioco che fa solo da renderer + input (vedi §3.3). Stato di gioco in un singolo
+  oggetto serializzabile → abilita salvataggio/caricamento e replay.
+- **UI**: scene Godot 2D — `Control`/`TextureRect` per carte e plance, `Area2D`/drag&drop per le
+  interazioni, `Camera2D` per il tabellone.
+- **Multiplayer** (fase successiva, opzionale per uso personale): **High-Level Multiplayer API**
+  nativa di Godot (ENet/WebSocket + `MultiplayerSynchronizer`), oppure hot-seat soltanto.
+- **Export**: Godot esporta nativamente su **desktop (Windows/Linux/macOS)**, più Web (HTML5) se utile.
 
 ### 3.3 Principio architetturale chiave
 
@@ -119,9 +120,11 @@ e riuso dello stesso motore per il bot.
 
 ---
 
-## 4. Modello dati (da definire in Fase 0)
+## 4. Modello dati
 
-Strutture principali da formalizzare in JSON/TypeScript:
+> 🚧 **Fase 0 avviata** — vedi `data/` (manifest carte estratte + schema) e `game/data/` (classi `Resource` GDScript).
+
+Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON** (`data/`):
 
 - `GameState`: round, fase, ordine di turno, supply (coin, base, FDI), Market, mazzi, board.
 - `Player`: potenza, plancia (livelli di produzione, risorse, prosperità, focus), mano, mazzo,
@@ -144,14 +147,16 @@ Strutture principali da formalizzare in JSON/TypeScript:
 
 ## 5. Roadmap a fasi
 
-### Fase 0 — Fondamenta & contenuti (estrazione dati)
+### Fase 0 — Fondamenta & contenuti (estrazione dati) — *in corso*
 **Obiettivo:** trasformare regolamento + asset in dati strutturati e versionati.
-- [ ] Definire lo schema dati (§4) e committarlo.
-- [ ] Ritagliare gli sprite-sheet di `Images/Carte/` in singole carte (script di slicing dalle griglie 10×7) e indicizzarle.
+- [x] **Pipeline di estrazione** (`tools/extract_cards.py`): dedup per identità (sheet+cella) e classificazione per forma. → **253 carte uniche** estratte come JPG in `game/assets/cards/`.
+- [x] **Manifest carte** (`data/cards_manifest.json`): tipo, file, dimensioni, sheet sorgente, cella.
+- [x] **Schema dati** (§4) come classi `Resource` GDScript in `game/scripts/data/` + JSON Schema in `data/schema/`.
+- [x] **Scheletro progetto Godot** (`game/project.godot` + struttura cartelle).
+- [ ] Suddividere il bucket `ability` (102) in Market / Starting per potenza / Growth / Auto-Influence (richiede ispezione contenuto).
 - [ ] Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`).
-- [ ] **Trascrivere** in dati: 4×12 carte iniziali, 20 Market, 66 Country, Growth (per livello), 4×5 Strategic Asset, Auto-Influence, 4 Executive Orders.
-- [ ] Pipeline asset (ottimizzazione/atlas, naming coerente, licenze/diritti chiariti).
-**Deliverable:** dataset completo + libreria di asset pronti.
+- [ ] **Trascrivere** in dati strutturati: Country, Market, Starting Ability, Growth, Strategic Asset, Auto-Influence, Executive Orders (effetti come DSL/JSON).
+**Deliverable:** dataset completo + libreria di asset pronti. *(pipeline + schema + asset pronti; resta la trascrizione dei contenuti)*
 
 ### Fase 1 — Motore di regole (core engine)
 **Obiettivo:** simulare una partita completa senza UI.
@@ -176,7 +181,7 @@ Strutture principali da formalizzare in JSON/TypeScript:
 
 ### Fase 3 — Multiplayer online
 **Obiettivo:** partite a distanza, server autorevole.
-- [ ] Server di gioco autorevole (boardgame.io) + sincronizzazione stato.
+- [ ] Server autorevole con la **High-Level Multiplayer API** di Godot (ENet/WebSocket) + sincronizzazione stato.
 - [ ] Lobby, creazione/partecipazione partita, codici invito.
 - [ ] Riconnessione, stato persistente, gestione disconnessioni.
 - [ ] Mani nascoste (informazione segreta gestita lato server).
@@ -227,14 +232,15 @@ codifica degli effetti delle carte) si concentra lì. Conviene investirci presto
 
 ---
 
-## 8. Decisioni aperte (da confermare)
+## 8. Decisioni
 
-1. **Diritti / scopo**: il gioco è © Hegemonic Project Limited. Questa versione digitale è
-   **personale/prototipo** o destinata a **distribuzione**? Da chiarire prima di pubblicare asset/regole.
-2. **Stack**: confermare **Web (TypeScript + boardgame.io + React)** vs **Godot**.
-3. **Priorità**: hot-seat prima e online dopo (consigliato) oppure online da subito?
-4. **Piattaforme target**: solo browser, oppure anche desktop/mobile nativi?
-5. **IA**: necessaria per la 1.0 o rimandabile?
+| # | Tema | Esito |
+|---|------|-------|
+| 1 | **Diritti / scopo** | ✅ **Uso personale** (non distribuzione). Restano da non ridistribuire gli asset © Hegemonic Project Limited. |
+| 2 | **Stack** | ✅ **Godot 4** (GDScript) — vedi §3.2. |
+| 3 | **Priorità** | Hot-seat prima, online/IA dopo (consigliato). *Da confermare.* |
+| 4 | **Piattaforme** | Desktop (export nativo Godot), Web opzionale. |
+| 5 | **IA** | Rimandabile dopo l'MVP hot-seat. |
 
 ---
 
@@ -243,7 +249,9 @@ codifica degli effetti delle carte) si concentra lì. Conviene investirci presto
 - `Tabelle_Materiali/World Order/Rules.pdf` — regolamento ufficiale V1.0
 - `Tabelle_Materiali/World Order/3362153615.json` — prototipo Tabletop Simulator (logica Lua di riferimento)
 - `Tabelle_Materiali/World Order/Images/` — asset grafici (carte, token, plance, tabellone)
-- [boardgame.io](https://boardgame.io) — framework consigliato per il motore/multiplayer
+- [Godot Engine](https://godotengine.org) — motore scelto per il progetto
+- `tools/extract_cards.py` — pipeline di estrazione carte dagli sprite-sheet
+- `data/cards_manifest.json` — manifest delle 253 carte estratte
 
 ---
 

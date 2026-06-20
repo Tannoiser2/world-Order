@@ -1,0 +1,5 @@
+# Godot 4 — cartella generata di import/cache
+.godot/
+
+# Preset di export con eventuali percorsi/credenziali locali
+export_presets.cfg

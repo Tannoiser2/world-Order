@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://world-order/data/card.schema.json",
+  "title": "World Order — Card",
+  "description": "Schema neutro (JSON) per le carte trascritte. Rispecchia le classi Resource GDScript in game/scripts/data/. Lo discriminatore e' il campo 'type'.",
+  "type": "object",
+  "required": ["id", "type"],
+  "properties": {
+    "id": { "type": "string", "description": "Identificatore stabile, es. 'country_012'." },
+    "type": {
+      "type": "string",
+      "enum": ["country", "ability", "growth", "strategic_asset", "auto_influence", "executive_order"]
+    },
+    "display_name": { "type": "string" },
+    "art": { "type": "string", "description": "Percorso immagine relativo a game/assets/cards/." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "country" } } },
+      "then": {
+        "required": ["region", "value"],
+        "properties": {
+          "region": { "type": "string" },
+          "value": { "type": "integer", "minimum": 0 },
+          "invest_cost": { "type": "integer", "minimum": 0 },
+          "exports": { "type": "array", "items": { "$ref": "#/$defs/resource" } },
+          "imports": { "type": "array", "items": { "$ref": "#/$defs/resource" } },
+          "no_relations_powers": { "type": "array", "items": { "$ref": "#/$defs/power" } },
+          "base_allowed_powers": { "type": "array", "items": { "$ref": "#/$defs/power" } },
+          "has_base_symbol": { "type": "boolean" },
+          "starting_for_power": { "$ref": "#/$defs/powerOrNone" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "ability" } } },
+      "then": {
+        "required": ["color"],
+        "properties": {
+          "color": { "type": "string", "enum": ["diplomatic", "economic", "military", "domestic"] },
+          "market_cost": { "type": "integer", "minimum": 0 },
+          "research_bonus": { "type": "integer", "minimum": 0 },
+          "effect": { "type": "array", "items": { "$ref": "#/$defs/effectStep" } },
+          "research_top_bonus": { "type": "array", "items": { "$ref": "#/$defs/effectStep" } },
+          "starting_for_power": { "$ref": "#/$defs/powerOrNone" },
+          "suggested_starting": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "growth" } } },
+      "then": {
+        "required": ["level"],
+        "properties": {
+          "level": { "type": "integer", "minimum": 1 },
+          "cost": { "type": "object" },
+          "victory_points": { "type": "integer" },
+          "on_acquire": { "type": "array", "items": { "$ref": "#/$defs/effectStep" } },
+          "ability_text": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "strategic_asset" } } },
+      "then": {
+        "required": ["power"],
+        "properties": {
+          "power": { "$ref": "#/$defs/power" },
+          "starting_vp": { "type": "integer" },
+          "effect": { "type": "array", "items": { "$ref": "#/$defs/effectStep" } }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "resource": {
+      "type": "string",
+      "enum": ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy", "armies"]
+    },
+    "power": { "type": "string", "enum": ["usa", "china", "russia", "eu"] },
+    "powerOrNone": { "type": ["string", "null"], "enum": ["usa", "china", "russia", "eu", null] },
+    "effectStep": {
+      "type": "object",
+      "required": ["op"],
+      "properties": {
+        "op": { "type": "string", "description": "Verbo del micro-DSL, es. 'produce', 'gain_money', 'add_influence'." },
+        "params": { "type": "object" }
+      }
+    }
+  }
+}
