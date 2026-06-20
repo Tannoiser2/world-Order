@@ -31,10 +31,13 @@ func _init() -> void:
 		var n: int = board.overlay.get_child_count() if board.overlay else 0
 		print("[%s] board.tscn istanziata; overlay Regioni: %d" % ["OK" if n == 7 else "FAIL", n])
 		if n != 7: fails += 1
-		# La plancia di produzione della potenza attiva e' usata come fondale.
+		# La plancia reale viene mostrata con l'immagine (aprendo il cassetto).
+		board._on_power_tab(board._active().power)
 		var bg_ok: bool = board.board_bg != null and board.board_bg.texture != null
-		print("[%s] plancia di produzione caricata come fondale del pannello" % ["OK" if bg_ok else "FAIL"])
+		print("[%s] immagine reale della plancia caricata nel cassetto" % ["OK" if bg_ok else "FAIL"])
 		if not bg_ok: fails += 1
+		board.drawer_open = false
+		board._refresh()
 
 		# flusso di click: Engage in Europe (cost 5, il giocatore ha 8 Diplomacy)
 		var before: int = board.gs.regions["europe"]["track"].count(board._active().power)

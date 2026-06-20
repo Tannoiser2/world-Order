@@ -25,6 +25,14 @@ var gs: GameState
 var active_seat := 0
 var board_rect: TextureRect
 var overlay: Control
+var map_viewport: Control          # finestra che ritaglia la mappa
+var map_content: Control           # nodo pannato/zoomato (mappa + Regioni)
+var board_native: Vector2 = Vector2(2200, 1964)
+var _min_zoom := 0.1
+var _map_ready := false
+var _mouse_dragging := false
+var _touches: Dictionary = {}
+var _pinch_dist := 0.0
 var layout: Dictionary
 var status_label: Label
 var board_bg: TextureRect          # plancia di produzione (immagine) della potenza attiva
@@ -77,15 +85,32 @@ func _ready() -> void:
 	growth_pool = DataLoader.load_growth()
 	_refill_market()
 
+	# La mappa vive dentro un nodo pannabile/zoomabile (pinch + trascinamento).
+	map_viewport = Control.new()
+	map_viewport.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	map_viewport.clip_contents = true
+	map_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(map_viewport)
+	map_content = Control.new()
+	map_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_viewport.add_child(map_content)
+
 	board_rect = TextureRect.new()
 	board_rect.texture = load(layout.get("board_image", "res://assets/board/board.jpg"))
-	board_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	board_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(board_rect)
+	if board_rect.texture:
+		board_native = board_rect.texture.get_size()
+	board_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	board_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	board_rect.position = Vector2.ZERO
+	board_rect.size = board_native
+	map_content.add_child(board_rect)
+	map_content.size = board_native
 
 	overlay = Control.new()
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(overlay)
+	overlay.position = Vector2.ZERO
+	overlay.size = board_native
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_content.add_child(overlay)
 
 	_build_hud()
 	_build_drawer()
@@ -138,25 +163,108 @@ func _refill_available(rid: String) -> void:
 
 # --- Tabellone e Regioni ---
 
-func _board_image_rect() -> Rect2:
-	var tex := board_rect.texture
-	if tex == null:
-		return Rect2(Vector2.ZERO, size)
-	var ts := tex.get_size()
-	var sc := minf(size.x / ts.x, size.y / ts.y)
-	return Rect2((size - ts * sc) * 0.5, ts * sc)
-
-
 func _layout_overlays() -> void:
+	if overlay == null:
+		return
 	for c in overlay.get_children():
 		c.queue_free()
-	var br := _board_image_rect()
+	# Le Regioni sono posizionate in coordinate native della mappa; lo zoom/pan
+	# del contenitore le scala insieme all'immagine.
 	for region in layout.get("regions", {}):
 		var r: Array = layout["regions"][region]
 		var btn := _make_region_button(region)
-		btn.position = br.position + Vector2(r[0] * br.size.x, r[1] * br.size.y)
-		btn.size = Vector2((r[2] - r[0]) * br.size.x, (r[3] - r[1]) * br.size.y)
+		btn.position = Vector2(r[0] * board_native.x, r[1] * board_native.y)
+		btn.size = Vector2((r[2] - r[0]) * board_native.x, (r[3] - r[1]) * board_native.y)
 		overlay.add_child(btn)
+
+
+# --- Zoom & pan della mappa (pinch + trascinamento, rotella su desktop) ---
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_touches[event.index] = event.position
+		else:
+			_touches.erase(event.index)
+		if _touches.size() == 2:
+			_pinch_dist = _touch_distance()
+		return
+	if event is InputEventScreenDrag:
+		_touches[event.index] = event.position
+		if _touches.size() == 1:
+			_pan(event.relative)
+		elif _touches.size() == 2:
+			var d := _touch_distance()
+			if _pinch_dist > 0.0:
+				_zoom_at(d / _pinch_dist, _touch_midpoint())
+			_pinch_dist = d
+		return
+	if _touches.size() > 0:
+		return  # su touch ignoriamo gli eventi mouse emulati
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			_zoom_at(1.12, event.position)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			_zoom_at(1.0 / 1.12, event.position)
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			_mouse_dragging = event.pressed
+	elif event is InputEventMouseMotion and _mouse_dragging:
+		_pan(event.relative)
+
+
+func _touch_distance() -> float:
+	var pts := _touches.values()
+	return (pts[0] as Vector2).distance_to(pts[1] as Vector2) if pts.size() >= 2 else 0.0
+
+
+func _touch_midpoint() -> Vector2:
+	var pts := _touches.values()
+	return ((pts[0] as Vector2) + (pts[1] as Vector2)) * 0.5 if pts.size() >= 2 else Vector2.ZERO
+
+
+func _pan(delta: Vector2) -> void:
+	if map_content == null:
+		return
+	map_content.position += delta
+	_clamp_map()
+
+
+## Zoom attorno a un punto-schermo mantenendolo fermo.
+func _zoom_at(factor: float, focal: Vector2) -> void:
+	if map_content == null:
+		return
+	var s0: float = map_content.scale.x
+	var s1: float = clampf(s0 * factor, _min_zoom, _min_zoom * 6.0)
+	if is_equal_approx(s0, s1):
+		return
+	var local := (focal - map_content.position) / s0
+	map_content.scale = Vector2(s1, s1)
+	map_content.position = focal - local * s1
+	_clamp_map()
+
+
+## Adatta la mappa alla viewport (intera visibile) e centra. Una volta sola.
+func _fit_map() -> void:
+	if map_content == null or board_native.x <= 0:
+		return
+	var fit := minf(size.x / board_native.x, size.y / board_native.y)
+	_min_zoom = fit
+	map_content.scale = Vector2(fit, fit)
+	map_content.position = (size - board_native * fit) * 0.5
+
+
+## Tiene almeno una parte della mappa visibile dopo pan/zoom.
+func _clamp_map() -> void:
+	if map_content == null:
+		return
+	var sc: float = map_content.scale.x
+	var bw := board_native.x * sc
+	var bh := board_native.y * sc
+	var margin := 80.0
+	var pos := map_content.position
+	pos.x = clampf(pos.x, size.x - bw - margin, margin)
+	pos.y = clampf(pos.y, size.y - bh - margin, margin)
+	map_content.position = pos
 
 
 func _make_region_button(region: String) -> Button:
@@ -542,17 +650,6 @@ func _build_drawer() -> void:
 	drawer.visible = false
 	add_child(drawer)
 
-	board_bg = TextureRect.new()
-	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	board_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	board_bg.modulate = Color(1, 1, 1, 0.22)
-	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	drawer.add_child(board_bg)
-	drawer_veil = ColorRect.new()
-	drawer_veil.color = Color(0.04, 0.05, 0.08, 0.70)
-	drawer_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	drawer_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	drawer.add_child(drawer_veil)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -598,6 +695,11 @@ func _layout_ui() -> void:
 	drawer.visible = drawer_open
 	drawer.position = Vector2(0, dy)
 	drawer.size = Vector2(w, maxf(80, h - tab_h - dy - 4))
+	if not _map_ready and size.x > 0 and size.y > 0:
+		_fit_map()
+		_map_ready = true
+	else:
+		_clamp_map()
 
 
 ## Dimensione font base proporzionale all'altezza del device.
@@ -697,6 +799,9 @@ func _refresh_drawer_content() -> void:
 	head.add_theme_font_size_override("font_size", _base_fs() + 4)
 	drawer_content.add_child(head)
 
+	# Immagine reale della plancia con i segnalini di Produzione/Risorse sopra.
+	drawer_content.add_child(_build_plancia_view(p))
+
 	if is_active:
 		drawer_content.add_child(_section("Focus"))
 		var focus_row := HBoxContainer.new()
@@ -727,6 +832,82 @@ func _refresh_drawer_content() -> void:
 
 	_build_allies_section(p, is_active)
 	_build_hand_section(p, is_active)
+
+
+## Rapporto altezza/larghezza delle immagini plancia (~700x499).
+const PLANCIA_RATIO := 0.713
+## Posizioni normalizzate dei tracciati Produzione: [x_casella1, x_casella5, y].
+## Stime di prima approssimazione (le 4 plance condividono il layout); da rifinire
+## sugli screenshot reali.
+const PROD_TRACKS := {
+	"energy": [0.105, 0.285, 0.205],
+	"raw_materials": [0.475, 0.655, 0.205],
+	"food": [0.795, 0.965, 0.205],
+	"consumer_goods": [0.105, 0.285, 0.50],
+	"services": [0.105, 0.285, 0.595],
+	"diplomacy": [0.45, 0.62, 0.535],
+	"armies": [0.745, 0.915, 0.535],
+}
+
+
+## Costruisce la vista plancia: immagine reale a piena visibilità + segnalini
+## (Produzione per ogni risorsa, Risorse possedute, Prosperità).
+func _build_plancia_view(p: PlayerState) -> Control:
+	var pw := maxf(120.0, size.x - 24.0)
+	var ph := pw * PLANCIA_RATIO
+	var view := Control.new()
+	view.custom_minimum_size = Vector2(pw, ph)
+	board_bg = TextureRect.new()
+	board_bg.texture = load("res://assets/player_boards/%s.jpg" % p.power)
+	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board_bg.stretch_mode = TextureRect.STRETCH_SCALE
+	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(board_bg)
+	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
+	# Segnalini di Produzione (livello attuale per ciascuna risorsa).
+	for res in PROD_TRACKS:
+		var lvl := int(p.production.get(res, 0))
+		if lvl >= 1 and lvl <= 5:
+			var t: Array = PROD_TRACKS[res]
+			var nx: float = lerpf(t[0], t[1], (lvl - 1) / 4.0)
+			_add_marker(view, nx, t[2], pw, ph, col)
+	# Segnalini Risorse possedute (track 0..10 in basso).
+	for res in RES:
+		var amt := int(p.resources.get(res, 0))
+		var pt := _resource_slot(amt)
+		if pt != Vector2.ZERO:
+			_add_marker(view, pt.x, pt.y, pw, ph, Color(0.95, 0.85, 0.2))
+	# Segnalino Prosperità.
+	var prx: float = lerpf(0.455, 0.84, clampf(p.prosperity_level / 5.0, 0.0, 1.0))
+	_add_marker(view, prx, 0.628, pw, ph, Color(0.5, 1, 0.6))
+	return view
+
+
+## Posizione normalizzata della casella Risorse (0..10): "0" a sinistra, 1-5 in
+## alto, 6-10 in basso.
+func _resource_slot(amount: int) -> Vector2:
+	if amount <= 0:
+		return Vector2(0.05, 0.86)
+	var row_y := 0.80 if amount <= 5 else 0.92
+	var idx := (amount - 1) % 5
+	var x := lerpf(0.22, 0.81, idx / 4.0)
+	return Vector2(x, row_y)
+
+
+## Disegna un segnalino (anello colorato) a coordinate normalizzate sulla plancia.
+func _add_marker(parent: Control, nx: float, ny: float, pw: float, ph: float, col: Color) -> void:
+	var ms := Vector2(pw * 0.055, ph * 0.085)
+	var m := Panel.new()
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.position = Vector2(nx * pw - ms.x * 0.5, ny * ph - ms.y * 0.5)
+	m.size = ms
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col.r, col.g, col.b, 0.35)
+	sb.border_color = col
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(int(ms.y * 0.5))
+	m.add_theme_stylebox_override("panel", sb)
+	parent.add_child(m)
 
 
 func _prosperity_strip(p: PlayerState) -> Control:
