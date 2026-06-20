@@ -1,0 +1,855 @@
+{
+ "kind": "market_ability",
+ "source": "Trascritto a piena risoluzione (game/assets/cards/country/, carte grandi 745x1040). 33 carte distinte; il mazzo Market contiene ~66 carte (in genere 2 copie ciascuna, art ids country_051..115). market_cost = numero accanto al nome (🔍). top_bonus + research_bonus = box in alto a sx (guadagnati in fase Research). type = colore barra (diplomatic/economic/military/domestic; 'mixed' = piu' azioni).",
+ "deck_size": 66,
+ "cards": [
+  {
+   "id": "mk_optimization_program",
+   "display_name": "Optimization Program",
+   "type": "domestic",
+   "art": "country/country_051.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Produce 1 resource type. Then, Get a Growth Card.",
+   "effect_ops": [
+    {
+     "op": "produce",
+     "count": 1
+    },
+    {
+     "op": "get_growth"
+    }
+   ]
+  },
+  {
+   "id": "mk_assign_new_diplomats",
+   "display_name": "Assign New Diplomats",
+   "type": "diplomatic",
+   "art": "country/country_052.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 4,
+   "effect_text": "Improve Relations with 2 Countries on the board.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    },
+    {
+     "op": "improve_relations"
+    }
+   ]
+  },
+  {
+   "id": "mk_global_presence",
+   "display_name": "Global Presence",
+   "type": "military",
+   "art": "country/country_053.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "army"
+   },
+   "research_bonus": 2,
+   "effect_text": "Produce 1 Army. Then, Move up to 3 Armies.",
+   "effect_ops": [
+    {
+     "op": "produce",
+     "types": [
+      "armies"
+     ]
+    },
+    {
+     "op": "move",
+     "max": 3
+    }
+   ]
+  },
+  {
+   "id": "mk_return_on_investment",
+   "display_name": "Return on Investment",
+   "type": "economic",
+   "art": "country/country_054.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Gain 4 money for each FDI token on your allied Countries. Then, Invest in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "gain_money_per_fdi",
+     "amount": 4
+    },
+    {
+     "op": "invest"
+    }
+   ]
+  },
+  {
+   "id": "mk_establish_trade_routes",
+   "display_name": "Establish Trade Routes",
+   "type": "economic",
+   "art": "country/country_055.jpg",
+   "market_cost": 3,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 2,
+   "effect_text": "Choose a Region. Trade, considering that Region's available Countries on the board as allied Countries. Then, Reset 1 of your temporary Influence in that Region.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    },
+    {
+     "op": "reset_influence"
+    }
+   ],
+   "effect_modifiers": [
+    "trade_region_available_countries"
+   ]
+  },
+  {
+   "id": "mk_tap_into_new_markets",
+   "display_name": "Tap into New Markets",
+   "type": "mixed",
+   "art": "country/country_056.jpg",
+   "market_cost": 7,
+   "top_bonus": {
+    "amount": 10,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Improve Relations with a Country on the board. Then, Invest in that Country or Trade.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "invest"
+       }
+      ],
+      [
+       {
+        "op": "trade"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_minimize_bureaucracy",
+   "display_name": "Minimize Bureaucracy",
+   "type": "domestic",
+   "art": "country/country_057.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 4,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Trash this card when you play it. Research a card costing up to 6 Research for free and immediately Play it.",
+   "effect_ops": [
+    {
+     "op": "trash",
+     "source": "self"
+    },
+    {
+     "op": "research_free",
+     "max": 6
+    },
+    {
+     "op": "play_another"
+    }
+   ]
+  },
+  {
+   "id": "mk_economic_expansion",
+   "display_name": "Economic Expansion",
+   "type": "economic",
+   "art": "country/country_058.jpg",
+   "market_cost": 7,
+   "top_bonus": {
+    "amount": 10,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Trade. Then, Invest in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    },
+    {
+     "op": "invest"
+    }
+   ]
+  },
+  {
+   "id": "mk_covert_military_operation",
+   "display_name": "Covert Military Operation",
+   "type": "military",
+   "art": "country/country_059.jpg",
+   "market_cost": 6,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "army"
+   },
+   "research_bonus": 3,
+   "effect_text": "Produce 1 Army. Then, Build a Base in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "produce",
+     "types": [
+      "armies"
+     ]
+    },
+    {
+     "op": "build_base"
+    }
+   ]
+  },
+  {
+   "id": "mk_ensure_peace_in_the_region",
+   "display_name": "Ensure Peace in the Region",
+   "type": "diplomatic",
+   "art": "country/country_060.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 3,
+   "effect_text": "Engage in a Region, spending 1 Diplomacy less for each allied Country you have from the same Region.",
+   "effect_ops": [
+    {
+     "op": "engage"
+    }
+   ],
+   "effect_modifiers": [
+    "engage_discount_per_allied"
+   ]
+  },
+  {
+   "id": "mk_new_strategic_partner",
+   "display_name": "New Strategic Partner",
+   "type": "diplomatic",
+   "art": "country/country_061.jpg",
+   "market_cost": 7,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 4,
+   "effect_text": "Improve Relations with a Country on the board. Then, if able, Build a Base in that Country, or Move up to 2 Armies to that Country's Region, even if you don't have a Base there.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "build_base"
+       }
+      ],
+      [
+       {
+        "op": "move",
+        "max": 2
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_explore_alternatives",
+   "display_name": "Explore Alternatives",
+   "type": "domestic",
+   "art": "country/country_062.jpg",
+   "market_cost": 6,
+   "top_bonus": {
+    "amount": 8,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Draw 2 cards. Then, Play another card.",
+   "effect_ops": [
+    {
+     "op": "draw",
+     "n": 2
+    },
+    {
+     "op": "play_another"
+    }
+   ]
+  },
+  {
+   "id": "mk_build_new_embassy",
+   "display_name": "Build New Embassy",
+   "type": "diplomatic",
+   "art": "country/country_063.jpg",
+   "market_cost": 3,
+   "top_bonus": {
+    "amount": 4,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Improve Relations with a Country on the board, spending 1 Diplomacy less. You can then Reset 1 of your temporary Influence in that Country's Region.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    },
+    {
+     "op": "reset_influence"
+    }
+   ],
+   "effect_modifiers": [
+    "improve_discount:1"
+   ]
+  },
+  {
+   "id": "mk_quantitative_easing",
+   "display_name": "Quantitative Easing",
+   "type": "economic",
+   "art": "country/country_064.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Gain 10 money. Then, Invest in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "gain_money",
+     "amount": 10
+    },
+    {
+     "op": "invest"
+    }
+   ]
+  },
+  {
+   "id": "mk_trade_opportunity",
+   "display_name": "Trade Opportunity",
+   "type": "economic",
+   "art": "country/country_065.jpg",
+   "market_cost": 3,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 2,
+   "effect_text": "Trade a resource type. (You can either Export or Import it.) Then, Play another card.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    },
+    {
+     "op": "play_another"
+    }
+   ],
+   "effect_modifiers": [
+    "trade_single_type"
+   ]
+  },
+  {
+   "id": "mk_new_agenda",
+   "display_name": "New Agenda",
+   "type": "domestic",
+   "art": "country/country_067.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Draw 3 cards. You can then discard 2 cards to Play another card.",
+   "effect_ops": [
+    {
+     "op": "draw",
+     "n": 3
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "discard",
+        "n": 2,
+        "then": [
+         {
+          "op": "play_another"
+         }
+        ]
+       }
+      ],
+      [
+       {
+        "op": "noop"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_strengthen_alliance",
+   "display_name": "Strengthen Alliance",
+   "type": "military",
+   "art": "country/country_068.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Build a Base in an allied Country. You can choose a Country even if you have already built a Base in it once before (but only once).",
+   "effect_ops": [
+    {
+     "op": "build_base"
+    }
+   ],
+   "effect_modifiers": [
+    "base_repeat_once"
+   ]
+  },
+  {
+   "id": "mk_steady_partnership",
+   "display_name": "Steady Partnership",
+   "type": "economic",
+   "art": "country/country_070.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Invest in an allied Country. You can choose a Country even if you have already invested in it once before (but only once).",
+   "effect_ops": [
+    {
+     "op": "invest"
+    }
+   ],
+   "effect_modifiers": [
+    "invest_repeat_once"
+   ]
+  },
+  {
+   "id": "mk_military_exercises",
+   "display_name": "Military Exercises",
+   "type": "military",
+   "art": "country/country_071.jpg",
+   "market_cost": 3,
+   "top_bonus": {
+    "amount": 4,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Move up to 3 Armies. You can then Reset 1 of your temporary Influence in 1 of the Regions you moved your Armies to.",
+   "effect_ops": [
+    {
+     "op": "move",
+     "max": 3
+    },
+    {
+     "op": "reset_influence"
+    }
+   ]
+  },
+  {
+   "id": "mk_activation_of_allies",
+   "display_name": "Activation of Allies",
+   "type": "diplomatic",
+   "art": "country/country_072.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 2,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 1,
+   "effect_text": "Ready up to 2 allied Country cards. Then, Engage in a Region.",
+   "effect_ops": [
+    {
+     "op": "ready_country",
+     "n": 2
+    },
+    {
+     "op": "engage"
+    }
+   ]
+  },
+  {
+   "id": "mk_improve_logistics",
+   "display_name": "Improve Logistics",
+   "type": "military",
+   "art": "country/country_073.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 8,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Build a Base in an allied Country. You can move up to 3 Armies to its Region, regardless of the Country's value and without paying their move cost.",
+   "effect_ops": [
+    {
+     "op": "build_base"
+    }
+   ],
+   "effect_modifiers": [
+    "base_move_3_free"
+   ]
+  },
+  {
+   "id": "mk_re_evaluate_strategy",
+   "display_name": "Re-Evaluate Strategy",
+   "type": "mixed",
+   "art": "country/country_077.jpg",
+   "market_cost": 6,
+   "top_bonus": {
+    "amount": 8,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Choose any 2, in any order: Improve Relations with a Country on the board; Trade; Move up to 2 Armies.",
+   "effect_ops": [
+    {
+     "op": "choose_n",
+     "n": 2,
+     "options": [
+      {
+       "op": "improve_relations"
+      },
+      {
+       "op": "trade"
+      },
+      {
+       "op": "move",
+       "max": 2
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_key_economic_partner",
+   "display_name": "Key Economic Partner",
+   "type": "economic",
+   "art": "country/country_078.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Ready an allied Country. Then, Invest in that Country without exhausting it.",
+   "effect_ops": [
+    {
+     "op": "ready_country",
+     "n": 1
+    },
+    {
+     "op": "invest"
+    }
+   ],
+   "effect_modifiers": [
+    "invest_no_exhaust"
+   ]
+  },
+  {
+   "id": "mk_boost_production",
+   "display_name": "Boost Production",
+   "type": "domestic",
+   "art": "country/country_082.jpg",
+   "market_cost": 6,
+   "top_bonus": {
+    "amount": 8,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Choose a resource type. Increase its Production by 1 (if able) and Produce it. Then, Play another card.",
+   "effect_ops": [
+    {
+     "op": "increase_production",
+     "count": 1
+    },
+    {
+     "op": "produce",
+     "count": 1
+    },
+    {
+     "op": "play_another"
+    }
+   ]
+  },
+  {
+   "id": "mk_prosperous_times",
+   "display_name": "Prosperous Times",
+   "type": "domestic",
+   "art": "country/country_085.jpg",
+   "market_cost": 6,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Produce 1 Consumer Goods. Then, you can either increase your Prosperity, spending 2 Consumer Goods less, or Play another card.",
+   "effect_ops": [
+    {
+     "op": "produce",
+     "types": [
+      "consumer_goods"
+     ]
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "increase_prosperity",
+        "discount": 2
+       }
+      ],
+      [
+       {
+        "op": "play_another"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_diplomatic_trip",
+   "display_name": "Diplomatic Trip",
+   "type": "diplomatic",
+   "art": "country/country_086.jpg",
+   "market_cost": 7,
+   "top_bonus": {
+    "amount": 2,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 3,
+   "effect_text": "Improve Relations with a Country on the board. You can then Engage in that Country's Region.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    },
+    {
+     "op": "engage"
+    }
+   ]
+  },
+  {
+   "id": "mk_power_play",
+   "display_name": "Power Play",
+   "type": "military",
+   "art": "country/country_088.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "army"
+   },
+   "research_bonus": 2,
+   "effect_text": "Build a Base in an allied Country. When adding Influence to its Region as part of the action, you can place it as permanent Influence even if there is no available slot.",
+   "effect_ops": [
+    {
+     "op": "build_base"
+    }
+   ],
+   "effect_modifiers": [
+    "base_influence_permanent_force"
+   ]
+  },
+  {
+   "id": "mk_dominant_power",
+   "display_name": "Dominant Power",
+   "type": "diplomatic",
+   "art": "country/country_089.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 2,
+   "effect_text": "Engage in a Region, spending 1 Diplomacy less for each Army you have in that Region.",
+   "effect_ops": [
+    {
+     "op": "engage"
+    }
+   ],
+   "effect_modifiers": [
+    "engage_discount_per_army"
+   ]
+  },
+  {
+   "id": "mk_initiate_restructuring",
+   "display_name": "Initiate Restructuring",
+   "type": "domestic",
+   "art": "country/country_092.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 4,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Draw a card. You can then Trash a card from your hand or your discard pile to Play another card.",
+   "effect_ops": [
+    {
+     "op": "draw",
+     "n": 1
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "trash",
+        "source": "hand"
+       },
+       {
+        "op": "play_another"
+       }
+      ],
+      [
+       {
+        "op": "trash",
+        "source": "discard"
+       },
+       {
+        "op": "play_another"
+       }
+      ],
+      [
+       {
+        "op": "noop"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_convincing_arguments",
+   "display_name": "Convincing Arguments",
+   "type": "diplomatic",
+   "art": "country/country_096.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 3,
+   "effect_text": "Gain 2 Diplomacy. Then, Improve Relations with a Country on the board or Engage in a Region.",
+   "effect_ops": [
+    {
+     "op": "gain_resource",
+     "type": "diplomacy",
+     "amount": 2
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "improve_relations"
+       }
+      ],
+      [
+       {
+        "op": "engage"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mk_re_examine_agreement",
+   "display_name": "Re-Examine Agreement",
+   "type": "domestic",
+   "art": "country/country_103.jpg",
+   "market_cost": 5,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 4,
+   "effect_text": "Choose a Region and Reset 1 of your temporary Influence there. Then, Draw a card and Play another card.",
+   "effect_ops": [
+    {
+     "op": "reset_influence"
+    },
+    {
+     "op": "draw",
+     "n": 1
+    },
+    {
+     "op": "play_another"
+    }
+   ]
+  },
+  {
+   "id": "mk_successful_negotiations",
+   "display_name": "Successful Negotiations",
+   "type": "diplomatic",
+   "art": "country/country_105.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "research_bonus": 3,
+   "effect_text": "Ready an allied Country. You can then search the Country cards on the board of any 1 Region, choose 1 of those Countries, and Improve Relations with it. Shuffle the rest of the cards afterward and reveal the first 2 on the board.",
+   "effect_ops": [
+    {
+     "op": "ready_country",
+     "n": 1
+    },
+    {
+     "op": "improve_relations"
+    }
+   ],
+   "effect_modifiers": [
+    "search_region_before_improve"
+   ]
+  },
+  {
+   "id": "mk_well_laid_plans",
+   "display_name": "Well-Laid Plans",
+   "type": "military",
+   "art": "country/country_107.jpg",
+   "market_cost": 4,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "research_bonus": 3,
+   "effect_text": "Draw a card. Then, Build a Base in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "draw",
+     "n": 1
+    },
+    {
+     "op": "build_base"
+    }
+   ]
+  }
+ ]
+}

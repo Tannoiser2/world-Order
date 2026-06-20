@@ -1,0 +1,67 @@
+name: Deploy Web build to GitHub Pages
+
+# Esporta il progetto Godot (preset "Web", single-thread) e lo pubblica su Pages.
+# GitHub Pages non puo' inviare gli header COOP/COEP, quindi l'export e' senza
+# thread (SharedArrayBuffer non disponibile): il renderer GL Compatibility va bene.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  build:
+    name: Export Web
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          DEST="$HOME/.local/share/godot/export_templates"
+          mkdir -p "$DEST"
+          cp -rn /root/.local/share/godot/export_templates/* "$DEST"/ 2>/dev/null || true
+          ls -la "$DEST"
+
+      - name: Import project
+        run: godot --headless --path game --import || true
+
+      - name: Export Web build
+        run: |
+          mkdir -p build/web
+          godot --headless --path game --export-release "Web" "$GITHUB_WORKSPACE/build/web/index.html"
+          # Pages: evita l'elaborazione Jekyll dei file generati.
+          touch build/web/.nojekyll
+          ls -la build/web
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

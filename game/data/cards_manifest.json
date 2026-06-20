@@ -1,0 +1,4812 @@
+{
+ "count": 253,
+ "cards": [
+  {
+   "id": "ability_000",
+   "type": "ability",
+   "file": "ability/ability_000.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc24371034661485238839212041310C67388A443244C91423C9901594BCA.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 400
+  },
+  {
+   "id": "ability_001",
+   "type": "ability",
+   "file": "ability/ability_001.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc24371034661485238839212041310C67388A443244C91423C9901594BCA.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 403
+  },
+  {
+   "id": "ability_002",
+   "type": "ability",
+   "file": "ability/ability_002.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc24371034661485238839212041310C67388A443244C91423C9901594BCA.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 401
+  },
+  {
+   "id": "ability_003",
+   "type": "ability",
+   "file": "ability/ability_003.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1910
+  },
+  {
+   "id": "ability_004",
+   "type": "ability",
+   "file": "ability/ability_004.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1902
+  },
+  {
+   "id": "ability_005",
+   "type": "ability",
+   "file": "ability/ability_005.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    3,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1830
+  },
+  {
+   "id": "ability_006",
+   "type": "ability",
+   "file": "ability/ability_006.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    1,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1817
+  },
+  {
+   "id": "ability_007",
+   "type": "ability",
+   "file": "ability/ability_007.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    2,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1824
+  },
+  {
+   "id": "ability_008",
+   "type": "ability",
+   "file": "ability/ability_008.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    1,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1918
+  },
+  {
+   "id": "ability_009",
+   "type": "ability",
+   "file": "ability/ability_009.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    2,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1921
+  },
+  {
+   "id": "ability_010",
+   "type": "ability",
+   "file": "ability/ability_010.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    2,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1926
+  },
+  {
+   "id": "ability_011",
+   "type": "ability",
+   "file": "ability/ability_011.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1810
+  },
+  {
+   "id": "ability_012",
+   "type": "ability",
+   "file": "ability/ability_012.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1811
+  },
+  {
+   "id": "ability_013",
+   "type": "ability",
+   "file": "ability/ability_013.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    3,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1932
+  },
+  {
+   "id": "ability_014",
+   "type": "ability",
+   "file": "ability/ability_014.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    4,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1846
+  },
+  {
+   "id": "ability_015",
+   "type": "ability",
+   "file": "ability/ability_015.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    4,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1844
+  },
+  {
+   "id": "ability_016",
+   "type": "ability",
+   "file": "ability/ability_016.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264613493E4C4FB9C65097F3EE55B0932FEF9FA28B423F9.png",
+   "cell": [
+    3,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1937
+  },
+  {
+   "id": "ability_017",
+   "type": "ability",
+   "file": "ability/ability_017.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978264560254ADFF6855EC4E448783A9CE4C64BEC1822E7678.png",
+   "cell": [
+    3,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 1837
+  },
+  {
+   "id": "ability_018",
+   "type": "ability",
+   "file": "ability/ability_018.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978259423567952E204CAE769401BC7282756375B60EE12D98.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 9600
+  },
+  {
+   "id": "ability_019",
+   "type": "ability",
+   "file": "ability/ability_019.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849782593005B9C7FED88770E29FAE9A3E0E5E622F76A697B348.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 9500
+  },
+  {
+   "id": "ability_020",
+   "type": "ability",
+   "file": "ability/ability_020.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849782591543AD849153D63FCCA20350C0FDCCF3DE4572AA287C.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 9300
+  },
+  {
+   "id": "ability_021",
+   "type": "ability",
+   "file": "ability/ability_021.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc231848497825917804BC911CFFDC248D8D78419A31ED1AD55BF753FF0.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 9400
+  },
+  {
+   "id": "ability_022",
+   "type": "ability",
+   "file": "ability/ability_022.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc2318484978258946196FA291F00EB7F12EF308670BD8E3DB5095B82EA.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 9200
+  },
+  {
+   "id": "wide_aux_000",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_000.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849783185586B9658CEF74C431388CE871BAA84DE66FC60639C7.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 10701
+  },
+  {
+   "id": "wide_aux_001",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_001.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849783185586B9658CEF74C431388CE871BAA84DE66FC60639C7.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 10703
+  },
+  {
+   "id": "wide_aux_002",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_002.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849783185586B9658CEF74C431388CE871BAA84DE66FC60639C7.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 10702
+  },
+  {
+   "id": "wide_aux_003",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_003.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849783185586B9658CEF74C431388CE871BAA84DE66FC60639C7.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    2,
+    2
+   ],
+   "cardId": 10700
+  },
+  {
+   "id": "ability_023",
+   "type": "ability",
+   "file": "ability/ability_023.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc742360016413552323A0A7F2D0CD48E613793CEA688C69C75C43EFF4.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 11900
+  },
+  {
+   "id": "ability_024",
+   "type": "ability",
+   "file": "ability/ability_024.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849782639313D6F09C95F734A58BB59ECBCFFB2C313DE44C8819.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 10106
+  },
+  {
+   "id": "ability_025",
+   "type": "ability",
+   "file": "ability/ability_025.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc23184849782639313D6F09C95F734A58BB59ECBCFFB2C313DE44C8819.png",
+   "cell": [
+    1,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 10115
+  },
+  {
+   "id": "country_000",
+   "type": "country",
+   "file": "country/country_000.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc11241855577731176849D4BD397D1E998296A278C0B8EF0103409074AA20.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 16800
+  },
+  {
+   "id": "country_001",
+   "type": "country",
+   "file": "country/country_001.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc132143629682449696408D42BD3F455F73DB60F6512EBA85F07F36B00DA9.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 26800
+  },
+  {
+   "id": "country_002",
+   "type": "country",
+   "file": "country/country_002.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc161689317197849783073F8C2B85B3C42336231EFDA743DB5250FDCD68EA.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 11700
+  },
+  {
+   "id": "country_003",
+   "type": "country",
+   "file": "country/country_003.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc95432549785238799966D4C49EC4C8E4C98DA3431A9835941C887B6F9A1.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 12000
+  },
+  {
+   "id": "country_004",
+   "type": "country",
+   "file": "country/country_004.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11417
+  },
+  {
+   "id": "country_005",
+   "type": "country",
+   "file": "country/country_005.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11414
+  },
+  {
+   "id": "country_006",
+   "type": "country",
+   "file": "country/country_006.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11416
+  },
+  {
+   "id": "country_007",
+   "type": "country",
+   "file": "country/country_007.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11418
+  },
+  {
+   "id": "country_008",
+   "type": "country",
+   "file": "country/country_008.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11413
+  },
+  {
+   "id": "country_009",
+   "type": "country",
+   "file": "country/country_009.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11422
+  },
+  {
+   "id": "country_010",
+   "type": "country",
+   "file": "country/country_010.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11412
+  },
+  {
+   "id": "country_011",
+   "type": "country",
+   "file": "country/country_011.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11419
+  },
+  {
+   "id": "country_012",
+   "type": "country",
+   "file": "country/country_012.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11421
+  },
+  {
+   "id": "country_013",
+   "type": "country",
+   "file": "country/country_013.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11420
+  },
+  {
+   "id": "country_014",
+   "type": "country",
+   "file": "country/country_014.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11423
+  },
+  {
+   "id": "country_015",
+   "type": "country",
+   "file": "country/country_015.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11415
+  },
+  {
+   "id": "country_016",
+   "type": "country",
+   "file": "country/country_016.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11441
+  },
+  {
+   "id": "country_017",
+   "type": "country",
+   "file": "country/country_017.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11442
+  },
+  {
+   "id": "country_018",
+   "type": "country",
+   "file": "country/country_018.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11436
+  },
+  {
+   "id": "country_019",
+   "type": "country",
+   "file": "country/country_019.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11444
+  },
+  {
+   "id": "country_020",
+   "type": "country",
+   "file": "country/country_020.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11443
+  },
+  {
+   "id": "country_021",
+   "type": "country",
+   "file": "country/country_021.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11437
+  },
+  {
+   "id": "country_022",
+   "type": "country",
+   "file": "country/country_022.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11445
+  },
+  {
+   "id": "country_023",
+   "type": "country",
+   "file": "country/country_023.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11440
+  },
+  {
+   "id": "country_024",
+   "type": "country",
+   "file": "country/country_024.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11438
+  },
+  {
+   "id": "country_025",
+   "type": "country",
+   "file": "country/country_025.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11447
+  },
+  {
+   "id": "country_026",
+   "type": "country",
+   "file": "country/country_026.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11439
+  },
+  {
+   "id": "country_027",
+   "type": "country",
+   "file": "country/country_027.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    4,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11446
+  },
+  {
+   "id": "country_028",
+   "type": "country",
+   "file": "country/country_028.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11433
+  },
+  {
+   "id": "country_029",
+   "type": "country",
+   "file": "country/country_029.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11428
+  },
+  {
+   "id": "country_030",
+   "type": "country",
+   "file": "country/country_030.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11424
+  },
+  {
+   "id": "country_031",
+   "type": "country",
+   "file": "country/country_031.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11430
+  },
+  {
+   "id": "country_032",
+   "type": "country",
+   "file": "country/country_032.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11425
+  },
+  {
+   "id": "country_033",
+   "type": "country",
+   "file": "country/country_033.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11432
+  },
+  {
+   "id": "country_034",
+   "type": "country",
+   "file": "country/country_034.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11434
+  },
+  {
+   "id": "country_035",
+   "type": "country",
+   "file": "country/country_035.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    3,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11431
+  },
+  {
+   "id": "country_036",
+   "type": "country",
+   "file": "country/country_036.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11427
+  },
+  {
+   "id": "country_037",
+   "type": "country",
+   "file": "country/country_037.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11426
+  },
+  {
+   "id": "country_038",
+   "type": "country",
+   "file": "country/country_038.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    2,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11429
+  },
+  {
+   "id": "country_039",
+   "type": "country",
+   "file": "country/country_039.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11402
+  },
+  {
+   "id": "country_040",
+   "type": "country",
+   "file": "country/country_040.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11405
+  },
+  {
+   "id": "country_041",
+   "type": "country",
+   "file": "country/country_041.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11401
+  },
+  {
+   "id": "country_042",
+   "type": "country",
+   "file": "country/country_042.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11403
+  },
+  {
+   "id": "country_043",
+   "type": "country",
+   "file": "country/country_043.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11404
+  },
+  {
+   "id": "country_044",
+   "type": "country",
+   "file": "country/country_044.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11400
+  },
+  {
+   "id": "country_045",
+   "type": "country",
+   "file": "country/country_045.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11411
+  },
+  {
+   "id": "country_046",
+   "type": "country",
+   "file": "country/country_046.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11407
+  },
+  {
+   "id": "country_047",
+   "type": "country",
+   "file": "country/country_047.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11410
+  },
+  {
+   "id": "country_048",
+   "type": "country",
+   "file": "country/country_048.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11406
+  },
+  {
+   "id": "country_049",
+   "type": "country",
+   "file": "country/country_049.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11408
+  },
+  {
+   "id": "country_050",
+   "type": "country",
+   "file": "country/country_050.jpg",
+   "size": [
+    745,
+    1041
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc147599379861194085227063B5FB98446E5BE3BD6FFEE60037DA4682BFC9.jpg",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 11409
+  },
+  {
+   "id": "wide_aux_004",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_004.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    1,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17319
+  },
+  {
+   "id": "wide_aux_005",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_005.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    1,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17318
+  },
+  {
+   "id": "strategic_asset_000",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_000.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15365069079791151797CD00733EB40649670D34D6B1A8B49F697A2F2609.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17803
+  },
+  {
+   "id": "strategic_asset_001",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_001.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15365069079791151797CD00733EB40649670D34D6B1A8B49F697A2F2609.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17802
+  },
+  {
+   "id": "strategic_asset_002",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_002.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15365069079791151797CD00733EB40649670D34D6B1A8B49F697A2F2609.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17804
+  },
+  {
+   "id": "strategic_asset_003",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_003.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15365069079791151797CD00733EB40649670D34D6B1A8B49F697A2F2609.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17801
+  },
+  {
+   "id": "strategic_asset_004",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_004.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15365069079791151797CD00733EB40649670D34D6B1A8B49F697A2F2609.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17800
+  },
+  {
+   "id": "strategic_asset_005",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_005.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14671178803258735224AFE4429A06B776DE83720EF2FEE3F06957F8ACF7.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17902
+  },
+  {
+   "id": "strategic_asset_006",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_006.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14671178803258735224AFE4429A06B776DE83720EF2FEE3F06957F8ACF7.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17900
+  },
+  {
+   "id": "strategic_asset_007",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_007.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14671178803258735224AFE4429A06B776DE83720EF2FEE3F06957F8ACF7.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17901
+  },
+  {
+   "id": "strategic_asset_008",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_008.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14671178803258735224AFE4429A06B776DE83720EF2FEE3F06957F8ACF7.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17904
+  },
+  {
+   "id": "strategic_asset_009",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_009.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14671178803258735224AFE4429A06B776DE83720EF2FEE3F06957F8ACF7.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17903
+  },
+  {
+   "id": "strategic_asset_010",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_010.jpg",
+   "size": [
+    1000,
+    715
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1086921986474357919911CC58002719E8490CB323B9640455DCD8B027D7.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18003
+  },
+  {
+   "id": "strategic_asset_011",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_011.jpg",
+   "size": [
+    1000,
+    715
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1086921986474357919911CC58002719E8490CB323B9640455DCD8B027D7.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18002
+  },
+  {
+   "id": "strategic_asset_012",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_012.jpg",
+   "size": [
+    1000,
+    715
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1086921986474357919911CC58002719E8490CB323B9640455DCD8B027D7.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18000
+  },
+  {
+   "id": "strategic_asset_013",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_013.jpg",
+   "size": [
+    1000,
+    715
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1086921986474357919911CC58002719E8490CB323B9640455DCD8B027D7.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18004
+  },
+  {
+   "id": "strategic_asset_014",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_014.jpg",
+   "size": [
+    1000,
+    715
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1086921986474357919911CC58002719E8490CB323B9640455DCD8B027D7.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18001
+  },
+  {
+   "id": "strategic_asset_015",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_015.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc11689019711962062328209A65ECD1D36CA1895455090FD36A77BC67A48F.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18102
+  },
+  {
+   "id": "strategic_asset_016",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_016.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc11689019711962062328209A65ECD1D36CA1895455090FD36A77BC67A48F.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18101
+  },
+  {
+   "id": "strategic_asset_017",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_017.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc11689019711962062328209A65ECD1D36CA1895455090FD36A77BC67A48F.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18100
+  },
+  {
+   "id": "strategic_asset_018",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_018.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc11689019711962062328209A65ECD1D36CA1895455090FD36A77BC67A48F.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18104
+  },
+  {
+   "id": "strategic_asset_019",
+   "type": "strategic_asset",
+   "file": "strategic_asset/strategic_asset_019.jpg",
+   "size": [
+    1000,
+    716
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc11689019711962062328209A65ECD1D36CA1895455090FD36A77BC67A48F.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 18103
+  },
+  {
+   "id": "country_051",
+   "type": "country",
+   "file": "country/country_051.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15642
+  },
+  {
+   "id": "country_052",
+   "type": "country",
+   "file": "country/country_052.jpg",
+   "size": [
+    746,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15121830475775538109AA9CEE1E7D83565FBDD56DFB589D499E6D9294D8.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 25400
+  },
+  {
+   "id": "country_053",
+   "type": "country",
+   "file": "country/country_053.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    6,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15664
+  },
+  {
+   "id": "country_054",
+   "type": "country",
+   "file": "country/country_054.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15656
+  },
+  {
+   "id": "country_055",
+   "type": "country",
+   "file": "country/country_055.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15651
+  },
+  {
+   "id": "country_056",
+   "type": "country",
+   "file": "country/country_056.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15624
+  },
+  {
+   "id": "country_057",
+   "type": "country",
+   "file": "country/country_057.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15638
+  },
+  {
+   "id": "country_058",
+   "type": "country",
+   "file": "country/country_058.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15649
+  },
+  {
+   "id": "country_059",
+   "type": "country",
+   "file": "country/country_059.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    6,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15663
+  },
+  {
+   "id": "country_060",
+   "type": "country",
+   "file": "country/country_060.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15626
+  },
+  {
+   "id": "country_061",
+   "type": "country",
+   "file": "country/country_061.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15629
+  },
+  {
+   "id": "country_062",
+   "type": "country",
+   "file": "country/country_062.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15634
+  },
+  {
+   "id": "country_063",
+   "type": "country",
+   "file": "country/country_063.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15615
+  },
+  {
+   "id": "country_064",
+   "type": "country",
+   "file": "country/country_064.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15654
+  },
+  {
+   "id": "country_065",
+   "type": "country",
+   "file": "country/country_065.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    6,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15661
+  },
+  {
+   "id": "country_066",
+   "type": "country",
+   "file": "country/country_066.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15635
+  },
+  {
+   "id": "country_067",
+   "type": "country",
+   "file": "country/country_067.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15640
+  },
+  {
+   "id": "country_068",
+   "type": "country",
+   "file": "country/country_068.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15606
+  },
+  {
+   "id": "country_069",
+   "type": "country",
+   "file": "country/country_069.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15639
+  },
+  {
+   "id": "country_070",
+   "type": "country",
+   "file": "country/country_070.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15658
+  },
+  {
+   "id": "country_071",
+   "type": "country",
+   "file": "country/country_071.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15602
+  },
+  {
+   "id": "country_072",
+   "type": "country",
+   "file": "country/country_072.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15611
+  },
+  {
+   "id": "country_073",
+   "type": "country",
+   "file": "country/country_073.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15601
+  },
+  {
+   "id": "country_074",
+   "type": "country",
+   "file": "country/country_074.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    6,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15665
+  },
+  {
+   "id": "country_075",
+   "type": "country",
+   "file": "country/country_075.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15607
+  },
+  {
+   "id": "country_076",
+   "type": "country",
+   "file": "country/country_076.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    6,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15660
+  },
+  {
+   "id": "country_077",
+   "type": "country",
+   "file": "country/country_077.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15623
+  },
+  {
+   "id": "country_078",
+   "type": "country",
+   "file": "country/country_078.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15652
+  },
+  {
+   "id": "country_079",
+   "type": "country",
+   "file": "country/country_079.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15641
+  },
+  {
+   "id": "country_080",
+   "type": "country",
+   "file": "country/country_080.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15614
+  },
+  {
+   "id": "country_081",
+   "type": "country",
+   "file": "country/country_081.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15653
+  },
+  {
+   "id": "country_082",
+   "type": "country",
+   "file": "country/country_082.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15633
+  },
+  {
+   "id": "country_083",
+   "type": "country",
+   "file": "country/country_083.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15632
+  },
+  {
+   "id": "country_084",
+   "type": "country",
+   "file": "country/country_084.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15625
+  },
+  {
+   "id": "country_085",
+   "type": "country",
+   "file": "country/country_085.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15645
+  },
+  {
+   "id": "country_086",
+   "type": "country",
+   "file": "country/country_086.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15618
+  },
+  {
+   "id": "country_087",
+   "type": "country",
+   "file": "country/country_087.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15659
+  },
+  {
+   "id": "country_088",
+   "type": "country",
+   "file": "country/country_088.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15605
+  },
+  {
+   "id": "country_089",
+   "type": "country",
+   "file": "country/country_089.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15621
+  },
+  {
+   "id": "country_090",
+   "type": "country",
+   "file": "country/country_090.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15603
+  },
+  {
+   "id": "country_091",
+   "type": "country",
+   "file": "country/country_091.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15648
+  },
+  {
+   "id": "country_092",
+   "type": "country",
+   "file": "country/country_092.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15636
+  },
+  {
+   "id": "country_093",
+   "type": "country",
+   "file": "country/country_093.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15643
+  },
+  {
+   "id": "country_094",
+   "type": "country",
+   "file": "country/country_094.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15627
+  },
+  {
+   "id": "country_095",
+   "type": "country",
+   "file": "country/country_095.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15644
+  },
+  {
+   "id": "country_096",
+   "type": "country",
+   "file": "country/country_096.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15617
+  },
+  {
+   "id": "country_097",
+   "type": "country",
+   "file": "country/country_097.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15616
+  },
+  {
+   "id": "country_098",
+   "type": "country",
+   "file": "country/country_098.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15620
+  },
+  {
+   "id": "country_099",
+   "type": "country",
+   "file": "country/country_099.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15655
+  },
+  {
+   "id": "country_100",
+   "type": "country",
+   "file": "country/country_100.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15650
+  },
+  {
+   "id": "country_101",
+   "type": "country",
+   "file": "country/country_101.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15628
+  },
+  {
+   "id": "country_102",
+   "type": "country",
+   "file": "country/country_102.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15637
+  },
+  {
+   "id": "country_103",
+   "type": "country",
+   "file": "country/country_103.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15646
+  },
+  {
+   "id": "country_104",
+   "type": "country",
+   "file": "country/country_104.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15604
+  },
+  {
+   "id": "country_105",
+   "type": "country",
+   "file": "country/country_105.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15630
+  },
+  {
+   "id": "country_106",
+   "type": "country",
+   "file": "country/country_106.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    4,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15647
+  },
+  {
+   "id": "country_107",
+   "type": "country",
+   "file": "country/country_107.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15608
+  },
+  {
+   "id": "country_108",
+   "type": "country",
+   "file": "country/country_108.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15609
+  },
+  {
+   "id": "country_109",
+   "type": "country",
+   "file": "country/country_109.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15610
+  },
+  {
+   "id": "country_110",
+   "type": "country",
+   "file": "country/country_110.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    2,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15622
+  },
+  {
+   "id": "country_111",
+   "type": "country",
+   "file": "country/country_111.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    5,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15657
+  },
+  {
+   "id": "country_112",
+   "type": "country",
+   "file": "country/country_112.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    3,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15631
+  },
+  {
+   "id": "country_113",
+   "type": "country",
+   "file": "country/country_113.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    1,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15619
+  },
+  {
+   "id": "country_114",
+   "type": "country",
+   "file": "country/country_114.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15600
+  },
+  {
+   "id": "country_115",
+   "type": "country",
+   "file": "country/country_115.jpg",
+   "size": [
+    745,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16345075967132286675EC0FFB9C5AF4BB465E503032E11957BA0053A7BB.png",
+   "cell": [
+    6,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 15662
+  },
+  {
+   "id": "ability_026",
+   "type": "ability",
+   "file": "ability/ability_026.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13404
+  },
+  {
+   "id": "ability_027",
+   "type": "ability",
+   "file": "ability/ability_027.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13401
+  },
+  {
+   "id": "ability_028",
+   "type": "ability",
+   "file": "ability/ability_028.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13301
+  },
+  {
+   "id": "ability_029",
+   "type": "ability",
+   "file": "ability/ability_029.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13304
+  },
+  {
+   "id": "ability_030",
+   "type": "ability",
+   "file": "ability/ability_030.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13305
+  },
+  {
+   "id": "ability_031",
+   "type": "ability",
+   "file": "ability/ability_031.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13303
+  },
+  {
+   "id": "ability_032",
+   "type": "ability",
+   "file": "ability/ability_032.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13308
+  },
+  {
+   "id": "ability_033",
+   "type": "ability",
+   "file": "ability/ability_033.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13310
+  },
+  {
+   "id": "ability_034",
+   "type": "ability",
+   "file": "ability/ability_034.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13300
+  },
+  {
+   "id": "ability_035",
+   "type": "ability",
+   "file": "ability/ability_035.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13311
+  },
+  {
+   "id": "ability_036",
+   "type": "ability",
+   "file": "ability/ability_036.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13306
+  },
+  {
+   "id": "ability_037",
+   "type": "ability",
+   "file": "ability/ability_037.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc124187120023680455205519E5E587F27E998F4CBCE6F0576E80C93C85DE.png",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13307
+  },
+  {
+   "id": "ability_038",
+   "type": "ability",
+   "file": "ability/ability_038.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13103
+  },
+  {
+   "id": "ability_039",
+   "type": "ability",
+   "file": "ability/ability_039.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13101
+  },
+  {
+   "id": "ability_040",
+   "type": "ability",
+   "file": "ability/ability_040.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    1,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13112
+  },
+  {
+   "id": "ability_041",
+   "type": "ability",
+   "file": "ability/ability_041.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13111
+  },
+  {
+   "id": "ability_042",
+   "type": "ability",
+   "file": "ability/ability_042.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13100
+  },
+  {
+   "id": "ability_043",
+   "type": "ability",
+   "file": "ability/ability_043.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    1,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13113
+  },
+  {
+   "id": "ability_044",
+   "type": "ability",
+   "file": "ability/ability_044.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13108
+  },
+  {
+   "id": "ability_045",
+   "type": "ability",
+   "file": "ability/ability_045.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13106
+  },
+  {
+   "id": "ability_046",
+   "type": "ability",
+   "file": "ability/ability_046.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13104
+  },
+  {
+   "id": "ability_047",
+   "type": "ability",
+   "file": "ability/ability_047.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc137409498323871192203D18FB8834DE68A68B1182A4024EC93D5F3A09EE.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13109
+  },
+  {
+   "id": "ability_048",
+   "type": "ability",
+   "file": "ability/ability_048.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13402
+  },
+  {
+   "id": "ability_049",
+   "type": "ability",
+   "file": "ability/ability_049.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13405
+  },
+  {
+   "id": "ability_050",
+   "type": "ability",
+   "file": "ability/ability_050.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc9647209793836308382FC547023E069D30DBEB6B8ACF89C9DC5D0A5A926.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 16100
+  },
+  {
+   "id": "ability_051",
+   "type": "ability",
+   "file": "ability/ability_051.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13400
+  },
+  {
+   "id": "ability_052",
+   "type": "ability",
+   "file": "ability/ability_052.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13409
+  },
+  {
+   "id": "ability_053",
+   "type": "ability",
+   "file": "ability/ability_053.jpg",
+   "size": [
+    486,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10068140508534963918575C711EA70EA9CCD6DAB6AAE9EF6142A3E2D59B.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 16000
+  },
+  {
+   "id": "ability_054",
+   "type": "ability",
+   "file": "ability/ability_054.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13407
+  },
+  {
+   "id": "ability_055",
+   "type": "ability",
+   "file": "ability/ability_055.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13408
+  },
+  {
+   "id": "ability_056",
+   "type": "ability",
+   "file": "ability/ability_056.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13411
+  },
+  {
+   "id": "ability_057",
+   "type": "ability",
+   "file": "ability/ability_057.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc16848795946580430508BBEDFB9B5DC79C97DFB65A68F7E45ACB1618BE97.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13406
+  },
+  {
+   "id": "ability_058",
+   "type": "ability",
+   "file": "ability/ability_058.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    1,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13513
+  },
+  {
+   "id": "ability_059",
+   "type": "ability",
+   "file": "ability/ability_059.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    1,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13512
+  },
+  {
+   "id": "ability_060",
+   "type": "ability",
+   "file": "ability/ability_060.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13507
+  },
+  {
+   "id": "ability_061",
+   "type": "ability",
+   "file": "ability/ability_061.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13508
+  },
+  {
+   "id": "ability_062",
+   "type": "ability",
+   "file": "ability/ability_062.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13501
+  },
+  {
+   "id": "ability_063",
+   "type": "ability",
+   "file": "ability/ability_063.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13504
+  },
+  {
+   "id": "ability_064",
+   "type": "ability",
+   "file": "ability/ability_064.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13500
+  },
+  {
+   "id": "ability_065",
+   "type": "ability",
+   "file": "ability/ability_065.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13505
+  },
+  {
+   "id": "ability_066",
+   "type": "ability",
+   "file": "ability/ability_066.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13509
+  },
+  {
+   "id": "ability_067",
+   "type": "ability",
+   "file": "ability/ability_067.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13503
+  },
+  {
+   "id": "ability_068",
+   "type": "ability",
+   "file": "ability/ability_068.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13506
+  },
+  {
+   "id": "ability_069",
+   "type": "ability",
+   "file": "ability/ability_069.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10307470231413978663A68ABB4F10FA77CD0DF96776873B86293111475F.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13502
+  },
+  {
+   "id": "ability_070",
+   "type": "ability",
+   "file": "ability/ability_070.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12909
+  },
+  {
+   "id": "ability_071",
+   "type": "ability",
+   "file": "ability/ability_071.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12906
+  },
+  {
+   "id": "ability_072",
+   "type": "ability",
+   "file": "ability/ability_072.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12904
+  },
+  {
+   "id": "ability_073",
+   "type": "ability",
+   "file": "ability/ability_073.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12901
+  },
+  {
+   "id": "ability_074",
+   "type": "ability",
+   "file": "ability/ability_074.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12905
+  },
+  {
+   "id": "ability_075",
+   "type": "ability",
+   "file": "ability/ability_075.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12907
+  },
+  {
+   "id": "ability_076",
+   "type": "ability",
+   "file": "ability/ability_076.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12900
+  },
+  {
+   "id": "ability_077",
+   "type": "ability",
+   "file": "ability/ability_077.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc158913639901549543038D1D76D13D49E8210BE1A3CBA10D9D5DBFBDE2E4.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 12902
+  },
+  {
+   "id": "ability_078",
+   "type": "ability",
+   "file": "ability/ability_078.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1267653612831105931306083A7CAB5EF81FB9841F0357FC43229072FFF0.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 15900
+  },
+  {
+   "id": "ability_079",
+   "type": "ability",
+   "file": "ability/ability_079.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13210
+  },
+  {
+   "id": "ability_080",
+   "type": "ability",
+   "file": "ability/ability_080.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    1,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13213
+  },
+  {
+   "id": "ability_081",
+   "type": "ability",
+   "file": "ability/ability_081.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14685157406157908057462B96D0D5C38B6A0651C616629D7D8CFE465731.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 15700
+  },
+  {
+   "id": "ability_082",
+   "type": "ability",
+   "file": "ability/ability_082.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc14635306977709407316F8DEFF5656E0DDB94F67D80A803499A4C7D5B7E1.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 15800
+  },
+  {
+   "id": "ability_083",
+   "type": "ability",
+   "file": "ability/ability_083.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    0,
+    7
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13207
+  },
+  {
+   "id": "ability_084",
+   "type": "ability",
+   "file": "ability/ability_084.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13201
+  },
+  {
+   "id": "ability_085",
+   "type": "ability",
+   "file": "ability/ability_085.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13205
+  },
+  {
+   "id": "ability_086",
+   "type": "ability",
+   "file": "ability/ability_086.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13202
+  },
+  {
+   "id": "ability_087",
+   "type": "ability",
+   "file": "ability/ability_087.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13209
+  },
+  {
+   "id": "ability_088",
+   "type": "ability",
+   "file": "ability/ability_088.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    1,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13212
+  },
+  {
+   "id": "ability_089",
+   "type": "ability",
+   "file": "ability/ability_089.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc15984389143108927115D47F4B718D8D420B76BF59EB595E7D81A2CA23F2.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13203
+  },
+  {
+   "id": "ability_090",
+   "type": "ability",
+   "file": "ability/ability_090.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    9
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13009
+  },
+  {
+   "id": "ability_091",
+   "type": "ability",
+   "file": "ability/ability_091.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    1,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13011
+  },
+  {
+   "id": "ability_092",
+   "type": "ability",
+   "file": "ability/ability_092.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    1
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13001
+  },
+  {
+   "id": "ability_093",
+   "type": "ability",
+   "file": "ability/ability_093.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13002
+  },
+  {
+   "id": "ability_094",
+   "type": "ability",
+   "file": "ability/ability_094.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13010
+  },
+  {
+   "id": "ability_095",
+   "type": "ability",
+   "file": "ability/ability_095.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13000
+  },
+  {
+   "id": "ability_096",
+   "type": "ability",
+   "file": "ability/ability_096.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13008
+  },
+  {
+   "id": "ability_097",
+   "type": "ability",
+   "file": "ability/ability_097.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13006
+  },
+  {
+   "id": "ability_098",
+   "type": "ability",
+   "file": "ability/ability_098.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    1,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13014
+  },
+  {
+   "id": "ability_099",
+   "type": "ability",
+   "file": "ability/ability_099.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    5
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13005
+  },
+  {
+   "id": "ability_100",
+   "type": "ability",
+   "file": "ability/ability_100.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    1,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13013
+  },
+  {
+   "id": "ability_101",
+   "type": "ability",
+   "file": "ability/ability_101.jpg",
+   "size": [
+    485,
+    745
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc1129696444547907768890FECCB82E9DD60B7658910306A2F30057066D27.png",
+   "cell": [
+    0,
+    3
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 13003
+  },
+  {
+   "id": "wide_aux_006",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_006.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    0,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17302
+  },
+  {
+   "id": "wide_aux_007",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_007.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    0,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17304
+  },
+  {
+   "id": "wide_aux_008",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_008.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc116816884760676771334CC3C943B45E9152FF79965B9EA4C5FB6E2B43BB.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 18200
+  },
+  {
+   "id": "wide_aux_009",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_009.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    0,
+    8
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17308
+  },
+  {
+   "id": "wide_aux_010",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_010.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    1,
+    2
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17312
+  },
+  {
+   "id": "wide_aux_011",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_011.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    1,
+    0
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17310
+  },
+  {
+   "id": "wide_aux_012",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_012.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    1,
+    4
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17314
+  },
+  {
+   "id": "wide_aux_013",
+   "type": "wide_aux",
+   "file": "wide_aux/wide_aux_013.jpg",
+   "size": [
+    745,
+    485
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc141099944782160863304432B7ACCA47C38C78670E3FE0663E6A60B7794C.jpg",
+   "cell": [
+    1,
+    6
+   ],
+   "grid": [
+    10,
+    7
+   ],
+   "cardId": 17316
+  },
+  {
+   "id": "country_116",
+   "type": "country",
+   "file": "country/country_116.jpg",
+   "size": [
+    746,
+    1040
+   ],
+   "sourceSheet": "httpssteamusercontentaakamaihdnetugc10137767167958538570E601E9645F828F297EE73978E9CD687AF88F2B00.png",
+   "cell": [
+    0,
+    0
+   ],
+   "grid": [
+    1,
+    1
+   ],
+   "cardId": 26700
+  }
+ ]
+}

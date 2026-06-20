@@ -1,0 +1,175 @@
+{
+ "kind": "growth_card",
+ "source": "Trascritto a piena risoluzione (game/assets/cards/wide_aux/). Badge in alto a sx = Livello (l'abilita' si attiva al round = Livello); alloro = VP iniziali; in basso a sx = costo (Servizi + Diplomazia/monete).",
+ "note": "2 carte per ognuno dei 5 livelli = 10 Growth card distinte. Si acquistano in ordine (Lv1 -> Lv2 -> ...).",
+ "cards": [
+  {
+   "id": "growth_industrial_development",
+   "display_name": "Industrial Development",
+   "art": "wide_aux/wide_aux_006.jpg",
+   "level": 1,
+   "victory_points": 1,
+   "cost": {
+    "services": 1,
+    "money": 10
+   },
+   "ability_text": "Increase 2 of your Productions by 1.",
+   "effect_ops": [
+    {
+     "op": "increase_production",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "growth_diplomatic_initiative",
+   "display_name": "Diplomatic Initiative",
+   "art": "wide_aux/wide_aux_007.jpg",
+   "level": 1,
+   "victory_points": 2,
+   "cost": {
+    "services": 1,
+    "diplomacy": 1
+   },
+   "ability_text": "Whenever you choose your Focus, Ready an additional Country card.",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "ready_extra_on_focus"
+    }
+   ]
+  },
+  {
+   "id": "growth_reduced_bureaucracy",
+   "display_name": "Reduced Bureaucracy",
+   "art": "wide_aux/wide_aux_008.jpg",
+   "level": 2,
+   "victory_points": 3,
+   "cost": {
+    "services": 2,
+    "money": 10
+   },
+   "ability_text": "Once per round, you can Draw a card. Then, Trash a card from your hand.",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:draw_then_trash"
+    }
+   ]
+  },
+  {
+   "id": "growth_knowledge_transfer",
+   "display_name": "Knowledge Transfer",
+   "art": "wide_aux/wide_aux_009.jpg",
+   "level": 2,
+   "victory_points": 4,
+   "cost": {
+    "services": 2,
+    "diplomacy": 1
+   },
+   "ability_text": "Once per round, you can Draw cards up to the highest value among your ready allied Countries. Then, discard that many cards.",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:draw_highest_value_then_discard"
+    }
+   ]
+  },
+  {
+   "id": "growth_tactical_flexibility",
+   "display_name": "Tactical Flexibility",
+   "art": "wide_aux/wide_aux_010.jpg",
+   "level": 3,
+   "victory_points": 6,
+   "cost": {
+    "services": 3,
+    "money": 15
+   },
+   "ability_text": "Draw an additional card each round (including the round you get this card).",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "extra_draw_per_round"
+    }
+   ]
+  },
+  {
+   "id": "growth_diplomatic_opening",
+   "display_name": "Diplomatic Opening",
+   "art": "wide_aux/wide_aux_011.jpg",
+   "level": 3,
+   "victory_points": 5,
+   "cost": {
+    "services": 3,
+    "diplomacy": 2
+   },
+   "ability_text": "Once per round, when you Improve Relations, you can Improve Relations again with another Country, spending 1 Diplomacy more.",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:improve_again_plus1"
+    }
+   ]
+  },
+  {
+   "id": "growth_strategic_advantage",
+   "display_name": "Strategic Advantage",
+   "art": "wide_aux/wide_aux_012.jpg",
+   "level": 4,
+   "victory_points": 7,
+   "cost": {
+    "services": 4,
+    "money": 15
+   },
+   "ability_text": "During your first turn each round, you can Play an additional card.",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "extra_play_first_turn"
+    }
+   ]
+  },
+  {
+   "id": "growth_regional_resilience",
+   "display_name": "Regional Resilience",
+   "art": "wide_aux/wide_aux_013.jpg",
+   "level": 4,
+   "victory_points": 8,
+   "cost": {
+    "services": 4,
+    "diplomacy": 2
+   },
+   "ability_text": "Once per round, before or after adding Influence to a Region, you can convert 1 of your temporary Influence in that Region to a permanent one, even if there is no available slot.",
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:convert_influence"
+    }
+   ]
+  },
+  {
+   "id": "growth_space_program",
+   "display_name": "Space Program",
+   "art": "wide_aux/wide_aux_005.jpg",
+   "level": 5,
+   "victory_points": 12,
+   "cost": {
+    "services": 5,
+    "money": 25
+   },
+   "ability_text": ""
+  },
+  {
+   "id": "growth_olympic_games",
+   "display_name": "Olympic Games",
+   "art": "wide_aux/wide_aux_004.jpg",
+   "level": 5,
+   "victory_points": 12,
+   "cost": {
+    "services": 5,
+    "diplomacy": 3
+   },
+   "ability_text": ""
+  }
+ ]
+}

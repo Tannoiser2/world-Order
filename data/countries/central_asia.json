@@ -1,0 +1,77 @@
+{
+  "region": "central_asia",
+  "region_label": "Central Asia",
+  "source": "Trascritto dagli asset (game/assets/cards/ability/). Vedi data/RESOURCE_LEGEND.md.",
+  "countries": [
+    {
+      "id": "country_armenia", "type": "country", "display_name": "Armenia",
+      "art": "ability/ability_028.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["raw_materials"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_georgia", "type": "country", "display_name": "Georgia",
+      "art": "ability/ability_029.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": ["russia"], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_kazakhstan", "type": "country", "display_name": "Kazakhstan",
+      "art": "ability/ability_030.jpg", "region": "central_asia",
+      "value": 2, "invest_cost": 15,
+      "exports": ["consumer_goods", "consumer_goods"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_azerbaijan", "type": "country", "display_name": "Azerbaijan",
+      "art": "ability/ability_031.jpg", "region": "central_asia",
+      "value": 2, "invest_cost": 15,
+      "exports": ["raw_materials", "consumer_goods"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_tajikistan", "type": "country", "display_name": "Tajikistan",
+      "art": "ability/ability_032.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["consumer_goods"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["russia", "china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_turkmenistan", "type": "country", "display_name": "Turkmenistan",
+      "art": "ability/ability_033.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["raw_materials"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["russia", "china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_afghanistan", "type": "country", "display_name": "Afghanistan",
+      "art": "ability/ability_034.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["energy"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_uzbekistan", "type": "country", "display_name": "Uzbekistan",
+      "art": "ability/ability_035.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["services"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["russia", "china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_kyrgyzstan", "type": "country", "display_name": "Kyrgyzstan",
+      "art": "ability/ability_036.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["consumer_goods"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_mongolia", "type": "country", "display_name": "Mongolia",
+      "art": "ability/ability_037.jpg", "region": "central_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["consumer_goods"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    }
+  ]
+}

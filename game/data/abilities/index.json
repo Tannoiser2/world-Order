@@ -1,0 +1,51 @@
+{
+ "kind": "starting_ability",
+ "powers": [
+  {
+   "power": "china",
+   "file": "abilities/china_starting.json",
+   "count": 9,
+   "unique_cards": [
+    "Economic Diplomacy",
+    "The World's Factory"
+   ]
+  },
+  {
+   "power": "eu",
+   "file": "abilities/eu_starting.json",
+   "count": 9,
+   "unique_cards": [
+    "Soft Power",
+    "Humanitarian Aid"
+   ]
+  },
+  {
+   "power": "russia",
+   "file": "abilities/russia_starting.json",
+   "count": 9,
+   "unique_cards": [
+    "Military Re-Equipment",
+    "Energy Titan"
+   ]
+  },
+  {
+   "power": "usa",
+   "file": "abilities/usa_starting.json",
+   "count": 9,
+   "unique_cards": [
+    "Global Currency",
+    "Military Pact"
+   ]
+  }
+ ],
+ "note": "Ogni potenza ha 9 carte iniziali distinte (7 comuni + 2 uniche); nel mazzo iniziale da 12 alcune sono in doppia copia.",
+ "common_cards": [
+  "Growth Strategy",
+  "Foreign Direct Investment",
+  "Diplomatic Engagement",
+  "Foreign Trade",
+  "New Allies",
+  "Foreign Military Presence",
+  "Military Reinforcements"
+ ]
+}

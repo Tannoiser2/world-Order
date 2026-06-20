@@ -1,0 +1,91 @@
+{
+  "region": "east_asia_pacific",
+  "region_label": "East Asia – Pacific",
+  "source": "Trascritto dagli asset (game/assets/cards/ability/). Vedi data/RESOURCE_LEGEND.md.",
+  "countries": [
+    {
+      "id": "country_new_zealand", "type": "country", "display_name": "New Zealand",
+      "art": "ability/ability_078.jpg", "region": "east_asia_pacific",
+      "value": 2, "invest_cost": 15,
+      "exports": ["consumer_goods", "services"], "imports": ["food"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_south_korea", "type": "country", "display_name": "South Korea",
+      "art": "ability/ability_079.jpg", "region": "east_asia_pacific",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "energy", "services"], "imports": ["consumer_goods", "consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_vietnam", "type": "country", "display_name": "Vietnam",
+      "art": "ability/ability_080.jpg", "region": "east_asia_pacific",
+      "value": 2, "invest_cost": 15,
+      "exports": ["raw_materials", "food"], "imports": ["consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_singapore", "type": "country", "display_name": "Singapore",
+      "art": "ability/ability_081.jpg", "region": "east_asia_pacific",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "consumer_goods"], "imports": ["services"],
+      "no_relations_powers": [], "base_allowed_powers": ["eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_australia", "type": "country", "display_name": "Australia",
+      "art": "ability/ability_082.jpg", "region": "east_asia_pacific",
+      "value": 3, "invest_cost": 20,
+      "exports": ["consumer_goods", "consumer_goods", "services"], "imports": ["raw_materials", "raw_materials"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_north_korea", "type": "country", "display_name": "North Korea",
+      "art": "ability/ability_083.jpg", "region": "east_asia_pacific",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "energy"], "imports": ["raw_materials"],
+      "no_relations_powers": ["usa", "eu"], "base_allowed_powers": ["russia", "china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_cambodia", "type": "country", "display_name": "Cambodia",
+      "art": "ability/ability_084.jpg", "region": "east_asia_pacific",
+      "value": 1, "invest_cost": 10,
+      "exports": ["raw_materials"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_laos", "type": "country", "display_name": "Laos",
+      "art": "ability/ability_085.jpg", "region": "east_asia_pacific",
+      "value": 1, "invest_cost": 10,
+      "exports": ["consumer_goods"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_indonesia", "type": "country", "display_name": "Indonesia",
+      "art": "ability/ability_086.jpg", "region": "east_asia_pacific",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "energy", "consumer_goods"], "imports": ["raw_materials", "raw_materials"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_philippines", "type": "country", "display_name": "Philippines",
+      "art": "ability/ability_087.jpg", "region": "east_asia_pacific",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "food"], "imports": ["consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_thailand", "type": "country", "display_name": "Thailand",
+      "art": "ability/ability_088.jpg", "region": "east_asia_pacific",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "services"], "imports": ["consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_japan", "type": "country", "display_name": "Japan",
+      "art": "ability/ability_089.jpg", "region": "east_asia_pacific",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "energy", "services"], "imports": ["consumer_goods", "consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    }
+  ]
+}

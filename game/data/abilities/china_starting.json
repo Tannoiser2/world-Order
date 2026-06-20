@@ -1,0 +1,203 @@
+{
+ "power": "china",
+ "kind": "starting_ability",
+ "source": "Trascritto a piena risoluzione (game/assets/cards/country/). Vedi eu_starting.json per le convenzioni dei campi.",
+ "cards": [
+  {
+   "id": "ability_china_new_allies",
+   "display_name": "New Allies",
+   "type": "diplomatic",
+   "art": "country/country_039.jpg",
+   "suggested_starting": false,
+   "research_bonus": 1,
+   "top_bonus": {
+    "amount": 3,
+    "kind": "money"
+   },
+   "effect_text": "Improve Relations with a Country on the board.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    }
+   ]
+  },
+  {
+   "id": "ability_china_economic_diplomacy",
+   "display_name": "Economic Diplomacy",
+   "type": "economic",
+   "art": "country/country_040.jpg",
+   "suggested_starting": true,
+   "unique": true,
+   "research_bonus": 2,
+   "top_bonus": {
+    "amount": 7,
+    "kind": "money"
+   },
+   "effect_text": "Invest in an allied Country. Then, gain 1 Diplomacy.",
+   "effect_ops": [
+    {
+     "op": "invest"
+    },
+    {
+     "op": "gain_resource",
+     "type": "diplomacy",
+     "amount": 1
+    }
+   ]
+  },
+  {
+   "id": "ability_china_growth_strategy",
+   "display_name": "Growth Strategy",
+   "type": "domestic",
+   "art": "country/country_042.jpg",
+   "suggested_starting": true,
+   "research_bonus": 3,
+   "top_bonus": {
+    "amount": 2,
+    "kind": "money"
+   },
+   "effect_text": "Get a Growth Card or Produce 3 resource types.",
+   "effect_ops": [
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "get_growth"
+       }
+      ],
+      [
+       {
+        "op": "produce",
+        "count": 3
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ability_china_diplomatic_engagement",
+   "display_name": "Diplomatic Engagement",
+   "type": "diplomatic",
+   "art": "country/country_044.jpg",
+   "suggested_starting": true,
+   "research_bonus": 2,
+   "top_bonus": {
+    "amount": 1,
+    "kind": "diplomacy"
+   },
+   "effect_text": "Engage in a Region.",
+   "effect_ops": [
+    {
+     "op": "engage"
+    }
+   ]
+  },
+  {
+   "id": "ability_china_military_reinforcements",
+   "display_name": "Military Reinforcements",
+   "type": "military",
+   "art": "country/country_045.jpg",
+   "suggested_starting": true,
+   "research_bonus": 1,
+   "top_bonus": {
+    "amount": 3,
+    "kind": "money"
+   },
+   "effect_text": "Gain 1 Army. You can then Move up to 2 Armies.",
+   "effect_ops": [
+    {
+     "op": "gain_armies",
+     "amount": 1
+    },
+    {
+     "op": "move",
+     "max": 2
+    }
+   ]
+  },
+  {
+   "id": "ability_china_foreign_trade",
+   "display_name": "Foreign Trade",
+   "type": "economic",
+   "art": "country/country_046.jpg",
+   "suggested_starting": true,
+   "research_bonus": 1,
+   "top_bonus": {
+    "amount": 3,
+    "kind": "money"
+   },
+   "effect_text": "Trade.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    }
+   ]
+  },
+  {
+   "id": "ability_china_foreign_military_presence",
+   "display_name": "Foreign Military Presence",
+   "type": "military",
+   "art": "country/country_047.jpg",
+   "suggested_starting": false,
+   "research_bonus": 3,
+   "top_bonus": {
+    "amount": 4,
+    "kind": "money"
+   },
+   "effect_text": "Build a Base in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "build_base"
+    }
+   ]
+  },
+  {
+   "id": "ability_china_foreign_direct_investment",
+   "display_name": "Foreign Direct Investment",
+   "type": "economic",
+   "art": "country/country_048.jpg",
+   "suggested_starting": false,
+   "research_bonus": 2,
+   "top_bonus": {
+    "amount": 6,
+    "kind": "money"
+   },
+   "effect_text": "Invest in an allied Country.",
+   "effect_ops": [
+    {
+     "op": "invest"
+    }
+   ]
+  },
+  {
+   "id": "ability_china_the_worlds_factory",
+   "display_name": "The World's Factory",
+   "type": "economic",
+   "art": "country/country_050.jpg",
+   "suggested_starting": false,
+   "unique": true,
+   "research_bonus": 1,
+   "top_bonus": {
+    "amount": 5,
+    "kind": "money"
+   },
+   "effect_text": "Trade. Then, Produce up to 2 Consumer Goods.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    },
+    {
+     "op": "produce",
+     "types": [
+      "consumer_goods"
+     ]
+    }
+   ],
+   "effect_modifiers": [
+    "produce_max:2"
+   ]
+  }
+ ]
+}

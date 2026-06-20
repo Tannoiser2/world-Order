@@ -1,0 +1,198 @@
+extends SceneTree
+## Verifica headless che le scene UI si istanzino senza errori di script.
+## Uso: godot --headless --path game --script res://scripts/tests/verify_ui.gd
+
+func _init() -> void:
+	var fails := 0
+
+	# Menu principale.
+	var menu_packed: PackedScene = load("res://scenes/main_menu.tscn")
+	if menu_packed == null:
+		print("[FAIL] main_menu.tscn non caricata"); fails += 1
+	else:
+		var menu := menu_packed.instantiate()
+		get_root().add_child(menu)
+		await process_frame
+		var ok := menu.get_child_count() > 0
+		print("[%s] main_menu.tscn istanziata (%d nodi)" % ["OK" if ok else "FAIL", menu.get_child_count()])
+		if not ok: fails += 1
+		menu.queue_free()
+		await process_frame
+
+	# Scena di gioco.
+	var board_packed: PackedScene = load("res://scenes/board.tscn")
+	if board_packed == null:
+		print("[FAIL] board.tscn non caricata"); fails += 1
+	else:
+		var board := board_packed.instantiate()
+		get_root().add_child(board)
+		await process_frame
+		await process_frame
+		var n: int = board.overlay.get_child_count() if board.overlay else 0
+		print("[%s] board.tscn istanziata; overlay Regioni: %d" % ["OK" if n == 7 else "FAIL", n])
+		if n != 7: fails += 1
+		# La plancia di produzione della potenza attiva e' usata come fondale.
+		var bg_ok: bool = board.board_bg != null and board.board_bg.texture != null
+		print("[%s] plancia di produzione caricata come fondale del pannello" % ["OK" if bg_ok else "FAIL"])
+		if not bg_ok: fails += 1
+
+		# flusso di click: Engage in Europe (cost 5, il giocatore ha 8 Diplomacy)
+		var before: int = board.gs.regions["europe"]["track"].count(board._active().power)
+		board._on_region_pressed("europe")
+		var after: int = board.gs.regions["europe"]["track"].count(board._active().power)
+		var ok2 := after == before + 1
+		print("[%s] click Regione -> Engage aggiunge Influenza (%d->%d)" % ["OK" if ok2 else "FAIL", before, after])
+		if not ok2: fails += 1
+		var hand_n: int = board._active().hand.size()
+		print("[%s] mano del giocatore popolata (%d carte)" % ["OK" if hand_n > 0 else "FAIL", hand_n])
+		if hand_n == 0: fails += 1
+
+		# Gioco di una carta che richiede una Regione (Engage).
+		var ac: PlayerState = board._active()
+		ac.resources["diplomacy"] = 20  # isola il test dal consumo precedente
+		var card_region := {"display_name": "Test Engage", "effect_ops": [{"op": "engage"}]}
+		ac.hand.append(card_region)
+		board._play_card(card_region)
+		var aw_ok: bool = board.awaiting == "region"
+		print("[%s] play carta Engage -> attende una Regione" % ["OK" if aw_ok else "FAIL"])
+		if not aw_ok: fails += 1
+		var inf_b: int = board.gs.regions["central_asia"]["track"].count(ac.power)
+		board._on_region_pressed("central_asia")
+		var inf_a: int = board.gs.regions["central_asia"]["track"].count(ac.power)
+		var played_ok: bool = (card_region in ac.played) and not (card_region in ac.hand) and inf_a == inf_b + 1
+		print("[%s] risoluzione carta Engage (Influenza %d->%d, carta in scarti)" % ["OK" if played_ok else "FAIL", inf_b, inf_a])
+		if not played_ok: fails += 1
+
+		# Improve Relations via Country sul tabellone (awaiting board_country).
+		ac.resources["diplomacy"] = 20
+		var rid := gs_first_region(board)
+		var avail: Array = board.region_countries[rid]["available"]
+		var n_av: int = avail.size()
+		var target: Dictionary = avail[0]
+		var allied_b: int = ac.allied_countries.size()
+		var card_ir := {"display_name": "Test IR", "effect_ops": [{"op": "improve_relations"}]}
+		ac.hand.append(card_ir)
+		board._play_card(card_ir)
+		var ir_await: bool = board.awaiting == "board_country"
+		print("[%s] play carta Improve Relations -> attende una Country sul board" % ["OK" if ir_await else "FAIL"])
+		if not ir_await: fails += 1
+		board._on_country_pressed(target, rid)
+		var ir_ok: bool = ac.allied_countries.size() == allied_b + 1 and (target in ac.allied_countries) \
+			and board.region_countries[rid]["available"].size() == n_av \
+			and not (target in board.region_countries[rid]["available"]) \
+			and (card_ir in ac.played)
+		print("[%s] Improve Relations da board: alleato +1, Country rifornita, carta in scarti" % ["OK" if ir_ok else "FAIL"])
+		if not ir_ok: fails += 1
+
+		# Invest via Country alleata davanti al giocatore (awaiting allied_country).
+		ac.money = 50
+		var ally: Dictionary = ac.allied_countries[0]
+		ac.exhausted[ally.get("id", "")] = false
+		var money_pre: int = ac.money
+		var card_inv := {"display_name": "Test Invest", "effect_ops": [{"op": "invest"}]}
+		ac.hand.append(card_inv)
+		board._play_card(card_inv)
+		var inv_await: bool = board.awaiting == "allied_country"
+		print("[%s] play carta Invest -> attende una Country alleata" % ["OK" if inv_await else "FAIL"])
+		if not inv_await: fails += 1
+		board._on_allied_pressed(ally)
+		var inv_ok: bool = ac.money < money_pre and (card_inv in ac.played) and board.awaiting == ""
+		print("[%s] Invest da Country alleata: spesa money, carta in scarti" % ["OK" if inv_ok else "FAIL"])
+		if not inv_ok: fails += 1
+
+		# Carta auto-risolta (gain_money), nessun target.
+		var money_b: int = ac.money
+		var card_auto := {"display_name": "Test Money", "effect_ops": [{"op": "gain_money", "amount": 7}]}
+		ac.hand.append(card_auto)
+		board._play_card(card_auto)
+		var auto_ok: bool = ac.money == money_b + 7 and (card_auto in ac.played) and board.playing_card.is_empty()
+		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
+		if not auto_ok: fails += 1
+
+		# Modifiers: carta Engage con sconto -1 Diplomacy per Armata schierata.
+		ac.resources["diplomacy"] = 20
+		var mreg := "central_asia"
+		board.gs.regions[mreg]["armies"][ac.power] = 3
+		var raw_cost: int = int(board.gs.regions[mreg]["engage_cost"])
+		var diplo := ac.focus == WO.Focus.DIPLOMATIC
+		var expected_cost: int = Actions.engage_cost(raw_cost, [], diplo, 3)
+		var dip_pre: int = ac.resources["diplomacy"]
+		var card_mod := {"display_name": "Engage scontato", "effect_ops": [{"op": "engage"}],
+			"effect_modifiers": ["engage_discount_per_army"]}
+		ac.hand.append(card_mod)
+		board._play_card(card_mod)
+		board._on_region_pressed(mreg)
+		var spent: int = dip_pre - ac.resources["diplomacy"]
+		var mod_ok: bool = spent == expected_cost and (card_mod in ac.played)
+		print("[%s] effect_modifier: Engage costa %d (sconto -3 per Armata)" % ["OK" if mod_ok else "FAIL", spent])
+		if not mod_ok: fails += 1
+
+		# Research/Market: il mercato e' rifornito; l'acquisto consuma Research.
+		var mkt_full: bool = board.market_display.size() == board.MARKET_SLOTS
+		print("[%s] Market rifornito a %d carte scoperte" % ["OK" if mkt_full else "FAIL", board.market_display.size()])
+		if not mkt_full: fails += 1
+		board._research_points = 99
+		var deck_pre: int = ac.deck.size()
+		var buy: Dictionary = board.market_display[0]
+		board._buy_market(buy)
+		var buy_ok: bool = ac.deck.size() == deck_pre + 1 and not (buy in board.market_display) \
+			and board.market_display.size() == board.MARKET_SLOTS and board._research_points < 99
+		print("[%s] acquisto Market: carta nel mazzo, slot rifornito, Research speso" % ["OK" if buy_ok else "FAIL"])
+		if not buy_ok: fails += 1
+
+		# Growth: acquisto della prossima Growth (livello 1) spendendo risorse.
+		var ag: Array = board._available_growth(ac)
+		if ag.size() > 0:
+			var gcard: Dictionary = ag[0]
+			ac.money = 50
+			for rt in ac.resources: ac.resources[rt] = 10
+			var vp_pre: int = ac.victory_points
+			var growth_pre: int = ac.growth_cards.size()
+			board._buy_growth(gcard)
+			var g_ok: bool = ac.growth_cards.size() == growth_pre + 1 \
+				and ac.victory_points == vp_pre + int(gcard.get("victory_points", 0))
+			print("[%s] acquisto Growth: carta acquisita (+%d VP)" % ["OK" if g_ok else "FAIL", int(gcard.get("victory_points", 0))])
+			if not g_ok: fails += 1
+
+	# Partita completa attraverso la UI (Fine turno / Continua fino alla fine).
+	var b2: Node = load("res://scenes/board.tscn").instantiate()
+	get_root().add_child(b2)
+	await process_frame
+	await process_frame
+	var safety := 0
+	while not b2.game_over and safety < 400:
+		safety += 1
+		var cont: Button = _find_button(b2.popup_layer, "Continua")
+		if cont:
+			cont.pressed.emit()
+		else:
+			b2._end_turn()
+		await process_frame
+	var win := GameRunner.winner(b2.gs)
+	var game_ok: bool = b2.game_over and win != "" and b2.gs.round == GameState.TOTAL_ROUNDS
+	print("[%s] partita completa via UI: round %d, vincitore %s (%d iter)" % [
+		"OK" if game_ok else "FAIL", b2.gs.round, win, safety])
+	if not game_ok: fails += 1
+
+	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
+	quit(fails)
+
+
+## Prima Regione con almeno una Country disponibile.
+func gs_first_region(board: Node) -> String:
+	for rid in board.region_countries:
+		if (board.region_countries[rid]["available"] as Array).size() > 0:
+			return rid
+	return ""
+
+
+func _find_button(node: Node, text: String) -> Button:
+	if node == null:
+		return null
+	for c in node.get_children():
+		if c is Button and text in (c as Button).text:
+			return c
+		var r := _find_button(c, text)
+		if r:
+			return r
+	return null
