@@ -137,8 +137,9 @@ static func run_all() -> Dictionary:
 	# Improve Relations con 1 Diplomacy disponibile.
 	usa.resources["diplomacy"] = 5
 	var au := {"id": "country_australia", "value": 3, "region": "east_asia_pacific"}
+	var usa_allies0: int = usa.allied_countries.size()   # parte con 2 alleati iniziali
 	check.call("execute Improve Relations", Actions.execute_improve_relations(ga, "usa", au, [2]))
-	check.call("Improve Relations: Country alleato aggiunto", usa.allied_countries.size() == 1)
+	check.call("Improve Relations: Country alleato aggiunto", usa.allied_countries.size() == usa_allies0 + 1)
 	check.call("Improve Relations: speso 1 Diplomacy", usa.resources["diplomacy"] == 4)
 	# Engage in East Asia-Pacific (Engage cost 5): paga 5 Diplomacy, +1 Influenza.
 	usa.resources["diplomacy"] = 10
@@ -230,10 +231,11 @@ static func run_all() -> Dictionary:
 	var ge := GameSetup.new_game(["usa", "china"])
 	var u2 := ge.player_by_power("usa")
 	u2.resources["diplomacy"] = 5
+	var u2_allies0: int = u2.allied_countries.size()   # parte con 2 alleati iniziali
 	# "New Allies": improve_relations (Country e sconti risolti dalla UI/bot).
 	EffectExecutor.run(ge, "usa", [
 		{"op": "improve_relations", "country": {"id": "c1", "value": 2, "region": "europe"}, "exhaust_values": [2]}])
-	check.call("DSL New Allies: Country alleato aggiunto", u2.allied_countries.size() == 1)
+	check.call("DSL New Allies: Country alleato aggiunto", u2.allied_countries.size() == u2_allies0 + 1)
 	# "Military Reinforcements": gain 1 Army, poi Move fino a 2.
 	u2.money = 100
 	EffectExecutor.run(ge, "usa", [

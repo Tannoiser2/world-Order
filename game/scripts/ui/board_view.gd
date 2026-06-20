@@ -76,8 +76,7 @@ func _ready() -> void:
 	gs = GameSetup.new_game(powers)
 	for p in gs.players:
 		p.draw_cards(6)
-		p.resources["diplomacy"] = 8
-		p.money = 30
+		p.money = 30   # denaro iniziale (valore esatto per potenza da rifinire)
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
 	all_countries = DataLoader.load_countries()
 	_setup_country_decks()
@@ -335,24 +334,23 @@ func _layout_card_slots() -> void:
 		var gap: float = sw * 0.04
 		var cw: float = (sw - gap * (n - 1)) / n
 		for i in avail.size():
-			var card := _make_country_card(avail[i], region, Vector2(cw, sh))
+			var card := _country_card_button(avail[i], Vector2(cw, sh), awaiting == "board_country")
+			card.pressed.connect(_on_country_pressed.bind(avail[i], region))
 			card.position = Vector2(x0 + i * (cw + gap), y0)
 			card_layer.add_child(card)
 
 
-## Carta nazione come immagine originale (campo `art`), cliccabile per Improve
-## Relations / come target di carta.
-func _make_country_card(cn: Dictionary, region: String, sz: Vector2) -> Button:
-	var hl := (awaiting == "board_country")
+## Carta nazione come immagine originale (campo `art`), senza handler: chi la usa
+## collega il proprio (_on_country_pressed sul tabellone, _on_allied_pressed tra gli alleati).
+func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool) -> Button:
 	var b := Button.new()
 	b.flat = true
 	b.size = sz
 	b.custom_minimum_size = sz
-	b.pressed.connect(_on_country_pressed.bind(cn, region))
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0, 0, 0, 0)
-	sb.border_color = Color(0.4, 1, 0.5) if hl else Color(0, 0, 0, 0)
-	sb.set_border_width_all(int(board_native.y * 0.004) if hl else 0)
+	sb.border_color = Color(0.4, 1, 0.5) if highlight else Color(0, 0, 0, 0)
+	sb.set_border_width_all(int(board_native.y * 0.004) if highlight else 0)
 	sb.set_corner_radius_all(int(board_native.y * 0.006))
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, sb)
@@ -856,27 +854,11 @@ func _refresh_drawer_content() -> void:
 	head.add_theme_font_size_override("font_size", _base_fs() + 4)
 	drawer_content.add_child(head)
 
-	# Immagine reale della plancia con i segnalini di Produzione/Risorse sopra.
-	drawer_content.add_child(_build_plancia_view(p))
+	# Immagine reale della plancia con i segnalini sopra. Il Focus si sposta
+	# toccando direttamente la colonna giusta sulla plancia (giocatore di turno).
+	# (Risorse/Produzione/Prosperità non servono come testo: sono i cubi/token.)
+	drawer_content.add_child(_build_plancia_view(p, is_active))
 
-	if is_active:
-		drawer_content.add_child(_section("Focus"))
-		var focus_row := HBoxContainer.new()
-		focus_row.add_theme_constant_override("separation", 6)
-		drawer_content.add_child(focus_row)
-		for f in 3:
-			var b := Button.new()
-			b.text = FOCUS_NAME[f]
-			b.toggle_mode = true
-			b.button_pressed = (p.focus == f)
-			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			b.pressed.connect(func(): p.focus = f; _refresh())
-			focus_row.add_child(b)
-	else:
-		drawer_content.add_child(_section("Focus: %s" % FOCUS_NAME[p.focus]))
-
-	# (Risorse/Produzione/Prosperità non servono più come testo: sono i
-	# cubi/token/segnalini sull'immagine reale della plancia qui sopra.)
 	_build_allies_section(p, is_active)
 	_build_hand_section(p, is_active)
 
@@ -909,7 +891,11 @@ const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "servi
 
 ## Costruisce la vista plancia: immagine reale a piena visibilità + segnalini
 ## (Produzione per ogni risorsa, Risorse possedute, Prosperità).
-func _build_plancia_view(p: PlayerState) -> Control:
+## Aree cliccabili dei 3 Focus sulla plancia: [x0,x1] per colonna, y [y0,y1].
+const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
+
+
+func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# La plancia è limitata in ALTEZZA (max ~42% schermo) così sta nel cassetto
 	# senza diventare enorme; la larghezza ne deriva mantenendo le proporzioni.
 	var ph := minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.42)
@@ -923,6 +909,22 @@ func _build_plancia_view(p: PlayerState) -> Control:
 	board_bg.stretch_mode = TextureRect.STRETCH_SCALE
 	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(board_bg)
+	# Zone Focus cliccabili (solo per il giocatore di turno): toccando la colonna
+	# si sposta la pedina del Focus lì. Niente più bottoni di testo sotto.
+	if is_active:
+		for f in FOCUS_ZONES.size():
+			var fb := Button.new()
+			fb.flat = true
+			fb.position = Vector2(FOCUS_ZONES[f][0] * pw, 0.27 * ph)
+			fb.size = Vector2((FOCUS_ZONES[f][1] - FOCUS_ZONES[f][0]) * pw, 0.40 * ph)
+			var fst := StyleBoxFlat.new(); fst.bg_color = Color(0, 0, 0, 0)
+			fb.add_theme_stylebox_override("normal", fst)
+			var fhv := StyleBoxFlat.new(); fhv.bg_color = Color(1, 1, 1, 0.08)
+			fb.add_theme_stylebox_override("hover", fhv)
+			fb.pressed.connect(func():
+				p.focus = f
+				_refresh())
+			view.add_child(fb)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
 	# Cubi di Produzione: uno sul livello attuale di ogni tracciato.
 	for res in PROD_TRACKS:
@@ -960,7 +962,8 @@ func _resource_slot(amount: int) -> Vector2:
 
 ## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
 func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col: Color, circle: bool) -> void:
-	var s := Vector2(ph * 0.040, ph * 0.040)
+	var d := ph * (0.070 if circle else 0.060)
+	var s := Vector2(d, d)
 	var m := Panel.new()
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.position = Vector2(nx * pw - s.x * 0.5, ny * ph - s.y * 0.5)
@@ -977,7 +980,7 @@ func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col:
 ## Token-immagine di una risorsa sulla traccia RESOURCES (impilati con offset se
 ## più risorse condividono lo stesso numero).
 func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, ph: float, stack_index: int) -> void:
-	var s := ph * 0.072
+	var s := ph * 0.085
 	var tr := TextureRect.new()
 	tr.texture = load("res://assets/tokens/%s.png" % res)
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1011,36 +1014,31 @@ func _prosperity_strip(p: PlayerState) -> Control:
 	return strip
 
 
-## Sezione alleati: cliccabili solo per il giocatore di turno (Invest/Build a Base).
+## Sezione alleati: le nazioni amiche come carte-immagine reali (cliccabili solo
+## per il giocatore di turno: Invest/Build a Base).
 func _build_allies_section(p: PlayerState, is_active: bool) -> void:
 	if awaiting == "allied_country" and is_active:
-		drawer_content.add_child(_section("Scegli un Country alleato per: %s" % String(awaiting_op.get("op", ""))))
+		drawer_content.add_child(_section("Scegli una nazione amica per: %s" % String(awaiting_op.get("op", ""))))
 	else:
-		drawer_content.add_child(_section("Alleati (%d)" % p.allied_countries.size()))
+		drawer_content.add_child(_section("Nazioni amiche (%d)" % p.allied_countries.size()))
 	if p.allied_countries.is_empty():
-		drawer_content.add_child(_kv2("  Nessun alleato: Improve Relations sul tabellone."))
 		return
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	drawer_content.add_child(grid)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.custom_minimum_size = Vector2(0, _card_height() + 6)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	scroll.add_child(row)
+	drawer_content.add_child(scroll)
 	for cn in p.allied_countries:
-		var ab := Button.new()
-		ab.text = "%s (%d) · %s" % [cn.get("display_name", "?"), int(cn.get("value", 0)), String(cn.get("region", "")).replace("_", " ")]
-		ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		ab.clip_text = true
+		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
+		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
+		var card := _country_card_button(cn, Vector2(_card_height() * 0.70, _card_height()), highlight)
+		card.disabled = (not is_active) or dim
 		if is_active:
-			ab.pressed.connect(_on_allied_pressed.bind(cn))
-			if awaiting == "allied_country":
-				if cn in elig:
-					ab.add_theme_color_override("font_color", Color(0.5, 1, 0.6))
-				else:
-					ab.disabled = true
-		else:
-			ab.disabled = true
-		grid.add_child(ab)
+			card.pressed.connect(_on_allied_pressed.bind(cn))
+		row.add_child(card)
 
 
 ## Sezione mano: carte scoperte solo per il giocatore di turno; per gli altri

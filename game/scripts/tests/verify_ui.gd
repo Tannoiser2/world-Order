@@ -39,7 +39,9 @@ func _init() -> void:
 		board.drawer_open = false
 		board._refresh()
 
-		# flusso di click: Engage in Europe (cost 5, il giocatore ha 8 Diplomacy)
+		# flusso di click: Engage in Europe (le risorse iniziali sono 0: la Diplomacy
+		# si produce in gioco, qui la forniamo per testare il flusso).
+		board._active().resources["diplomacy"] = 8
 		var before: int = board.gs.regions["europe"]["track"].count(board._active().power)
 		board._on_region_pressed("europe")
 		var after: int = board.gs.regions["europe"]["track"].count(board._active().power)
