@@ -941,6 +941,9 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	board_bg = TextureRect.new()
 	board_bg.texture = load("res://assets/player_boards/%s.jpg" % p.power)
 	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# IGNORE_SIZE: senza questo la TextureRect non scende sotto la dimensione
+	# nativa dell'immagine (1400x1000) e la plancia resta gigante a prescindere.
+	board_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	board_bg.stretch_mode = TextureRect.STRETCH_SCALE
 	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(board_bg)
