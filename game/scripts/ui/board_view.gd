@@ -887,12 +887,7 @@ func _refresh_drawer_content() -> void:
 		return
 	var is_active := (drawer_power == _active().power)
 
-	var head := Label.new()
-	head.text = "%s — VP %d · $%d · Prosperità %d" % [p.power.to_upper(), p.victory_points, p.money, p.prosperity_level]
-	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
-	head.add_theme_font_size_override("font_size", _base_fs() + 4)
-	drawer_content.add_child(head)
-
+	# (Niente intestazione testuale: VP/$/Prosperità sono già nella barra in alto.)
 	# Immagine reale della plancia con i segnalini sopra. Il Focus si sposta
 	# toccando direttamente la colonna giusta sulla plancia (giocatore di turno).
 	# (Risorse/Produzione/Prosperità non servono come testo: sono i cubi/token.)
@@ -1085,10 +1080,9 @@ func _build_allies_section(p: PlayerState, is_active: bool) -> void:
 func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# La mano è SEMPRE in basso nel cassetto (hand_pinned), così non scorre mai via.
 	if not is_active:
-		hand_pinned.add_child(_section("Mano: %d carte (coperte)" % p.hand.size()))
+		hand_pinned.add_child(_section("Mano avversario: %d carte (coperte)" % p.hand.size()))
 		hand_box = null
 		return
-	hand_pinned.add_child(_section("La tua mano (tocca una carta per giocarla)"))
 	hand_box = HBoxContainer.new()
 	hand_box.add_theme_constant_override("separation", 6)
 	var scroll := ScrollContainer.new()
