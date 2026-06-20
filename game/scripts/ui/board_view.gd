@@ -898,7 +898,7 @@ const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# La plancia è limitata in ALTEZZA (max ~42% schermo) così sta nel cassetto
 	# senza diventare enorme; la larghezza ne deriva mantenendo le proporzioni.
-	var ph := minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.42)
+	var ph := minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.38)
 	var pw := ph / PLANCIA_RATIO
 	var view := Control.new()
 	view.custom_minimum_size = Vector2(pw, ph)
@@ -962,7 +962,7 @@ func _resource_slot(amount: int) -> Vector2:
 
 ## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
 func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col: Color, circle: bool) -> void:
-	var d := ph * (0.070 if circle else 0.060)
+	var d := ph * (0.082 if circle else 0.074)
 	var s := Vector2(d, d)
 	var m := Panel.new()
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -980,7 +980,7 @@ func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col:
 ## Token-immagine di una risorsa sulla traccia RESOURCES (impilati con offset se
 ## più risorse condividono lo stesso numero).
 func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, ph: float, stack_index: int) -> void:
-	var s := ph * 0.085
+	var s := ph * 0.095
 	var tr := TextureRect.new()
 	tr.texture = load("res://assets/tokens/%s.png" % res)
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1060,7 +1060,9 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 
 
 func _card_height() -> int:
-	return int(clampf(size.y * 0.26, 96, 220))
+	# Carte in-cassetto (mano/alleati) basse, così entrano intere nello spazio
+	# rimasto sotto la plancia senza venire tagliate.
+	return int(clampf(size.y * 0.16, 78, 140))
 
 
 func _kv(k: String, v: int) -> Label:
