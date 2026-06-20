@@ -154,9 +154,10 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
 - [x] **Scheletro progetto Godot** (`game/project.godot` + struttura cartelle).
 - [x] **Trascrizione completa di TUTTE le carte** (204 distinte, vedi `data/INDEX.json`), validate (`tools/validate_data.py`, 0 errori):
   - 77 Country · 36 Starting Ability (4 potenze) · 33 Market · 10 Growth · 20 Strategic Asset · 4 Trade Deals · 20 Auto-Influence · 4 Executive Order.
+- [x] **Dati del tabellone** (`data/board.json`): 7 Regioni — slot Influenza, costi Engage, bonus maggioranza, cubi iniziali, zone d'interesse + dati globali.
+- [x] **Plance giocatore** (`data/player_boards.json`): abilità speciali, bonus Focus, Prosperità, produzione iniziale (alcuni valori a basso contrasto da riverificare).
 - [ ] Codificare gli effetti come **micro-DSL** (`effect` → array di `op`) — propedeutico alla Fase 1.
-- [ ] Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`) e i valori delle Regioni del tabellone.
-**Deliverable:** dataset completo + libreria di asset pronti. *(carte ✅; restano DSL effetti + dati tabellone/token)*
+**Deliverable:** dataset completo + libreria di asset pronti. *(carte + tabellone ✅; resta la codifica DSL degli effetti)*
 
 ### Fase 1 — Motore di regole (core engine)
 **Obiettivo:** simulare una partita completa senza UI.

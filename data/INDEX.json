@@ -11,7 +11,8 @@
   "executive_orders": "data/executive_orders.json",
   "schema": "data/schema/card.schema.json",
   "resource_legend": "data/RESOURCE_LEGEND.md",
-  "board": "data/board.json (7 Regioni: slot, costi Engage, maggioranze, cubi iniziali, zone)"
+  "board": "data/board.json (7 Regioni: slot, costi Engage, maggioranze, cubi iniziali, zone)",
+  "player_boards": "data/player_boards.json (produzione iniziale, Focus, Prosperita, abilita speciali)"
  },
  "counts": {
   "countries": 77,
