@@ -103,4 +103,75 @@ static func run_all() -> Dictionary:
 	GamePhases.determine_turn_order(gt)
 	check.call("turn order: chi ha meno VP per primo", gt.turn_order[0] == 1)
 
+	# --- 7. Azioni: calcoli di costo (aritmetica degli esempi del regolamento) ---
+	# Improve Relations: Australia(3), exhaust Singapore(2) -> 1.
+	check.call("Improve Relations costo 3-2=1", Actions.improve_relations_cost(3, [2]) == 1)
+	# Engage: MENA(6), exhaust Jordan(1)+Qatar(2) -> 3; con Diplomatic Focus -> 1.
+	check.call("Engage costo 6-(1+2)=3", Actions.engage_cost(6, [1, 2], false) == 3)
+	check.call("Engage Diplomatic Focus -2: 6-3-2=1", Actions.engage_cost(6, [1, 2], true) == 1)
+	# Trade: Jim esporta 4 Energia + 2 Materie Prime = 30.
+	check.call("Export 4 Energia + 2 Materie Prime = 30",
+		Actions.export_gain([{"type": "energy", "qty": 4}, {"type": "raw_materials", "qty": 2}]) == 30)
+	# Import 2 Services = 20.
+	check.call("Import 2 Services = 20", Actions.import_cost([{"type": "services", "qty": 2}]) == 20)
+	# Build a Base: 5 + 5*2 = 15 (esempio Turkey, 2 Armate).
+	check.call("Build Base 5 + 5*2 = 15", Actions.build_base_cost(2) == 15)
+	# Move: 2 Armate = 10.
+	check.call("Move 2 Armate = 10", Actions.move_cost(2) == 10)
+
+	# --- 8. Azioni: esecuzione su GameState ---
+	var ga := GameSetup.new_game(["usa", "china"])
+	var usa := ga.player_by_power("usa")
+	# Improve Relations con 1 Diplomacy disponibile.
+	usa.resources["diplomacy"] = 5
+	var au := {"id": "country_australia", "value": 3, "region": "east_asia_pacific"}
+	check.call("execute Improve Relations", Actions.execute_improve_relations(ga, "usa", au, [2]))
+	check.call("Improve Relations: Country alleato aggiunto", usa.allied_countries.size() == 1)
+	check.call("Improve Relations: speso 1 Diplomacy", usa.resources["diplomacy"] == 4)
+	# Engage in East Asia-Pacific (Engage cost 5): paga 5 Diplomacy, +1 Influenza.
+	usa.resources["diplomacy"] = 10
+	var inf_before: int = ga.regions["east_asia_pacific"]["track"].count("usa")
+	var vp := Actions.execute_engage(ga, "usa", "east_asia_pacific", [], false, "temporary")
+	check.call("execute Engage: VP >= 0", vp >= 0)
+	check.call("Engage: speso 5 Diplomacy", usa.resources["diplomacy"] == 5)
+	check.call("Engage: +1 Influenza in regione",
+		ga.regions["east_asia_pacific"]["track"].count("usa") == inf_before + 1)
+	# Invest: Country ready, costo 15, FDI + Influenza in regione.
+	usa.money = 100
+	var pk := {"id": "country_x", "value": 3, "invest_cost": 15, "region": "south_asia"}
+	usa.exhausted["country_x"] = false
+	var fdi_before: int = ga.supply["fdi"]
+	Actions.execute_invest(ga, "usa", pk, "temporary")
+	check.call("Invest: speso 15 money", usa.money == 85)
+	check.call("Invest: Country exhausted", usa.exhausted["country_x"] == true)
+	check.call("Invest: FDI dalla riserva", ga.supply["fdi"] == fdi_before - 1)
+	# Build a Base: Country con base + flag usa, muove 2 Armate (costo 15).
+	usa.money = 100
+	usa.armies_available = 3
+	var bc := {"id": "country_b", "value": 4, "region": "middle_east_north_africa",
+		"has_base_symbol": true, "base_allowed_powers": ["usa"]}
+	usa.exhausted["country_b"] = false
+	Actions.execute_build_base(ga, "usa", bc, 2, "temporary")
+	check.call("Build Base: speso 15 money", usa.money == 85)
+	check.call("Build Base: 2 Armate in regione",
+		int(ga.regions["middle_east_north_africa"]["armies"].get("usa", 0)) == 2)
+	check.call("Build Base: Armate scalate dalla riserva giocatore", usa.armies_available == 1)
+	# Get a Growth Card: Tactical Flexibility (Lv3, costo 3 Services + 15 money, +6 VP).
+	var cn := ga.player_by_power("china")
+	cn.resources["services"] = 3
+	cn.money = 20
+	cn.victory_points = 0
+	var tf := {"display_name": "Tactical Flexibility", "level": 3, "cost": {"services": 3, "money": 15}, "victory_points": 6}
+	check.call("Get Growth (livello giusto)", Actions.execute_get_growth(cn, tf, 3))
+	check.call("Get Growth: +6 VP", cn.victory_points == 6)
+	check.call("Get Growth: livello sbagliato fallisce", not Actions.execute_get_growth(cn, tf, 1))
+	# Produce: primaria (Energia prod 3) e secondaria (Consumer Goods: 1 Energia + 1 Materie Prime).
+	var pr := PlayerState.new()
+	pr.production = {"energy": 3, "consumer_goods": 2}
+	check.call("Produce primaria Energia = 3", Actions.execute_produce(pr, "energy") == 3)
+	pr.resources["raw_materials"] = 2
+	check.call("Produce secondaria Consumer Goods = 2", Actions.execute_produce(pr, "consumer_goods") == 2)
+	check.call("Produce CG: speso 2 Energia + 2 Materie Prime",
+		pr.resources["energy"] == 1 and pr.resources["raw_materials"] == 0 and pr.resources["consumer_goods"] == 2)
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}
