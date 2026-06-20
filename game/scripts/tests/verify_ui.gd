@@ -67,5 +67,37 @@ func _init() -> void:
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
 		if not auto_ok: fails += 1
 
+	# Partita completa attraverso la UI (Fine turno / Continua fino alla fine).
+	var b2: Node = load("res://scenes/board.tscn").instantiate()
+	get_root().add_child(b2)
+	await process_frame
+	await process_frame
+	var safety := 0
+	while not b2.game_over and safety < 400:
+		safety += 1
+		var cont: Button = _find_button(b2.popup_layer, "Continua")
+		if cont:
+			cont.pressed.emit()
+		else:
+			b2._end_turn()
+		await process_frame
+	var win := GameRunner.winner(b2.gs)
+	var game_ok: bool = b2.game_over and win != "" and b2.gs.round == GameState.TOTAL_ROUNDS
+	print("[%s] partita completa via UI: round %d, vincitore %s (%d iter)" % [
+		"OK" if game_ok else "FAIL", b2.gs.round, win, safety])
+	if not game_ok: fails += 1
+
 	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(fails)
+
+
+func _find_button(node: Node, text: String) -> Button:
+	if node == null:
+		return null
+	for c in node.get_children():
+		if c is Button and text in (c as Button).text:
+			return c
+		var r := _find_button(c, text)
+		if r:
+			return r
+	return null

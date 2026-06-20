@@ -37,6 +37,9 @@ var playing_card: Dictionary = {}
 var play_queue: Array = []
 var awaiting := ""          # "" | "region"
 var awaiting_op: Dictionary = {}
+# Gestione round/turni:
+var round_turn_count := 0   # turni totali presi nel round corrente
+var game_over := false
 
 
 func _ready() -> void:
@@ -65,6 +68,10 @@ func _ready() -> void:
 	popup_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(popup_layer)
+
+	GamePhases.determine_turn_order(gs)
+	round_turn_count = 0
+	active_seat = gs.turn_order[0]
 
 	resized.connect(_layout_overlays)
 	_layout_overlays()
@@ -368,8 +375,9 @@ func _refresh() -> void:
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 14)
 	player_panel.add_child(row1)
+	var my_turn := (round_turn_count / gs.players.size()) + 1
 	var who := Label.new()
-	who.text = "Round %d  ·  %s" % [gs.round, p.power.to_upper()]
+	who.text = "Round %d  ·  %s  ·  turno %d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
 	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	who.add_theme_font_size_override("font_size", 18)
 	row1.add_child(who)
@@ -382,11 +390,11 @@ func _refresh() -> void:
 		b.button_pressed = (p.focus == f)
 		b.pressed.connect(func(): p.focus = f; _refresh())
 		row1.add_child(b)
-	if gs.players.size() > 1:
-		var nxt := Button.new()
-		nxt.text = "Giocatore successivo ▶"
-		nxt.pressed.connect(_next_player)
-		row1.add_child(nxt)
+	var endt := Button.new()
+	endt.text = "Fine turno ▶"
+	endt.disabled = game_over or not playing_card.is_empty()
+	endt.pressed.connect(_end_turn)
+	row1.add_child(endt)
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 12)
 	player_panel.add_child(row2)
@@ -403,12 +411,123 @@ func _kv2(t: String) -> Label:
 	var l := Label.new(); l.text = t; return l
 
 
-func _next_player() -> void:
-	if not playing_card.is_empty():
+func _end_turn() -> void:
+	if not playing_card.is_empty() or game_over:
 		return
-	active_seat = (active_seat + 1) % gs.players.size()
+	round_turn_count += 1
+	if round_turn_count >= 4 * gs.players.size():
+		_run_aftermath()
+		return
+	active_seat = gs.turn_order[round_turn_count % gs.players.size()]
 	_status("Turno di %s." % _active().power.to_upper())
 	_after_change()
+
+
+## Aftermath del round: Increase Prosperity (auto se possibile), Resolve THREAT,
+## Scoring delle Regioni (round 3 e 6). Mostra un riepilogo.
+func _run_aftermath() -> void:
+	gs.phase = WO.Phase.AFTERMATH
+	var lines: Array[String] = ["— Aftermath round %d —" % gs.round]
+
+	# Increase Prosperity (auto, se il giocatore ha abbastanza Consumer Goods).
+	var pb: Dictionary = DataLoader.load_player_boards()
+	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
+	for p in gs.players:
+		if GamePhases.increase_prosperity(p, steps):
+			lines.append("%s: Prosperità → liv. %d" % [p.power.to_upper(), p.prosperity_level])
+
+	# Resolve THREAT in ogni Regione.
+	var mil_focus := {}
+	for p in gs.players:
+		mil_focus[p.power] = (p.focus == WO.Focus.MILITARY)
+	var nato := [["usa", "eu"]]
+	for rid in gs.regions:
+		var rd: Dictionary = gs.regions[rid]
+		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, {}, nato)
+		for power in loss:
+			gs.add_vp(power, -int(loss[power]))
+			lines.append("%s: −%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
+
+	# Scoring delle Regioni nei round 3 e 6.
+	if gs.is_scoring_round():
+		var rs := GameRunner.score_all_regions(gs)
+		for power in rs:
+			gs.add_vp(power, int(rs[power]))
+		lines.append("Scoring Regioni: " + _vp_summary(rs))
+
+	_show_summary(lines, func(): _next_round())
+
+
+func _next_round() -> void:
+	if gs.round >= GameState.TOTAL_ROUNDS:
+		_game_end()
+		return
+	gs.round += 1
+	gs.phase = WO.Phase.PREPARATION
+	GamePhases.determine_turn_order(gs)
+	GamePhases.produce_primary_resources(gs)
+	# nuova mano: scarti = mano+giocate, poi pesca 6.
+	for p in gs.players:
+		p.discard.append_array(p.hand); p.discard.append_array(p.played)
+		p.hand.clear(); p.played.clear()
+		p.draw_cards(6)
+	round_turn_count = 0
+	active_seat = gs.turn_order[0]
+	_status("Round %d — Preparazione completata. Turno di %s." % [gs.round, _active().power.to_upper()])
+	_after_change()
+
+
+func _game_end() -> void:
+	game_over = true
+	var mt := GameRunner.score_majority_tokens(gs)
+	for power in mt:
+		gs.add_vp(power, int(mt[power]))
+	var ranking := gs.players.duplicate()
+	ranking.sort_custom(func(a, b): return a.victory_points > b.victory_points)
+	var lines: Array[String] = ["— FINE PARTITA —", "Token Maggioranza: " + _vp_summary(mt), ""]
+	for i in ranking.size():
+		lines.append("%d) %s — %d VP" % [i + 1, ranking[i].power.to_upper(), ranking[i].victory_points])
+	lines.append("")
+	lines.append("🏆 Vincitore: %s" % GameRunner.winner(gs).to_upper())
+	_show_summary(lines, func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+	_after_change()
+
+
+func _vp_summary(d: Dictionary) -> String:
+	var parts := []
+	for k in d:
+		if int(d[k]) != 0:
+			parts.append("%s %+d" % [k.to_upper(), int(d[k])])
+	return ", ".join(parts) if parts.size() > 0 else "—"
+
+
+## Popup di riepilogo con un pulsante Continua.
+func _show_summary(lines: Array, cb: Callable) -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	center.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.custom_minimum_size = Vector2(420, 0)
+	panel.add_child(vb)
+	for line in lines:
+		var l := Label.new()
+		l.text = String(line)
+		vb.add_child(l)
+	var ok := Button.new()
+	ok.text = "Continua ▶"
+	ok.pressed.connect(func():
+		_close_popup()
+		cb.call())
+	vb.add_child(ok)
 
 
 func _after_change() -> void:
