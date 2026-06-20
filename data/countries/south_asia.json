@@ -1,0 +1,63 @@
+{
+  "region": "south_asia",
+  "region_label": "South Asia",
+  "source": "Trascritto dagli asset (game/assets/cards/ability/). Vedi data/RESOURCE_LEGEND.md.",
+  "countries": [
+    {
+      "id": "country_sri_lanka", "type": "country", "display_name": "Sri Lanka",
+      "art": "ability/ability_070.jpg", "region": "south_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_nepal", "type": "country", "display_name": "Nepal",
+      "art": "ability/ability_071.jpg", "region": "south_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["energy"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_maldives", "type": "country", "display_name": "Maldives",
+      "art": "ability/ability_072.jpg", "region": "south_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_bhutan", "type": "country", "display_name": "Bhutan",
+      "art": "ability/ability_073.jpg", "region": "south_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["raw_materials"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_myanmar", "type": "country", "display_name": "Myanmar",
+      "art": "ability/ability_074.jpg", "region": "south_asia",
+      "value": 1, "invest_cost": 10,
+      "exports": ["consumer_goods"], "imports": [],
+      "no_relations_powers": ["usa", "eu"], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_pakistan", "type": "country", "display_name": "Pakistan",
+      "art": "ability/ability_075.jpg", "region": "south_asia",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "energy", "food"], "imports": ["consumer_goods", "consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_bangladesh", "type": "country", "display_name": "Bangladesh",
+      "art": "ability/ability_076.jpg", "region": "south_asia",
+      "value": 2, "invest_cost": 15,
+      "exports": ["raw_materials", "food"], "imports": ["consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_india", "type": "country", "display_name": "India",
+      "art": "ability/ability_077.jpg", "region": "south_asia",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "energy", "raw_materials"], "imports": ["services"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    }
+  ]
+}
