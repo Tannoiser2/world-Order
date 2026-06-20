@@ -214,6 +214,37 @@ static func run_all() -> Dictionary:
 	check.call("China Global FDI Network: 7 Regioni -> 8 VP",
 		Aftermath.global_fdi_network_vp(7, ssp["global_fdi_network"]) == 8)
 
+	# --- 11b. Effetti delle carte come micro-DSL (EffectExecutor) ---
+	var ge := GameSetup.new_game(["usa", "china"])
+	var u2 := ge.player_by_power("usa")
+	u2.resources["diplomacy"] = 5
+	# "New Allies": improve_relations (Country e sconti risolti dalla UI/bot).
+	EffectExecutor.run(ge, "usa", [
+		{"op": "improve_relations", "country": {"id": "c1", "value": 2, "region": "europe"}, "exhaust_values": [2]}])
+	check.call("DSL New Allies: Country alleato aggiunto", u2.allied_countries.size() == 1)
+	# "Military Reinforcements": gain 1 Army, poi Move fino a 2.
+	u2.money = 100
+	EffectExecutor.run(ge, "usa", [
+		{"op": "gain_armies", "amount": 1},
+		{"op": "move", "moves": [{"region": "americas"}]}])
+	check.call("DSL Military Reinforcements: Armata sul board",
+		int(ge.regions["americas"]["armies"].get("usa", 0)) == 1)
+	# "Military Pact" (USA unica): Build a Base, poi gain 1 Diplomacy.
+	u2.money = 100
+	u2.armies_available = 2
+	u2.resources["diplomacy"] = 0
+	EffectExecutor.run(ge, "usa", [
+		{"op": "build_base", "country": {"id": "cb", "value": 2, "region": "middle_east_north_africa",
+			"has_base_symbol": true, "base_allowed_powers": ["usa"]}, "armies": 1},
+		{"op": "gain_resource", "type": "diplomacy", "amount": 1}])
+	check.call("DSL Military Pact: +1 Diplomacy dopo Build a Base", u2.resources["diplomacy"] == 1)
+	# "Growth Strategy": choice -> Produce (il giocatore ha scelto Produce).
+	var cprod := ge.player_by_power("china")
+	cprod.production = {"energy": 2}
+	EffectExecutor.run(ge, "china", [
+		{"op": "choice", "chosen": [{"op": "produce", "types": ["energy"]}]}])
+	check.call("DSL Growth Strategy (choice=Produce): +2 Energia", cprod.resources["energy"] == 2)
+
 	# --- 12. Simulazione end-to-end (integrazione) ---
 	var fin := GameRunner.run_game(["usa", "china", "russia", "eu"], 42)
 	check.call("partita completata: 6 round", fin.round == 6)

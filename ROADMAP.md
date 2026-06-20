@@ -156,10 +156,10 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
   - 77 Country · 36 Starting Ability (4 potenze) · 33 Market · 10 Growth · 20 Strategic Asset · 4 Trade Deals · 20 Auto-Influence · 4 Executive Order.
 - [x] **Dati del tabellone** (`data/board.json`): 7 Regioni — slot Influenza, costi Engage, bonus maggioranza, cubi iniziali, zone d'interesse + dati globali.
 - [x] **Plance giocatore** (`data/player_boards.json`): abilità speciali, bonus Focus, Prosperità, produzione iniziale (alcuni valori a basso contrasto da riverificare).
-- [ ] Codificare gli effetti come **micro-DSL** (`effect` → array di `op`) — propedeutico alla Fase 1.
+- [x] **Micro-DSL degli effetti** (`effect_executor.gd`): vocabolario di operazioni (improve_relations, engage, trade, invest, move, build_base, get_growth, produce, gain_*, choice) che esegue le carte tramite le 8 azioni. Resta da codificare l'`effect` (op) di ciascuna delle 204 carte.
 **Deliverable:** dataset completo + libreria di asset pronti. *(carte + tabellone ✅; resta la codifica DSL degli effetti)*
 
-### Fase 1 — Motore di regole (core engine) — *in corso* (68/68 test pass, Godot 4.3)
+### Fase 1 — Motore di regole (core engine) — *in corso* (72/72 test pass, Godot 4.3)
 **Obiettivo:** simulare una partita completa senza UI.
 - [x] **Simulazione end-to-end** (`game_runner.gd`): partita completa headless (setup → 6 round → scoring Regioni + token Maggioranza → vincitore) con policy semplice. Test d'integrazione che gira un game a 4 giocatori.
 - [x] **Le 8 azioni** della fase di Azione (`actions.gd`): Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce — costi e effetti, verificati sugli esempi del regolamento.
