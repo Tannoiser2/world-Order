@@ -46,6 +46,7 @@ var drawer: Panel                   # foglio in basso, mostrato a richiesta
 var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
 var hand_pinned: VBoxContainer   # mano del giocatore, fissa in basso nel cassetto
+var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var drawer_open := false
 var drawer_power := ""              # potenza la cui plancia è mostrata nel cassetto
@@ -125,6 +126,15 @@ func _ready() -> void:
 	popup_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(popup_layer)
+
+	# Anteprima carta ingrandita (flyover): compare passando sopra una carta.
+	card_preview = TextureRect.new()
+	card_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	card_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	card_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_preview.visible = false
+	card_preview.z_index = 200
+	add_child(card_preview)
 
 	GamePhases.determine_turn_order(gs)
 	round_turn_count = 0
@@ -363,7 +373,23 @@ func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool) -> Butto
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(img)
+	_attach_preview(b, img.texture)
 	return b
+
+
+## Flyover: passando il mouse su una carta ne mostra una versione ingrandita
+## al centro dello schermo; uscendo, la nasconde.
+func _attach_preview(btn: Control, tex: Texture2D) -> void:
+	if tex == null or card_preview == null:
+		return
+	btn.mouse_entered.connect(func():
+		var h: float = minf(size.y * 0.7, 520.0)
+		var w: float = h * 0.71
+		card_preview.texture = tex
+		card_preview.size = Vector2(w, h)
+		card_preview.position = Vector2((size.x - w) * 0.5, (size.y - h) * 0.5)
+		card_preview.visible = true)
+	btn.mouse_exited.connect(func(): card_preview.visible = false)
 
 
 ## Click su una Country disponibile sul board: target di Improve Relations
@@ -1075,13 +1101,13 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 
 
 func _card_height() -> int:
-	# Carte alleati (riferimento): compatte.
-	return int(clampf(size.y * 0.15, 74, 130))
+	# Carte alleati (riferimento): un po' più grandi, comunque col flyover per i dettagli.
+	return int(clampf(size.y * 0.19, 96, 168))
 
 
 ## Carte della MANO (giocabili): più alte e leggibili, sempre verticali.
 func _hand_card_height() -> int:
-	return int(clampf(size.y * 0.20, 120, 200))
+	return int(clampf(size.y * 0.22, 130, 210))
 
 
 func _kv(k: String, v: int) -> Label:

@@ -3,6 +3,16 @@ extends Control
 ## selezione delle potenze (col vincolo del 2 giocatori), modalita' (Hot Seat /
 ## Online), Opzioni (placeholder) e avvio partita.
 
+## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
+const VERSION := "v0.6.0"
+const CHANGELOG := [
+	"v0.6.0 — Flyover: passa sopra una carta per ingrandirla. Plancia adattiva (niente più gigante su desktop). Mano del giocatore sempre visibile in basso; carte più grandi.",
+	"v0.5.0 — Mazzi potenza completi (12 carte, doppioni inclusi). Nazioni amiche iniziali (dal salvataggio TTS). Plancia con cubi/token reali e Focus cliccabile direttamente sull'immagine.",
+	"v0.4.0 — Carte nazione originali posate negli slot designati del tabellone (coordinate dal TTS). Market/Growth illustrate.",
+	"v0.3.0 — Mappa con zoom e trascinamento. Plance reali con i segnalini.",
+	"v0.2.0 — UI responsive, cassetti per potenza.",
+]
+
 const POWERS := ["usa", "eu", "russia", "china"]
 const POWER_NAME := {"usa": "USA", "eu": "UE", "russia": "Russia", "china": "Cina"}
 const POWER_COLOR := {
@@ -43,6 +53,14 @@ func _ready() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 48)
 	box.add_child(title)
+
+	var ver := Label.new()
+	ver.text = VERSION
+	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ver.add_theme_color_override("font_color", Color(0.7, 0.8, 0.95))
+	box.add_child(ver)
+
+	_build_changelog()
 
 	box.add_child(_section_label("Numero di giocatori"))
 	var counts := HBoxContainer.new()
@@ -190,6 +208,44 @@ func _section_label(text: String) -> Label:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_color_override("font_color", Color(0.9, 0.9, 0.6))
 	return l
+
+
+## Pannello changelog ancorato in basso a destra, scrollabile.
+func _build_changelog() -> void:
+	var panel := PanelContainer.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	panel.offset_left = -340
+	panel.offset_top = -210
+	panel.offset_right = -12
+	panel.offset_bottom = -12
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.05, 0.06, 0.09, 0.85)
+	st.set_corner_radius_all(8)
+	st.set_content_margin_all(10)
+	panel.add_theme_stylebox_override("panel", st)
+	add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	panel.add_child(vb)
+	var head := Label.new()
+	head.text = "Novità — %s" % VERSION
+	head.add_theme_color_override("font_color", Color(0.9, 0.9, 0.6))
+	vb.add_child(head)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vb.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	list.custom_minimum_size = Vector2(310, 0)
+	scroll.add_child(list)
+	for entry in CHANGELOG:
+		var e := Label.new()
+		e.text = "• " + String(entry)
+		e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		e.custom_minimum_size = Vector2(310, 0)
+		e.add_theme_font_size_override("font_size", 12)
+		e.add_theme_color_override("font_color", Color(0.82, 0.86, 0.92))
+		list.add_child(e)
 
 
 func _update_selection(buttons: Array, idx: int) -> void:
