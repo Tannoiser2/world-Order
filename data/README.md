@@ -90,12 +90,32 @@ potenze (es. Russia mostra 3 barili + 3 minerali, coerente col regolamento); a00
 > base in Vietnam; valori di Turkey (3), Australia (3), Norway (2), Tajikistan (1) corrispondono
 > agli esempi; India fornisce import di Servizi (esempio di Trade).
 
+### ✅ Carte abilità iniziali (Starting Ability) — 4 potenze (36 carte)
+
+Si trovano nel bucket **`country`** (745×1040, abilità a tutta pagina). Si distinguono dalle Market
+(stesso formato) perché hanno la **bandiera della potenza** accanto al nome, mentre le Market mostrano
+un **costo Research** (🔍 + numero). Layout: barra colore = tipo (verde=diplomatic, arancio=economic,
+rosso=military, blu=domestic); box in alto a sx = bonus Research (numero 🔍) + top bonus (monete/risorsa).
+
+Ogni potenza ha **9 carte distinte = 7 comuni + 2 uniche** (nel mazzo iniziale da 12, alcune in doppia copia):
+
+| | Carte uniche |
+|---|---|
+| **USA** | Global Currency, Military Pact |
+| **EU** | Soft Power, Humanitarian Aid |
+| **Russia** | Military Re-Equipment, Energy Titan |
+| **China** | Economic Diplomacy, The World's Factory |
+
+Comuni a tutte: Growth Strategy, Foreign Direct Investment, Diplomatic Engagement, Foreign Trade,
+New Allies, Foreign Military Presence, Military Reinforcements.
+
+File: [`abilities/*_starting.json`](abilities/) (testo effetto verbatim + tipo + bonus) · indice [`abilities/index.json`](abilities/index.json).
+
 ## Prossimi passi
 
-1. Suddividere il resto del bucket `ability` (Market / Auto-Influence) e il bucket `country`
-   (Starting Ability a tutta pagina + Executive Order), e trascriverli.
-2. Trascrivere Growth cards e Strategic Asset (bucket `strategic_asset`).
-3. Trascrivere gli effetti delle carte come micro-DSL e definirne il vocabolario (`op`), guidandosi con la logica Lua.
+1. Trascrivere le **Market card** (bucket `country` con costo Research, + bucket `ability` piccolo) e gli **Executive Order** (4).
+2. Trascrivere **Growth card** e **Strategic Asset** (bucket `strategic_asset`) e **Auto-Influence**.
+3. Codificare gli effetti come micro-DSL (`effect` → array di `op`), guidandosi con la logica Lua.
 4. Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`).
 
 > ⚠️ **Uso personale.** Gli asset grafici sono © Hegemonic Project Limited e non vanno ridistribuiti.
