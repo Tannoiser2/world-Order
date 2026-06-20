@@ -159,11 +159,14 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
 - [ ] Codificare gli effetti come **micro-DSL** (`effect` → array di `op`) — propedeutico alla Fase 1.
 **Deliverable:** dataset completo + libreria di asset pronti. *(carte + tabellone ✅; resta la codifica DSL degli effetti)*
 
-### Fase 1 — Motore di regole (core engine)
+### Fase 1 — Motore di regole (core engine) — *in corso* (28/28 test pass, Godot 4.3)
 **Obiettivo:** simulare una partita completa senza UI.
-- [ ] Macchina a stati delle 3 fasi e dei 6 round.
-- [ ] Sistema risorse (primarie/secondarie + produzione + cap a 10).
-- [ ] Sistema Influenza (slot permanenti/temporanei, push FIFO, conversione, reset).
+- [~] Macchina a stati delle 3 fasi e dei 6 round (`game_phases.gd`: struttura + passi deterministici; restano le azioni).
+- [x] Sistema risorse (produzione primaria + cap a 10 → money; Prosperità).
+- [x] Sistema Influenza (slot permanenti/temporanei, push FIFO, conversione, reset) — `influence_track.gd`.
+- [x] THREAT/Defense (`threat.gd`) — esempi del regolamento.
+- [x] Scoring Regione (`scoring.gd`) — maggioranze, spareggi, cubi locali.
+- [x] Setup partita da dati (`game_setup.gd`) + caricamento JSON (`data_loader.gd`).
 - [ ] Le 8 azioni della fase Azione + Market/Research.
 - [ ] THREAT/Defense, Prosperità, Return on Investments.
 - [ ] **Scoring** (round 3 e 6): maggioranze regioni + 3 token Maggioranza + abilità speciali potenze.

@@ -75,4 +75,32 @@ static func run_all() -> Dictionary:
 	check.call("setup: Engage MENA = 6", gs.regions["middle_east_north_africa"]["engage_cost"] == 6)
 	check.call("setup: mazzo iniziale USA non vuoto", gs.players[0].deck.size() > 0)
 
+	# --- 4. Produzione e cap risorse ---
+	var ps := PlayerState.new()
+	ps.production = {"energy": 3}
+	GamePhases.produce_primary_resources_for(ps)
+	check.call("produzione Energia = 3", ps.resources["energy"] == 3)
+	# Cap a 10: oltre il 10 si converte in money (import cost 3 per primaria).
+	ps.resources["energy"] = 10
+	var of := ps.gain_resource("energy", 2, GamePhases.IMPORT_COST_PRIMARY)
+	check.call("cap a 10: Energia resta 10", ps.resources["energy"] == 10)
+	check.call("cap: eccedenza in money (2 x 3 = 6)", of == 6 and ps.money == 6)
+
+	# --- 5. Prosperity ---
+	var pp := PlayerState.new()
+	pp.resources["consumer_goods"] = 5
+	var steps := [{"cost_consumer_goods": 2, "vp": 2, "money": 10}]
+	check.call("prosperity avanza", GamePhases.increase_prosperity(pp, steps))
+	check.call("prosperity: -2 CG, +2 VP, +10 money",
+		pp.resources["consumer_goods"] == 3 and pp.victory_points == 2 and pp.money == 10)
+	check.call("prosperity: max 1 step/round", not GamePhases.increase_prosperity(pp, steps))
+
+	# --- 6. Ordine di turno (meno VP per primo) ---
+	var gt := GameSetup.new_game(["usa", "china", "russia"])
+	gt.players[0].victory_points = 10
+	gt.players[1].victory_points = 5
+	gt.players[2].victory_points = 20
+	GamePhases.determine_turn_order(gt)
+	check.call("turn order: chi ha meno VP per primo", gt.turn_order[0] == 1)
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}
