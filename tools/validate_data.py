@@ -23,9 +23,11 @@ def main():
             continue
         doc = json.load(open(path))
         cards = doc.get("countries") or doc.get("cards") or []
+        # lo schema card.schema.json copre solo le Country (data/countries/).
+        schema_check = (os.path.sep + "countries" + os.path.sep) in path
         for c in cards:
             total += 1
-            if validator:
+            if validator and schema_check:
                 for e in validator.iter_errors(c):
                     print(f"[schema] {os.path.basename(path)} {c.get('id')}: {e.message}")
                     errors += 1
