@@ -42,5 +42,30 @@ func _init() -> void:
 		print("[%s] mano del giocatore popolata (%d carte)" % ["OK" if hand_n > 0 else "FAIL", hand_n])
 		if hand_n == 0: fails += 1
 
+		# Gioco di una carta che richiede una Regione (Engage).
+		var ac: PlayerState = board._active()
+		ac.resources["diplomacy"] = 20  # isola il test dal consumo precedente
+		var card_region := {"display_name": "Test Engage", "effect_ops": [{"op": "engage"}]}
+		ac.hand.append(card_region)
+		board._play_card(card_region)
+		var aw_ok: bool = board.awaiting == "region"
+		print("[%s] play carta Engage -> attende una Regione" % ["OK" if aw_ok else "FAIL"])
+		if not aw_ok: fails += 1
+		var inf_b: int = board.gs.regions["central_asia"]["track"].count(ac.power)
+		board._on_region_pressed("central_asia")
+		var inf_a: int = board.gs.regions["central_asia"]["track"].count(ac.power)
+		var played_ok: bool = (card_region in ac.played) and not (card_region in ac.hand) and inf_a == inf_b + 1
+		print("[%s] risoluzione carta Engage (Influenza %d->%d, carta in scarti)" % ["OK" if played_ok else "FAIL", inf_b, inf_a])
+		if not played_ok: fails += 1
+
+		# Carta auto-risolta (gain_money), nessun target.
+		var money_b: int = ac.money
+		var card_auto := {"display_name": "Test Money", "effect_ops": [{"op": "gain_money", "amount": 7}]}
+		ac.hand.append(card_auto)
+		board._play_card(card_auto)
+		var auto_ok: bool = ac.money == money_b + 7 and (card_auto in ac.played) and board.playing_card.is_empty()
+		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
+		if not auto_ok: fails += 1
+
 	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(fails)

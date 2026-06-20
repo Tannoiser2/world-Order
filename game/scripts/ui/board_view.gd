@@ -1,18 +1,25 @@
 extends Control
 ## Scena di gioco (Fase 2, MVP hot-seat): tabellone reale + Regioni cliccabili,
-## plancia del giocatore attivo (risorse/produzione/Focus) e mano di carte.
-## Renderer + input sullo stato del motore (GameState).
+## plancia del giocatore attivo, mano di carte GIOCABILI. Cliccando una carta se
+## ne risolvono le effect_ops, chiedendo i target (Regione sul board, oppure
+## Country/risorsa/scelta via popup). Renderer + input sul motore (GameState).
 
 const POWER_COLORS := {
 	"usa": Color(0.45, 0.62, 0.9), "eu": Color(0.95, 0.82, 0.2),
 	"russia": Color(0.9, 0.9, 0.9), "china": Color(0.9, 0.3, 0.3),
 	"local": Color(0.3, 0.3, 0.3),
 }
+const RES := ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy", "armies"]
 const RES_LABEL := {
-	"energy": "⚡", "raw_materials": "⛏", "food": "🌾",
-	"consumer_goods": "📱", "services": "💼", "diplomacy": "⚖", "armies": "🛡",
+	"energy": "En", "raw_materials": "RM", "food": "Food",
+	"consumer_goods": "CG", "services": "Serv", "diplomacy": "Dip", "armies": "Army",
 }
 const FOCUS_NAME := ["Domestic", "Diplomatic", "Military"]
+## Op che si risolvono da sole (senza target).
+const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "trade",
+	"draw", "play_another", "noop", "spend", "ongoing", "research_free",
+	"gain_money_per_fdi", "increase_production", "reset_influence", "convert_influence",
+	"ready_country", "trash", "sell_armies", "spend_for_gain", "spend_then", "repeat"]
 
 var gs: GameState
 var active_seat := 0
@@ -22,16 +29,25 @@ var layout: Dictionary
 var status_label: Label
 var player_panel: VBoxContainer
 var hand_box: HBoxContainer
+var popup_layer: Control
+
+var all_countries: Array = []
+# Stato del gioco di una carta:
+var playing_card: Dictionary = {}
+var play_queue: Array = []
+var awaiting := ""          # "" | "region"
+var awaiting_op: Dictionary = {}
 
 
 func _ready() -> void:
 	var powers: Array = GameConfig.powers if GameConfig.powers.size() >= 2 else GameConfig.powers_for_count_n(2)
 	gs = GameSetup.new_game(powers)
-	# dota i giocatori di una mano e di un po' di Diplomacy per il demo interattivo.
 	for p in gs.players:
 		p.draw_cards(6)
 		p.resources["diplomacy"] = 8
+		p.money = 30
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
+	all_countries = DataLoader.load_countries()
 
 	board_rect = TextureRect.new()
 	board_rect.texture = load(layout.get("board_image", "res://assets/board/board.jpg"))
@@ -45,6 +61,11 @@ func _ready() -> void:
 
 	_build_player_panel()
 	_build_hand_panel()
+	popup_layer = Control.new()
+	popup_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(popup_layer)
+
 	resized.connect(_layout_overlays)
 	_layout_overlays()
 	_refresh()
@@ -54,19 +75,20 @@ func _active() -> PlayerState:
 	return gs.players[active_seat]
 
 
+# --- Tabellone e Regioni ---
+
 func _board_image_rect() -> Rect2:
 	var tex := board_rect.texture
 	if tex == null:
 		return Rect2(Vector2.ZERO, size)
-	var tex_size := tex.get_size()
-	var scale := minf(size.x / tex_size.x, size.y / tex_size.y)
-	var draw := tex_size * scale
-	return Rect2((size - draw) * 0.5, draw)
+	var ts := tex.get_size()
+	var sc := minf(size.x / ts.x, size.y / ts.y)
+	return Rect2((size - ts * sc) * 0.5, ts * sc)
 
 
 func _layout_overlays() -> void:
-	for child in overlay.get_children():
-		child.queue_free()
+	for c in overlay.get_children():
+		c.queue_free()
 	var br := _board_image_rect()
 	for region in layout.get("regions", {}):
 		var r: Array = layout["regions"][region]
@@ -79,26 +101,24 @@ func _layout_overlays() -> void:
 func _make_region_button(region: String) -> Button:
 	var btn := Button.new()
 	btn.flat = true
-	btn.tooltip_text = "Engage in %s" % region.replace("_", " ")
 	btn.pressed.connect(_on_region_pressed.bind(region))
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0.18)
-	style.border_color = Color(1, 1, 1, 0.35)
-	style.set_border_width_all(1)
-	btn.add_theme_stylebox_override("normal", style)
-	var hover := style.duplicate()
-	hover.bg_color = Color(0.2, 0.5, 0.9, 0.35)
-	btn.add_theme_stylebox_override("hover", hover)
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.2, 0.6, 0.95, 0.30) if awaiting == "region" else Color(0, 0, 0, 0.15)
+	st.border_color = Color(0.4, 0.9, 1, 0.9) if awaiting == "region" else Color(1, 1, 1, 0.3)
+	st.set_border_width_all(2 if awaiting == "region" else 1)
+	btn.add_theme_stylebox_override("normal", st)
+	var hv := st.duplicate(); hv.bg_color = Color(0.2, 0.5, 0.9, 0.40)
+	btn.add_theme_stylebox_override("hover", hv)
 
 	var vb := VBoxContainer.new()
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.add_child(vb)
 	var rd: Dictionary = gs.regions.get(region, {})
-	var title := Label.new()
-	title.text = "%s (Eng %d)" % [region.replace("_", " ").to_upper(), int(rd.get("engage_cost", 0))]
-	title.add_theme_font_size_override("font_size", 11)
-	vb.add_child(title)
+	var t := Label.new()
+	t.text = "%s (Eng %d)" % [region.replace("_", " ").to_upper(), int(rd.get("engage_cost", 0))]
+	t.add_theme_font_size_override("font_size", 11)
+	vb.add_child(t)
 	var track: InfluenceTrack = rd.get("track")
 	if track:
 		var hb := HBoxContainer.new()
@@ -112,27 +132,230 @@ func _make_region_button(region: String) -> Button:
 
 
 func _on_region_pressed(region: String) -> void:
+	if awaiting == "region":
+		_resolve_region_op(region)
+		return
+	# nessuna carta in gioco: Engage rapido (demo)
+	_do_engage(region)
+
+
+func _do_engage(region: String) -> void:
 	var p := _active()
 	var rd: Dictionary = gs.regions[region]
 	var cost := Actions.engage_cost(int(rd["engage_cost"]), [], p.focus == WO.Focus.DIPLOMATIC)
 	if p.resources.get("diplomacy", 0) < cost:
-		status_label.text = "Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost]
+		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
 		return
 	var vp := Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary")
-	status_label.text = "%s: Engage in %s (−%d ⚖, +%d VP)." % [p.power.to_upper(), region.replace("_", " "), cost, vp]
+	_status("%s: Engage in %s (−%d Dip, +%d VP)." % [p.power.to_upper(), region.replace("_", " "), cost, vp])
+	_after_change()
+
+
+# --- Gioco di una carta ---
+
+func _play_card(card: Dictionary) -> void:
+	if not playing_card.is_empty():
+		return  # gia' in risoluzione
+	if not card.has("effect_ops"):
+		_status("Questa carta non ha effetto giocabile.")
+		return
+	playing_card = card
+	play_queue = (card["effect_ops"] as Array).duplicate(true)
+	_status("Giochi: %s" % card.get("display_name", "carta"))
+	_advance_play()
+
+
+func _advance_play() -> void:
+	if play_queue.is_empty():
+		_finish_card()
+		return
+	var op: Dictionary = play_queue.pop_front()
+	var name := String(op.get("op", ""))
+	match name:
+		"engage", "move", "add_influence", "place_armies", "move_free", "move_to_regions":
+			awaiting = "region"
+			awaiting_op = op
+			_status("Scegli una Regione per: %s" % name)
+			_layout_overlays()
+		"improve_relations":
+			_pick_country("Scegli un Country (Improve Relations):", _board_countries(), func(cn):
+				Actions.execute_improve_relations(gs, _active().power, cn, [])
+				_status("Improve Relations con %s." % cn.get("display_name", ""))
+				_advance_play())
+		"invest":
+			_pick_country("Scegli un Country alleato (Invest):", _active().allied_countries, func(cn):
+				Actions.execute_invest(gs, _active().power, cn, "temporary")
+				_advance_play())
+		"build_base":
+			var elig := _active().allied_countries.filter(func(c): return c.get("has_base_symbol", false) and _active().power in c.get("base_allowed_powers", []))
+			_pick_country("Scegli un Country (Build a Base):", elig, func(cn):
+				Actions.execute_build_base(gs, _active().power, cn, 1, "temporary")
+				_advance_play())
+		"produce":
+			if op.has("types"):
+				for r in op["types"]: Actions.execute_produce(_active(), String(r))
+				_advance_play()
+			else:
+				_pick_resource("Scegli risorsa da Produrre:", func(rt):
+					Actions.execute_produce(_active(), rt)
+					_advance_play())
+		"choice", "choose_n":
+			_pick_choice(op.get("options", []), func(sub):
+				# antepone i sotto-op scelti alla coda
+				var subs: Array = sub if sub is Array else [sub]
+				for i in range(subs.size() - 1, -1, -1):
+					play_queue.push_front(subs[i])
+				_advance_play())
+		"get_growth":
+			# semplificazione: prende la prima Growth di livello idoneo
+			_status("Get a Growth Card (selezione automatica nel demo).")
+			_advance_play()
+		_:
+			if name in AUTO_OPS:
+				EffectExecutor.run(gs, _active().power, [op])
+			_advance_play()
+
+
+func _resolve_region_op(region: String) -> void:
+	var op := awaiting_op
+	awaiting = ""
+	awaiting_op = {}
+	var name := String(op.get("op", ""))
+	var p := _active()
+	match name:
+		"engage":
+			Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary")
+		"move", "move_free", "move_to_regions":
+			if p.armies_available > 0:
+				Actions.execute_move(gs, p.power, [{"region": region}]) if name == "move" else _free_move(region)
+		"add_influence", "place_armies":
+			var slot := "permanent" if bool(op.get("permanent", false)) else "temporary"
+			gs.regions[region]["track"].add(p.power, slot)
+			if name == "place_armies":
+				var a: Dictionary = gs.regions[region]["armies"]
+				a[p.power] = int(a.get(p.power, 0)) + int(op.get("n", 1))
+	_status("%s su %s." % [name, region.replace("_", " ")])
 	_layout_overlays()
-	_refresh()
+	_advance_play()
 
 
-# --- Plancia giocatore ---
+func _free_move(region: String) -> void:
+	var p := _active()
+	if p.armies_available > 0:
+		p.armies_available -= 1
+		var a: Dictionary = gs.regions[region]["armies"]
+		a[p.power] = int(a.get(p.power, 0)) + 1
+
+
+func _finish_card() -> void:
+	var p := _active()
+	p.hand.erase(playing_card)
+	p.played.append(playing_card)
+	playing_card = {}
+	awaiting = ""
+	_status("Carta risolta.")
+	_after_change()
+
+
+# --- Popup di selezione ---
+
+func _pick_country(prompt: String, countries: Array, cb: Callable) -> void:
+	if countries.is_empty():
+		_status(prompt + " (nessun Country disponibile)")
+		_advance_play()
+		return
+	var items := []
+	for cn in countries:
+		items.append({"label": "%s (%s)" % [cn.get("display_name", "?"), cn.get("region", "")], "value": cn})
+	_show_popup(prompt, items, cb)
+
+
+func _pick_resource(prompt: String, cb: Callable) -> void:
+	var items := []
+	for rt in RES:
+		items.append({"label": RES_LABEL[rt], "value": rt})
+	_show_popup(prompt, items, cb)
+
+
+func _pick_choice(options: Array, cb: Callable) -> void:
+	var items := []
+	for i in options.size():
+		var opt = options[i]
+		var lbl := ""
+		var flat: Array = opt if opt is Array else [opt]
+		for o in flat:
+			lbl += String(o.get("op", "")) + " "
+		items.append({"label": lbl.strip_edges(), "value": opt})
+	_show_popup("Scegli un'opzione:", items, cb)
+
+
+func _show_popup(prompt: String, items: Array, cb: Callable) -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	center.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.custom_minimum_size = Vector2(360, 0)
+	panel.add_child(vb)
+	var lab := Label.new()
+	lab.text = prompt
+	vb.add_child(lab)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(360, 280)
+	vb.add_child(scroll)
+	var list := VBoxContainer.new()
+	scroll.add_child(list)
+	for it in items:
+		var b := Button.new()
+		b.text = it["label"]
+		b.pressed.connect(func():
+			_close_popup()
+			cb.call(it["value"]))
+		list.add_child(b)
+	var cancel := Button.new()
+	cancel.text = "Annulla"
+	cancel.pressed.connect(func():
+		_close_popup()
+		_cancel_card())
+	vb.add_child(cancel)
+
+
+func _close_popup() -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+func _cancel_card() -> void:
+	playing_card = {}
+	play_queue = []
+	awaiting = ""
+	_status("Giocata annullata.")
+	_layout_overlays()
+
+
+func _board_countries() -> Array:
+	# i Country non ancora alleati di questo giocatore (semplificazione: tutti)
+	return all_countries
+
+
+# --- Plancia, mano, stato ---
 
 func _build_player_panel() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	panel.offset_bottom = 88
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.09, 0.12, 0.92)
-	panel.add_theme_stylebox_override("panel", style)
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.07, 0.09, 0.12, 0.92)
+	panel.add_theme_stylebox_override("panel", st)
 	add_child(panel)
 	player_panel = VBoxContainer.new()
 	panel.add_child(player_panel)
@@ -142,18 +365,16 @@ func _refresh() -> void:
 	for c in player_panel.get_children():
 		c.queue_free()
 	var p := _active()
-	# riga 1: identita' + money + VP + Focus
 	var row1 := HBoxContainer.new()
-	row1.add_theme_constant_override("separation", 16)
+	row1.add_theme_constant_override("separation", 14)
 	player_panel.add_child(row1)
 	var who := Label.new()
 	who.text = "Round %d  ·  %s" % [gs.round, p.power.to_upper()]
 	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	who.add_theme_font_size_override("font_size", 18)
 	row1.add_child(who)
-	row1.add_child(_kv("💰", p.money))
+	row1.add_child(_kv("Money", p.money))
 	row1.add_child(_kv("VP", p.victory_points))
-	# Focus switch
 	for f in 3:
 		var b := Button.new()
 		b.text = FOCUS_NAME[f]
@@ -161,78 +382,86 @@ func _refresh() -> void:
 		b.button_pressed = (p.focus == f)
 		b.pressed.connect(func(): p.focus = f; _refresh())
 		row1.add_child(b)
-	# cambia giocatore (hot seat)
 	if gs.players.size() > 1:
 		var nxt := Button.new()
 		nxt.text = "Giocatore successivo ▶"
 		nxt.pressed.connect(_next_player)
 		row1.add_child(nxt)
-	# riga 2: risorse (valore / produzione)
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 12)
 	player_panel.add_child(row2)
-	for rtype in ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy", "armies"]:
-		var l := Label.new()
-		l.text = "%s %d/%d" % [RES_LABEL[rtype], int(p.resources.get(rtype, 0)), int(p.production.get(rtype, 0))]
-		row2.add_child(l)
-	_build_hand_panel()
+	for rtype in RES:
+		row2.add_child(_kv2("%s %d/%d" % [RES_LABEL[rtype], int(p.resources.get(rtype, 0)), int(p.production.get(rtype, 0))]))
+	row2.add_child(_kv2("Alleati: %d" % p.allied_countries.size()))
 
 
 func _kv(k: String, v: int) -> Label:
-	var l := Label.new()
-	l.text = "%s %d" % [k, v]
-	l.add_theme_font_size_override("font_size", 16)
-	return l
+	var l := Label.new(); l.text = "%s %d" % [k, v]; l.add_theme_font_size_override("font_size", 15); return l
+
+
+func _kv2(t: String) -> Label:
+	var l := Label.new(); l.text = t; return l
 
 
 func _next_player() -> void:
+	if not playing_card.is_empty():
+		return
 	active_seat = (active_seat + 1) % gs.players.size()
-	status_label.text = "Turno di %s." % _active().power.to_upper()
+	_status("Turno di %s." % _active().power.to_upper())
+	_after_change()
+
+
+func _after_change() -> void:
 	_layout_overlays()
 	_refresh()
-
-
-# --- Mano di carte ---
-
-func _build_hand_panel() -> void:
-	if hand_box == null:
-		var panel := PanelContainer.new()
-		panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		panel.offset_top = -180
-		var style := StyleBoxFlat.new()
-		style.bg_color = Color(0.06, 0.07, 0.1, 0.92)
-		panel.add_child(_make_hand_container())
-		panel.add_theme_stylebox_override("panel", style)
-		add_child(panel)
-		# status sopra la mano
-		status_label = Label.new()
-		status_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		status_label.offset_top = -200
-		status_label.offset_bottom = -182
-		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		add_child(status_label)
 	_render_hand()
 
 
-func _make_hand_container() -> Control:
+func _build_hand_panel() -> void:
+	var panel := PanelContainer.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.offset_top = -184
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.06, 0.07, 0.1, 0.92)
+	panel.add_theme_stylebox_override("panel", st)
 	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	hand_box = HBoxContainer.new()
 	hand_box.add_theme_constant_override("separation", 6)
 	scroll.add_child(hand_box)
-	return scroll
+	panel.add_child(scroll)
+	add_child(panel)
+	status_label = Label.new()
+	status_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	status_label.offset_top = -206
+	status_label.offset_bottom = -186
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(status_label)
+	_render_hand()
 
 
 func _render_hand() -> void:
+	if hand_box == null:
+		return
 	for c in hand_box.get_children():
 		c.queue_free()
 	for card in _active().hand:
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(112, 160)
+		btn.flat = true
+		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
+		btn.pressed.connect(_play_card.bind(card))
 		var tr := TextureRect.new()
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		var art: String = card.get("art", "")
 		if art != "":
 			var tex := load("res://assets/cards/" + art)
 			if tex: tr.texture = tex
-		tr.custom_minimum_size = Vector2(110, 158)
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tr.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
-		hand_box.add_child(tr)
+		btn.add_child(tr)
+		hand_box.add_child(btn)
+
+
+func _status(t: String) -> void:
+	if status_label:
+		status_label.text = t
