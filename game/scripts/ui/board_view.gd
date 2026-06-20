@@ -744,6 +744,7 @@ func _build_drawer() -> void:
 	margin.add_child(col)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
 	drawer_content = VBoxContainer.new()
 	drawer_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -933,11 +934,11 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# La plancia ha un TETTO ASSOLUTO in pixel (come le carte) così non diventa mai
 	# gigante, qualunque sia la dimensione/densità della finestra; più i limiti
 	# proporzionali (larghezza disponibile e frazione d'altezza).
-	var ph := minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.38), 360.0)
+	var ph := minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.36), 340.0)
 	var pw := ph / PLANCIA_RATIO
 	var view := Control.new()
 	view.custom_minimum_size = Vector2(pw, ph)
-	view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	view.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	board_bg = TextureRect.new()
 	board_bg.texture = load("res://assets/player_boards/%s.jpg" % p.power)
 	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -953,8 +954,8 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 		for f in FOCUS_ZONES.size():
 			var fb := Button.new()
 			fb.flat = true
-			fb.position = Vector2(FOCUS_ZONES[f][0] * pw, 0.27 * ph)
-			fb.size = Vector2((FOCUS_ZONES[f][1] - FOCUS_ZONES[f][0]) * pw, 0.40 * ph)
+			fb.anchor_left = FOCUS_ZONES[f][0]; fb.anchor_right = FOCUS_ZONES[f][1]
+			fb.anchor_top = 0.27; fb.anchor_bottom = 0.67
 			var fst := StyleBoxFlat.new(); fst.bg_color = Color(0, 0, 0, 0)
 			fb.add_theme_stylebox_override("normal", fst)
 			var fhv := StyleBoxFlat.new(); fhv.bg_color = Color(1, 1, 1, 0.08)
@@ -1004,8 +1005,12 @@ func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col:
 	var s := Vector2(d, d)
 	var m := Panel.new()
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	m.position = Vector2(nx * pw - s.x * 0.5, ny * ph - s.y * 0.5)
-	m.size = s
+	# Ancorato a (nx,ny) della plancia REALE: segue sempre l'immagine, anche se la
+	# plancia si ridimensiona col device.
+	m.anchor_left = nx; m.anchor_right = nx
+	m.anchor_top = ny; m.anchor_bottom = ny
+	m.offset_left = -s.x * 0.5; m.offset_right = s.x * 0.5
+	m.offset_top = -s.y * 0.5; m.offset_bottom = s.y * 0.5
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(col.r, col.g, col.b, 0.92)
 	sb.border_color = Color(0, 0, 0, 0.85)
@@ -1019,14 +1024,16 @@ func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col:
 ## più risorse condividono lo stesso numero).
 func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, ph: float, stack_index: int) -> void:
 	var s := ph * 0.095
+	var off := stack_index * s * 0.5
 	var tr := TextureRect.new()
 	tr.texture = load("res://assets/tokens/%s.png" % res)
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tr.custom_minimum_size = Vector2(s, s)
-	tr.size = Vector2(s, s)
-	tr.position = Vector2(nx * pw - s * 0.5 + stack_index * s * 0.5, ny * ph - s * 0.5)
+	tr.anchor_left = nx; tr.anchor_right = nx
+	tr.anchor_top = ny; tr.anchor_bottom = ny
+	tr.offset_left = -s * 0.5 + off; tr.offset_right = s * 0.5 + off
+	tr.offset_top = -s * 0.5; tr.offset_bottom = s * 0.5
 	parent.add_child(tr)
 
 
@@ -1055,15 +1062,16 @@ func _prosperity_strip(p: PlayerState) -> Control:
 ## Sezione alleati: le nazioni amiche come carte-immagine reali (cliccabili solo
 ## per il giocatore di turno: Invest/Build a Base).
 func _build_allies_section(p: PlayerState, is_active: bool) -> void:
+	# Solo un prompt quando serve scegliere; niente etichetta "Nazioni amiche".
 	if awaiting == "allied_country" and is_active:
 		drawer_content.add_child(_section("Scegli una nazione amica per: %s" % String(awaiting_op.get("op", ""))))
-	else:
-		drawer_content.add_child(_section("Nazioni amiche (%d)" % p.allied_countries.size()))
 	if p.allied_countries.is_empty():
 		return
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	scroll.custom_minimum_size = Vector2(0, _card_height() + 6)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
