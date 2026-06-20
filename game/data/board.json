@@ -1,0 +1,74 @@
+{
+  "kind": "board",
+  "source": "Trascritto dal tabellone principale (Tabelle_Materiali/World Order/Images, immagine 6615x5906). Valori letti per ritaglio ad alta risoluzione.",
+  "global": {
+    "rounds": 6,
+    "scoring_rounds": [3, 6],
+    "vp_track_max": 100,
+    "turn_order_places": 4,
+    "majority_tokens": ["most_money", "most_armies_on_board", "most_allied_countries"]
+  },
+  "slot_notes": "permanent_slots/temporary_slots = valori VP guadagnati piazzando Influenza (da sinistra). I cubi iniziali (setup) sono indicati in starting_influence. 2 Regioni iniziano con un cubo nero 'locale' (MENA e South Asia).",
+  "zone_note": "zone_of_interest = potenze la cui bandiera compare nella Regione (per THREAT/Defense). Confermate da esempi di regolamento per Europe e Central Asia. Americas/Africa/South Asia: catturate solo le bandiere chiaramente visibili (da verificare).",
+  "regions": [
+    {
+      "region": "europe", "display_name": "Europe", "engage_cost": 5,
+      "permanent_slots": [1, 1, 1, 1], "temporary_slots": [5, 4, 3, 2],
+      "majority_bonus": [9, 6, 3, 1],
+      "zone_of_interest": ["usa", "eu", "russia"],
+      "starting_influence": [
+        {"owner": "eu", "slot": "permanent"},
+        {"owner": "usa", "slot": "permanent"},
+        {"owner": "russia", "slot": "permanent"}
+      ]
+    },
+    {
+      "region": "central_asia", "display_name": "Central Asia", "engage_cost": 4,
+      "permanent_slots": [1, 1], "temporary_slots": [4, 3, 2, 1],
+      "majority_bonus": [8, 4, 2],
+      "zone_of_interest": ["russia", "china"],
+      "starting_influence": [{"owner": "russia", "slot": "permanent"}]
+    },
+    {
+      "region": "americas", "display_name": "Americas", "engage_cost": 4,
+      "permanent_slots": [1, 1], "temporary_slots": [4, 3, 2, 1],
+      "majority_bonus": [7, 4, 2],
+      "zone_of_interest": ["usa"],
+      "starting_influence": [{"owner": "usa", "slot": "permanent"}]
+    },
+    {
+      "region": "middle_east_north_africa", "display_name": "Middle East - North Africa", "engage_cost": 6,
+      "permanent_slots": [1, 1], "temporary_slots": [4, 3, 2, 1],
+      "majority_bonus": [10, 7, 4, 2],
+      "zone_of_interest": ["usa", "eu", "russia"],
+      "starting_influence": [{"owner": "local", "slot": "permanent"}]
+    },
+    {
+      "region": "africa", "display_name": "Africa", "engage_cost": 3,
+      "permanent_slots": [1, 1], "temporary_slots": [4, 3, 2, 1],
+      "majority_bonus": [7, 4, 2],
+      "zone_of_interest": ["usa"],
+      "starting_influence": [{"owner": "eu", "slot": "temporary", "slot_value": 4}]
+    },
+    {
+      "region": "south_asia", "display_name": "South Asia", "engage_cost": 4,
+      "permanent_slots": [1, 1], "temporary_slots": [4, 3, 2, 1],
+      "majority_bonus": [8, 5, 2],
+      "zone_of_interest": ["china"],
+      "starting_influence": [
+        {"owner": "china", "slot": "permanent"},
+        {"owner": "local", "slot": "permanent"}
+      ]
+    },
+    {
+      "region": "east_asia_pacific", "display_name": "East Asia - Pacific", "engage_cost": 5,
+      "permanent_slots": [1, 1, 1], "temporary_slots": [4, 3, 2, 1],
+      "majority_bonus": [9, 6, 2],
+      "zone_of_interest": ["usa", "china"],
+      "starting_influence": [
+        {"owner": "china", "slot": "permanent"},
+        {"owner": "usa", "slot": "permanent"}
+      ]
+    }
+  ]
+}

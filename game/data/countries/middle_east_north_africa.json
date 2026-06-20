@@ -1,0 +1,91 @@
+{
+  "region": "middle_east_north_africa",
+  "region_label": "Middle East – North Africa",
+  "source": "Trascritto a piena risoluzione dagli asset (game/assets/cards/ability/). Vedi data/RESOURCE_LEGEND.md per i simboli.",
+  "countries": [
+    {
+      "id": "country_qatar", "type": "country", "display_name": "Qatar",
+      "art": "ability/ability_090.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["consumer_goods", "consumer_goods"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_syria", "type": "country", "display_name": "Syria",
+      "art": "ability/ability_091.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["raw_materials", "food"], "imports": ["services"],
+      "no_relations_powers": ["usa"], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_egypt", "type": "country", "display_name": "Egypt",
+      "art": "ability/ability_092.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["raw_materials", "food"], "imports": ["services"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_iran", "type": "country", "display_name": "Iran",
+      "art": "ability/ability_093.jpg", "region": "middle_east_north_africa",
+      "value": 3, "invest_cost": 20,
+      "exports": ["raw_materials", "food", "consumer_goods"], "imports": ["energy", "energy"],
+      "no_relations_powers": ["usa"], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_saudi_arabia", "type": "country", "display_name": "Saudi Arabia",
+      "art": "ability/ability_094.jpg", "region": "middle_east_north_africa",
+      "value": 3, "invest_cost": 20,
+      "exports": ["consumer_goods", "services", "services"], "imports": ["energy", "energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_algeria", "type": "country", "display_name": "Algeria",
+      "art": "ability/ability_095.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["raw_materials", "food"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_libya", "type": "country", "display_name": "Libya",
+      "art": "ability/ability_096.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["food", "services"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_jordan", "type": "country", "display_name": "Jordan",
+      "art": "ability/ability_097.jpg", "region": "middle_east_north_africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_uae", "type": "country", "display_name": "United Arab Emirates",
+      "art": "ability/ability_098.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["consumer_goods", "consumer_goods"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu", "china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_israel", "type": "country", "display_name": "Israel",
+      "art": "ability/ability_099.jpg", "region": "middle_east_north_africa",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "raw_materials", "raw_materials"], "imports": ["services", "services"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_turkey", "type": "country", "display_name": "Turkey",
+      "art": "ability/ability_100.jpg", "region": "middle_east_north_africa",
+      "value": 3, "invest_cost": 20,
+      "exports": ["raw_materials", "consumer_goods", "consumer_goods"], "imports": ["services", "services"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_iraq", "type": "country", "display_name": "Iraq",
+      "art": "ability/ability_101.jpg", "region": "middle_east_north_africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["food", "consumer_goods"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    }
+  ]
+}

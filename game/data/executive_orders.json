@@ -1,0 +1,19 @@
+{
+  "kind": "executive_order",
+  "source": "Modulo opzionale. 4 carte identiche nel fronte (una per potenza, distinte dal retro). Trascritto da game/assets/cards/country/country_000.jpg (EU).",
+  "note": "A inizio partita ogni giocatore riceve la sua Executive Order. Una volta per partita, invece di giocare una carta, la si mette a faccia in giu' ed esegue una delle azioni elencate. A fine partita, se non usata, +3 VP.",
+  "art": "country/country_000.jpg",
+  "once_per_game": true,
+  "unused_bonus_vp": 3,
+  "actions": [
+    "Improve Relations with a Country on the board.",
+    "Engage in a Region.",
+    "Trade.",
+    "Invest in an allied Country.",
+    "Gain 1 Army. Then, Move up to 2 Armies.",
+    "Build a Base in an allied Country.",
+    "Get a Growth card.",
+    "Produce 3 Resource types."
+  ],
+  "effect_text": "Once per game, instead of playing a card from your hand, place a card face down in front of you and perform one of the following actions: Improve Relations with a Country on the board; Engage in a Region; Trade; Invest in an allied Country; Gain 1 Army, then Move up to 2 Armies; Build a Base in an allied Country; Get a Growth card; Produce 3 Resource types. GAME END: If unused, gain 3 VP."
+}

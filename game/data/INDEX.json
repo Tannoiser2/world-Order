@@ -1,0 +1,28 @@
+{
+ "project": "World Order - dataset carte",
+ "files": {
+  "countries": "data/countries/ (per Regione) + index.json",
+  "starting_abilities": "data/abilities/*_starting.json + index.json",
+  "market": "data/market_cards.json",
+  "growth": "data/growth_cards.json",
+  "strategic_assets": "data/strategic_assets.json",
+  "trade_deals": "data/trade_deals.json",
+  "auto_influence": "data/auto_influence.json",
+  "executive_orders": "data/executive_orders.json",
+  "schema": "data/schema/card.schema.json",
+  "resource_legend": "data/RESOURCE_LEGEND.md",
+  "board": "data/board.json (7 Regioni: slot, costi Engage, maggioranze, cubi iniziali, zone)",
+  "player_boards": "data/player_boards.json (produzione iniziale, Focus, Prosperita, abilita speciali)"
+ },
+ "counts": {
+  "countries": 77,
+  "starting_abilities": 36,
+  "market": 33,
+  "growth": 10,
+  "strategic_assets": 20,
+  "trade_deals": 4,
+  "auto_influence": 20,
+  "executive_orders": 4
+ },
+ "distinct_total": 204
+}

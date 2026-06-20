@@ -1,0 +1,68 @@
+class_name PlayerState
+extends RefCounted
+## Stato di un giocatore (una potenza).
+
+var power: String = ""            # "usa" | "eu" | "russia" | "china"
+var money: int = 0
+var victory_points: int = 0
+
+## Risorse correnti: tipo -> quantita' (cap a 10 sul Resource Track).
+var resources: Dictionary = {
+	"energy": 0, "raw_materials": 0, "food": 0,
+	"consumer_goods": 0, "services": 0, "diplomacy": 0, "armies": 0,
+}
+## Livello di Produzione per tipo di risorsa.
+var production: Dictionary = {}
+
+var prosperity_level: int = 0
+var focus: int = WO.Focus.DOMESTIC
+
+## Mazzo / mano / scarti / carte giocate (liste di card-id o dati carta).
+var deck: Array = []
+var hand: Array = []
+var discard: Array = []
+var played: Array = []
+
+## Country alleate (dati carta) e loro stato exhausted.
+var allied_countries: Array = []
+var exhausted: Dictionary = {}    # country_id -> bool
+
+var armies_available: int = 0     # Army token sulla plancia (non sul Resource Track)
+var strategic_assets: Array = []
+var growth_cards: Array = []
+var used_strategic_assets: Array = []
+
+const RESOURCE_CAP := 10
+
+## Aggiunge risorse rispettando il cap a 10 (oltre il 10 si converte in money,
+## tranne le Armate che vanno perse). Ritorna il money guadagnato per eccedenza.
+func gain_resource(rtype: String, amount: int, import_cost: int = 0) -> int:
+	var overflow_money := 0
+	for _i in amount:
+		if resources[rtype] < RESOURCE_CAP:
+			resources[rtype] += 1
+		elif rtype != "armies":
+			overflow_money += import_cost
+	money += overflow_money
+	return overflow_money
+
+
+func has_resources(cost: Dictionary) -> bool:
+	for k in cost:
+		if k == "money":
+			if money < int(cost[k]):
+				return false
+		elif int(resources.get(k, 0)) < int(cost[k]):
+			return false
+	return true
+
+
+func spend(cost: Dictionary) -> bool:
+	if not has_resources(cost):
+		return false
+	for k in cost:
+		if k == "money":
+			money -= int(cost[k])
+		else:
+			resources[k] -= int(cost[k])
+	return true

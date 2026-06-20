@@ -1,0 +1,73 @@
+{
+  "kind": "player_board",
+  "source": "Plance di produzione (Tabelle_Materiali/World Order/Images/Player Production/). Abilita' speciali e bonus Focus dal regolamento (Rules.pdf). Produzione primaria letta dalle plance; alcuni valori a basso contrasto (Russia, produzione secondaria, denaro iniziale, valori esatti Prosperita') sono da verificare e marcati 'verify'.",
+  "focus_bonuses": {
+    "note": "Comuni a tutte le potenze. La voce 'ongoing' e' l'abilita' continuativa del round.",
+    "domestic": {
+      "ready_country_cards": 1,
+      "increase_production_cost": 8,
+      "produce": ["consumer_goods", "services"],
+      "ongoing": "Gain 2 Research more during the Research step."
+    },
+    "diplomatic": {
+      "ready_country_cards": 4,
+      "increase_production": "diplomacy",
+      "increase_production_cost": 8,
+      "produce": ["diplomacy"],
+      "ongoing": "Engage costs 2 Diplomacy less."
+    },
+    "military": {
+      "ready_country_cards": 2,
+      "increase_production": "armies",
+      "increase_production_cost": 8,
+      "produce": ["armies"],
+      "ongoing": "+1 THREAT wherever you have Armies, and +1 Defense in each Region in your zone of interest."
+    }
+  },
+  "prosperity_track": {
+    "note": "Comune a tutte le potenze. Spendi Consumer Goods per avanzare di 1 spazio/round e guadagna VP + monete. Valori esatti da riverificare; confermati dall'estremita': costo 5 CG -> 9 VP + 30 money; costo 6 CG -> 12 VP.",
+    "verify": true,
+    "steps_partial": [
+      {"cost_consumer_goods": 2, "vp": 2, "money": 10},
+      {"cost_consumer_goods": 3, "vp": 3, "money": 15},
+      {"cost_consumer_goods": 4, "vp": 4, "money": 20},
+      {"cost_consumer_goods": 5, "vp": 9, "money": 30},
+      {"cost_consumer_goods": 6, "vp": 12}
+    ]
+  },
+  "powers": [
+    {
+      "power": "usa", "display_name": "United States of America",
+      "starting_production": {"energy": 3, "raw_materials": 2, "food": 3, "diplomacy": 4, "armies": 3, "consumer_goods": "verify", "services": "verify"},
+      "starting_money": "verify (~30)",
+      "special_abilities": [
+        {"name": "Member of NATO", "text": "Ignore THREAT from the EU (and EU ignores THREAT from USA)."},
+        {"name": "Global Superpower Status", "text": "In each Scoring step, count the Regions in which USA has the most Influence or is tied for most. If that number is less than 4, USA receives a penalty: 0->-12, 1->-8, 2->-5, 3->-2 VP."}
+      ]
+    },
+    {
+      "power": "eu", "display_name": "European Union",
+      "starting_production": {"energy": 1, "raw_materials": 1, "food": 3, "diplomacy": "verify", "armies": "verify", "consumer_goods": "verify", "services": "verify"},
+      "starting_money": "verify",
+      "special_abilities": [
+        {"name": "Member of NATO", "text": "Ignore THREAT from the USA (and USA ignores THREAT from EU)."}
+      ]
+    },
+    {
+      "power": "russia", "display_name": "Russian Federation",
+      "starting_production": {"energy": "verify (~5, traccia fino a 6)", "raw_materials": "verify", "food": "verify", "diplomacy": "verify", "armies": "verify", "consumer_goods": "verify", "services": "verify"},
+      "starting_money": "verify",
+      "special_abilities": [
+        {"name": "Secured Sphere of Influence", "text": "In each Scoring step, for each Region in Russia's zone of interest where Russia has the most Armies or is tied for most (having at least 1 Army), gain 2 VP."}
+      ]
+    },
+    {
+      "power": "china", "display_name": "People's Republic of China",
+      "starting_production": {"energy": 1, "raw_materials": 3, "food": 3, "diplomacy": "verify", "armies": "verify", "consumer_goods": "verify", "services": "verify"},
+      "starting_money": "verify",
+      "special_abilities": [
+        {"name": "Global FDI Network", "text": "At the end of the game, count the Regions in which China has at least 1 FDI token, and gain VP: 3->2, 4->3, 5->4, 6->6, 7->8 VP."}
+      ]
+    }
+  ]
+}

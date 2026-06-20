@@ -1,0 +1,25 @@
+{
+  "kind": "trade_deals",
+  "source": "Trascritto (game/assets/cards/wide_aux/). Indica quante transazioni Export/Import puo' fare la potenza, e quali risorse puo' Importare da ogni altra potenza (= le Commerce card di quella potenza).",
+  "commerce_offered": {
+    "usa": ["services"],
+    "eu": ["consumer_goods", "services"],
+    "russia": ["energy", "raw_materials"],
+    "china": ["consumer_goods"]
+  },
+  "cards": [
+    { "id": "trade_deals_eu", "power": "eu", "art": "wide_aux/wide_aux_000.jpg",
+      "exports": 2, "imports": 2,
+      "import_from": { "usa": ["services"], "russia": ["energy", "raw_materials"], "china": ["consumer_goods"] } },
+    { "id": "trade_deals_usa", "power": "usa", "art": "wide_aux/wide_aux_001.jpg",
+      "exports": 2, "imports": 2,
+      "import_from": { "eu": ["consumer_goods", "services"], "russia": ["energy", "raw_materials"], "china": ["consumer_goods"] } },
+    { "id": "trade_deals_russia", "power": "russia", "art": "wide_aux/wide_aux_002.jpg",
+      "exports": 3, "imports": 2,
+      "import_from": { "usa": ["services"], "eu": ["consumer_goods", "services"], "china": ["consumer_goods"] } },
+    { "id": "trade_deals_china", "power": "china", "art": "wide_aux/wide_aux_003.jpg",
+      "exports": 3, "imports": 3,
+      "import_from": { "usa": ["services"], "eu": ["consumer_goods", "services"], "russia": ["energy", "raw_materials"] } }
+  ],
+  "note": "Russia offre 3 unita' di ciascuna delle sue risorse (Energia, Materie Prime) sulle Commerce card."
+}

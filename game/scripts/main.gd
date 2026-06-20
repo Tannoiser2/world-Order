@@ -1,24 +1,18 @@
 extends Node
-## Scena di avvio provvisoria (Fase 0): smoke test che carica il manifest delle
-## carte estratte e ne stampa il conteggio per tipo. Verra' sostituita dalla
-## vera scena di gioco nelle fasi successive.
-
-const MANIFEST_PATH := "res://data/cards_manifest.json"
+## Scena di avvio (Fase 0/1): esegue i test del motore e un riepilogo del dataset.
+## Verra' sostituita dalla vera scena di gioco nelle fasi successive.
 
 func _ready() -> void:
-	var path := MANIFEST_PATH
-	if not FileAccess.file_exists(path):
-		push_warning("Manifest non trovato: %s" % path)
-		return
-	var text := FileAccess.get_file_as_string(path)
-	var data: Variant = JSON.parse_string(text)
-	if typeof(data) != TYPE_DICTIONARY:
-		push_warning("Manifest non valido")
-		return
-	var by_type := {}
-	for card in data.get("cards", []):
-		var t: String = card.get("type", "?")
-		by_type[t] = int(by_type.get(t, 0)) + 1
-	print("World Order — carte nel manifest: %d" % int(data.get("count", 0)))
-	for t in by_type:
-		print("  %s: %d" % [t, by_type[t]])
+	# Smoke test del motore (esempi del regolamento).
+	var r := EngineTests.run_all()
+	print("== World Order — Engine tests ==")
+	for line in r["log"]:
+		print(line)
+	print("Passati: %d  Falliti: %d" % [r["passed"], r["failed"]])
+
+	# Riepilogo carte dal manifest.
+	var path := "res://data/cards_manifest.json"
+	if FileAccess.file_exists(path):
+		var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if typeof(data) == TYPE_DICTIONARY:
+			print("Carte nel manifest: %d" % int(data.get("count", 0)))
