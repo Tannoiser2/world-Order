@@ -57,11 +57,39 @@ Output: **253 carte uniche** in `game/assets/cards/<tipo>/` + manifest `game/dat
 - `schema/card.schema.json` — JSON Schema (neutro) delle carte trascritte.
 - Le classi `Resource` GDScript equivalenti sono in `../game/scripts/data/`.
 
-## Prossimi passi (trascrizione)
+## Trascrizione Country card
 
-1. Suddividere il bucket `ability` nei tipi reali.
-2. Trascrivere ogni carta in JSON conforme allo schema (nome, costi, effetti come micro-DSL).
-3. Definire il vocabolario delle operazioni (`op`) del micro-DSL, guidandosi con la logica Lua.
+> ⚠️ **Correzione importante sui bucket.** Le vere **Country card** non sono nel bucket `country`
+> (745×1040 = in realtà le *Starting Ability* a tutta pagina + Executive Order), bensì nel bucket
+> **`ability`** (485×745), mescolate con Market/Growth/Auto-Influence. Si riconoscono dal layout:
+> esagono valore, bandiera, mappa della Regione, striscia risorse in basso.
+
+Le Country card sono raggruppate per **Regione** tramite il colore della banda. Mappa rilevata
+(campionando il colore della banda del nome) nel bucket `ability`:
+
+| Colore banda | Regione (probabile) | id `ability_*` |
+|--------------|---------------------|----------------|
+| oliva `#a3a548` | **Middle East – North Africa** ✅ trascritta | a008–a010 (dup.), a090–a101 |
+| viola `#a74c97` | South Asia | a013, a016, a070–a077 |
+| ciano `#3dbae1` | East Asia – Pacific | a014, a015, a078–a089 |
+| arancio acceso `#d99a3b` | Africa | a005, a017, a028–a037 |
+| bruno-rosso `#c2724e` | Americas | a006, a007, a026, a027, a048–a057 |
+| beige `#ceae84` | Europe | a011, a012, a058–a069 |
+| teal `#43868a` | (regione da confermare) | a003, a004, a024, a025, a038–a047 |
+
+Le carte **non-Paese** del bucket `ability` (plance potenza / Auto-Influence) sono a000–a002 e a017–a023.
+
+Trascrizioni completate: [`countries/middle_east_north_africa.json`](countries/) (12 Paesi, validato contro lo schema).
+Legenda dei simboli: [`RESOURCE_LEGEND.md`](RESOURCE_LEGEND.md).
+
+> Nota: le Country compaiono in più copie su sheet diversi (partita TTS a metà). La dedup finale
+> è per **nome** durante la trascrizione.
+
+## Prossimi passi
+
+1. Trascrivere le restanti 6 Regioni di Country card (stesso processo, vedi tabella sopra).
+2. Suddividere il resto del bucket `ability` (Market / Growth / Auto-Influence) e il bucket `country` (Starting Ability + Executive Order).
+3. Trascrivere gli effetti delle carte come micro-DSL e definirne il vocabolario (`op`), guidandosi con la logica Lua.
 4. Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`).
 
 > ⚠️ **Uso personale.** Gli asset grafici sono © Hegemonic Project Limited e non vanno ridistribuiti.
