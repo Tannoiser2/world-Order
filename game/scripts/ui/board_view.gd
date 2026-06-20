@@ -17,8 +17,9 @@ var layout: Dictionary
 
 
 func _ready() -> void:
-	# Stato di gioco di esempio (4 potenze) per popolare la vista.
-	gs = GameSetup.new_game(["usa", "china", "russia", "eu"])
+	# Partita configurata dal menu (default 2 giocatori se avviata direttamente).
+	var powers: Array = GameConfig.powers if GameConfig.powers.size() == GameConfig.player_count else GameConfig.powers_for_count()
+	gs = GameSetup.new_game(powers)
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
 
 	board_rect = TextureRect.new()
