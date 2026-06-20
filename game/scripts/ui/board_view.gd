@@ -25,6 +25,7 @@ var gs: GameState
 var active_seat := 0
 var board_rect: TextureRect
 var overlay: Control
+var card_layer: Control            # carte nazione nelle aree designate
 var map_viewport: Control          # finestra che ritaglia la mappa
 var map_content: Control           # nodo pannato/zoomato (mappa + Regioni)
 var board_native: Vector2 = Vector2(2200, 1964)
@@ -112,6 +113,12 @@ func _ready() -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	map_content.add_child(overlay)
 
+	card_layer = Control.new()
+	card_layer.position = Vector2.ZERO
+	card_layer.size = board_native
+	card_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_content.add_child(card_layer)
+
 	_build_hud()
 	_build_drawer()
 	popup_layer = Control.new()
@@ -176,6 +183,7 @@ func _layout_overlays() -> void:
 		btn.position = Vector2(r[0] * board_native.x, r[1] * board_native.y)
 		btn.size = Vector2((r[2] - r[0]) * board_native.x, (r[3] - r[1]) * board_native.y)
 		overlay.add_child(btn)
+	_layout_card_slots()
 
 
 # --- Zoom & pan della mappa (pinch + trascinamento, rotella su desktop) ---
@@ -305,54 +313,57 @@ func _make_region_button(region: String) -> Button:
 			lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
 			lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.013))
 			hb.add_child(lbl)
-	# Carte nazione disponibili, rese come mini-carte grafiche.
-	var cards := HBoxContainer.new()
-	cards.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cards.add_theme_constant_override("separation", int(board_native.x * 0.006))
-	vb.add_child(cards)
-	for cn in region_countries.get(region, {}).get("available", []):
-		cards.add_child(_make_country_card(cn, region))
 	return btn
 
 
-## Mini-carta grafica di una nazione disponibile sul tabellone (cliccabile per
-## Improve Relations / come target di carta).
-func _make_country_card(cn: Dictionary, region: String) -> Button:
+## Posa le carte nazione disponibili (immagini originali) nelle aree designate
+## del tabellone (card_slots, calibrate dal salvataggio TTS).
+func _layout_card_slots() -> void:
+	for c in card_layer.get_children():
+		c.queue_free()
+	var slots: Dictionary = layout.get("card_slots", {})
+	for region in slots:
+		if region.begins_with("_"):
+			continue
+		var r: Array = slots[region]
+		var x0: float = r[0] * board_native.x
+		var y0: float = r[1] * board_native.y
+		var sw: float = (r[2] - r[0]) * board_native.x
+		var sh: float = (r[3] - r[1]) * board_native.y
+		var avail: Array = region_countries.get(region, {}).get("available", [])
+		var n: int = maxi(1, avail.size())
+		var gap: float = sw * 0.04
+		var cw: float = (sw - gap * (n - 1)) / n
+		for i in avail.size():
+			var card := _make_country_card(avail[i], region, Vector2(cw, sh))
+			card.position = Vector2(x0 + i * (cw + gap), y0)
+			card_layer.add_child(card)
+
+
+## Carta nazione come immagine originale (campo `art`), cliccabile per Improve
+## Relations / come target di carta.
+func _make_country_card(cn: Dictionary, region: String, sz: Vector2) -> Button:
 	var hl := (awaiting == "board_country")
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(board_native.x * 0.072, board_native.y * 0.052)
-	b.clip_text = false
+	b.flat = true
+	b.size = sz
+	b.custom_minimum_size = sz
 	b.pressed.connect(_on_country_pressed.bind(cn, region))
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.96, 0.94, 0.87)
-	sb.border_color = Color(0.35, 0.85, 0.45) if hl else Color(0.16, 0.16, 0.2)
-	sb.set_border_width_all(int(board_native.y * 0.004) if hl else int(board_native.y * 0.002))
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.border_color = Color(0.4, 1, 0.5) if hl else Color(0, 0, 0, 0)
+	sb.set_border_width_all(int(board_native.y * 0.004) if hl else 0)
 	sb.set_corner_radius_all(int(board_native.y * 0.006))
-	sb.content_margin_left = 0; sb.content_margin_right = 0
-	b.add_theme_stylebox_override("normal", sb)
-	var hov := sb.duplicate(); hov.bg_color = Color(1, 0.99, 0.92)
-	b.add_theme_stylebox_override("hover", hov)
-	var pr := sb.duplicate(); pr.bg_color = Color(0.86, 0.84, 0.76)
-	b.add_theme_stylebox_override("pressed", pr)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(st, sb)
 
-	var vb := VBoxContainer.new()
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	b.add_child(vb)
-	var nm := Label.new()
-	nm.text = String(cn.get("display_name", "?"))
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nm.add_theme_color_override("font_color", Color(0.1, 0.1, 0.13))
-	nm.add_theme_font_size_override("font_size", int(board_native.y * 0.011))
-	vb.add_child(nm)
-	var val := Label.new()
-	val.text = "◆ %d" % int(cn.get("value", 0))
-	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
-	val.add_theme_font_size_override("font_size", int(board_native.y * 0.014))
-	vb.add_child(val)
+	var img := TextureRect.new()
+	img.texture = load("res://assets/cards/%s" % String(cn.get("art", "")))
+	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(img)
 	return b
 
 
