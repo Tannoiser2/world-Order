@@ -214,4 +214,17 @@ static func run_all() -> Dictionary:
 	check.call("China Global FDI Network: 7 Regioni -> 8 VP",
 		Aftermath.global_fdi_network_vp(7, ssp["global_fdi_network"]) == 8)
 
+	# --- 12. Simulazione end-to-end (integrazione) ---
+	var fin := GameRunner.run_game(["usa", "china", "russia", "eu"], 42)
+	check.call("partita completata: 6 round", fin.round == 6)
+	check.call("partita: 4 giocatori con stato", fin.players.size() == 4)
+	var win := GameRunner.winner(fin)
+	check.call("partita: vincitore determinato", win != "")
+	var any_vp := false
+	for p in fin.players:
+		if p.victory_points != 0:
+			any_vp = true
+	check.call("partita: VP assegnati", any_vp)
+	log.append("  (info) Vincitore simulazione: %s con %d VP" % [win, fin.player_by_power(win).victory_points])
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}

@@ -159,8 +159,9 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
 - [ ] Codificare gli effetti come **micro-DSL** (`effect` → array di `op`) — propedeutico alla Fase 1.
 **Deliverable:** dataset completo + libreria di asset pronti. *(carte + tabellone ✅; resta la codifica DSL degli effetti)*
 
-### Fase 1 — Motore di regole (core engine) — *in corso* (64/64 test pass, Godot 4.3)
+### Fase 1 — Motore di regole (core engine) — *in corso* (68/68 test pass, Godot 4.3)
 **Obiettivo:** simulare una partita completa senza UI.
+- [x] **Simulazione end-to-end** (`game_runner.gd`): partita completa headless (setup → 6 round → scoring Regioni + token Maggioranza → vincitore) con policy semplice. Test d'integrazione che gira un game a 4 giocatori.
 - [x] **Le 8 azioni** della fase di Azione (`actions.gd`): Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce — costi e effetti, verificati sugli esempi del regolamento.
 - [x] **Aftermath** (`aftermath.gd`): Return on Investments, 3 token Maggioranza (denaro/armate/paesi) con spareggi, abilità speciali (Global Superpower Status, Secured Sphere, Global FDI Network) — verificati sull'esempio del regolamento (pag. 21).
 - [~] Macchina a stati delle 3 fasi e dei 6 round (`game_phases.gd`: struttura + passi deterministici; resta l'orchestrazione completa dei turni: Research/Market, Add Auto-Influence).
