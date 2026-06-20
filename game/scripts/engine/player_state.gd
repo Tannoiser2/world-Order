@@ -57,6 +57,21 @@ func has_resources(cost: Dictionary) -> bool:
 	return true
 
 
+## Pesca n carte dal mazzo (rimescola gli scarti se il mazzo si esaurisce).
+func draw_cards(n: int) -> int:
+	var drawn := 0
+	for _i in n:
+		if deck.is_empty():
+			if discard.is_empty():
+				break
+			deck = discard.duplicate()
+			discard.clear()
+			deck.shuffle()
+		hand.append(deck.pop_back())
+		drawn += 1
+	return drawn
+
+
 func spend(cost: Dictionary) -> bool:
 	if not has_resources(cost):
 		return false

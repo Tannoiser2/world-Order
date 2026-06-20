@@ -245,6 +245,42 @@ static func run_all() -> Dictionary:
 		{"op": "choice", "chosen": [{"op": "produce", "types": ["energy"]}]}])
 	check.call("DSL Growth Strategy (choice=Produce): +2 Energia", cprod.resources["energy"] == 2)
 
+	# --- 11c. Copertura: effect_ops di tutte le carte ---
+	var all_cards := []
+	for pw in ["usa", "eu", "russia", "china"]:
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/abilities/%s_starting.json" % pw))
+		if d: all_cards.append_array(d.get("cards", []))
+	for f in ["market_cards.json", "growth_cards.json", "strategic_assets.json"]:
+		var d2: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/" + f))
+		if d2: all_cards.append_array(d2.get("cards", []))
+	var with_ops := 0
+	var unknown_ops := {}
+	var collect := func(ops: Array, acc: Dictionary, self_ref: Callable) -> void:
+		for o in ops:
+			if o is Dictionary and o.has("op"):
+				var nm := String(o["op"])
+				if nm not in EffectExecutor.KNOWN:
+					acc[nm] = true
+				for key in ["options", "body", "then", "chosen"]:
+					if o.get(key) is Array:
+						for item in o[key]:
+							if item is Array:
+								self_ref.call(item, acc, self_ref)
+							elif item is Dictionary and item.has("op"):
+								self_ref.call([item], acc, self_ref)
+				if o.get("gain") is Dictionary and o["gain"].has("op"):
+					self_ref.call([o["gain"]], acc, self_ref)
+	var gx := GameSetup.new_game(["usa", "china"])
+	for card in all_cards:
+		if card.has("effect_ops"):
+			with_ops += 1
+			collect.call(card["effect_ops"], unknown_ops, collect)
+			# esegue senza crash (op contestuali = deferred, non errori)
+			EffectExecutor.run(gx, "usa", card["effect_ops"])
+	check.call("carte con effect_ops codificati (>=95)", with_ops >= 95)
+	check.call("nessuna op sconosciuta nel dataset", unknown_ops.is_empty())
+	log.append("  (info) carte con effect_ops: %d" % with_ops)
+
 	# --- 12. Simulazione end-to-end (integrazione) ---
 	var fin := GameRunner.run_game(["usa", "china", "russia", "eu"], 42)
 	check.call("partita completata: 6 round", fin.round == 6)

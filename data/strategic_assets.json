@@ -1,49 +1,527 @@
 {
-  "kind": "strategic_asset",
-  "source": "Trascritto a piena risoluzione (game/assets/cards/strategic_asset/). Alloro = VP iniziali (sommati nel setup). Uso singolo per partita. 5 per potenza (alcune comuni tra potenze, es. Arms Export e NATO).",
-  "cards": [
-    { "id": "sa_eu_central_european_bank", "power": "eu", "display_name": "Central European Bank", "art": "strategic_asset/strategic_asset_000.jpg",
-      "starting_vp": 2, "effect_text": "Gain 20 money. Then, Get a Growth Card. For every Services required, you can spend 10 money instead." },
-    { "id": "sa_eu_brand_europe", "power": "eu", "display_name": "Brand Europe", "art": "strategic_asset/strategic_asset_001.jpg",
-      "starting_vp": 4, "effect_text": "Choose a Region other than Europe. Trade, considering that Region's available Countries on the board as allied Countries. If you Exported at least 1 Consumer Goods and 1 Services to that Region's Countries, add 1 Influence there." },
-    { "id": "sa_eu_eu_expansion", "power": "eu", "display_name": "EU Expansion", "art": "strategic_asset/strategic_asset_002.jpg",
-      "starting_vp": 5, "effect_text": "Improve Relations with a Country in Europe. You can spend 2 Diplomacy more to add 1 permanent Influence to Europe, even if there is no available slot." },
-    { "id": "sa_eu_eu_neighborhood_policy", "power": "eu", "display_name": "EU Neighborhood Policy", "art": "strategic_asset/strategic_asset_003.jpg",
-      "starting_vp": 1, "effect_text": "Engage in Europe, Middle East-North Africa, or Central Asia (even if you don't have any allied Countries from that Region). You can then spend 10 money and Engage in 1 of the other 2 Regions as well." },
-    { "id": "sa_eu_nato", "power": "eu", "display_name": "NATO", "art": "strategic_asset/strategic_asset_004.jpg",
-      "starting_vp": 3, "effect_text": "Spend 2 Diplomacy and 10 money to place 2 Armies from the supply on either Europe, Middle East-North Africa, or Central Asia (even if you don't have a Base there), and add 1 permanent Influence to that Region, even if there is no available slot." },
-
-    { "id": "sa_usa_arms_export", "power": "usa", "display_name": "Arms Export", "art": "strategic_asset/strategic_asset_005.jpg",
-      "starting_vp": 4, "effect_text": "Sell 2 Armies for 20 money in total to add 1 Influence to a Region of your choice." },
-    { "id": "sa_usa_us_navy", "power": "usa", "display_name": "US Navy", "art": "strategic_asset/strategic_asset_006.jpg",
-      "starting_vp": 1, "effect_text": "Choose up to 2 Regions other than Central Asia. Move 2 Armies to each of them, spending 5 money more per Army moved. Then, add 1 Influence to each of those Regions." },
-    { "id": "sa_usa_rd_champion", "power": "usa", "display_name": "R&D Champion", "art": "strategic_asset/strategic_asset_007.jpg",
-      "starting_vp": 2, "effect_text": "Produce 2 resource types. Then, Get a Growth Card." },
-    { "id": "sa_usa_main_un_funding_contributor", "power": "usa", "display_name": "Main UN Funding Contributor", "art": "strategic_asset/strategic_asset_008.jpg",
-      "starting_vp": 2, "effect_text": "Spend up to 20 money. For every 10 money spent, gain 3 Diplomacy. Then, Engage in a Region, even if you don't have any allied Countries from that Region." },
-    { "id": "sa_usa_nato", "power": "usa", "display_name": "NATO", "art": "strategic_asset/strategic_asset_009.jpg",
-      "starting_vp": 3, "effect_text": "Move 2 Armies to either Europe, Middle East-North Africa, or Central Asia (even if you don't have a Base there) to add 1 permanent Influence to that Region, even if there is no available slot. Then, gain 2 Diplomacy." },
-
-    { "id": "sa_russia_csto", "power": "russia", "display_name": "Collective Security Treaty Organization", "art": "strategic_asset/strategic_asset_010.jpg",
-      "starting_vp": 5, "effect_text": "Spend 1 Diplomacy to Move up to 2 Armies to Central Asia for free and add 1 permanent Influence to that Region, even if there is no available slot." },
-    { "id": "sa_russia_arms_export", "power": "russia", "display_name": "Arms Export", "art": "strategic_asset/strategic_asset_011.jpg",
-      "starting_vp": 4, "effect_text": "Sell 2 Armies for 20 money in total to add 1 Influence to a Region of your choice." },
-    { "id": "sa_russia_new_energy_markets", "power": "russia", "display_name": "New Energy Markets", "art": "strategic_asset/strategic_asset_012.jpg",
-      "starting_vp": 2, "effect_text": "Choose any 2 Regions. Trade using only those Regions' allied Countries and available Countries on the board, counting each Energy symbol twice. In each Region to which you Exported at least 4 Energy, add 1 Influence." },
-    { "id": "sa_russia_cyber_attacks", "power": "russia", "display_name": "Cyber Attacks", "art": "strategic_asset/strategic_asset_013.jpg",
-      "starting_vp": 4, "effect_text": "Choose a Region. Spend 1 Services to Reset 1 of your temporary Influence in that Region, and then add 1 Influence there." },
-    { "id": "sa_russia_private_military_corporations", "power": "russia", "display_name": "Private Military Corporations", "art": "strategic_asset/strategic_asset_014.jpg",
-      "starting_vp": 1, "effect_text": "Spend 20 money to place 1 Army from the supply on Europe, Middle East-North Africa, Africa (even if you don't have a Base there), or Central Asia, and add 1 Influence to that Region. You can repeat this process once more, choosing a different Region." },
-
-    { "id": "sa_china_expansion_south_china_sea", "power": "china", "display_name": "Expansion in the South China Sea", "art": "strategic_asset/strategic_asset_015.jpg",
-      "starting_vp": 5, "effect_text": "Move 1 to 3 Armies to East Asia-Pacific to add 1 permanent Influence to the Region, even if there is no available slot." },
-    { "id": "sa_china_brics", "power": "china", "display_name": "BRICS", "art": "strategic_asset/strategic_asset_016.jpg",
-      "starting_vp": 2, "effect_text": "Spend 30 money to add 1 Influence to 2 of the following Regions: Americas, Africa, and South Asia. Russia can then spend 20 money (or as much as it has if it has less) to add 1 Influence to the third Region." },
-    { "id": "sa_china_belt_and_road_initiative", "power": "china", "display_name": "Belt & Road Initiative", "art": "strategic_asset/strategic_asset_017.jpg",
-      "starting_vp": 1, "effect_text": "Invest in an allied Country. You can also Invest in an additional allied Country from another Region, spending 10 money more." },
-    { "id": "sa_china_shanghai_cooperation_organization", "power": "china", "display_name": "Shanghai Cooperation Organization", "art": "strategic_asset/strategic_asset_018.jpg",
-      "starting_vp": 3, "effect_text": "Improve Relations with a Country in Middle East-North Africa, Central Asia, South Asia, or East Asia-Pacific. You can then either Invest in that Country, Build a Base in that Country (if able), or Engage in its Region." },
-    { "id": "sa_china_rapid_industrialization", "power": "china", "display_name": "Rapid Industrialization", "art": "strategic_asset/strategic_asset_019.jpg",
-      "starting_vp": 2, "effect_text": "Spend 10 money / 20 money to increase 2 / 3 of your Productions by 1, and gain 3 VP. Then, Play another card." }
-  ]
+ "kind": "strategic_asset",
+ "source": "Trascritto a piena risoluzione (game/assets/cards/strategic_asset/). Alloro = VP iniziali (sommati nel setup). Uso singolo per partita. 5 per potenza (alcune comuni tra potenze, es. Arms Export e NATO).",
+ "cards": [
+  {
+   "id": "sa_eu_central_european_bank",
+   "power": "eu",
+   "display_name": "Central European Bank",
+   "art": "strategic_asset/strategic_asset_000.jpg",
+   "starting_vp": 2,
+   "effect_text": "Gain 20 money. Then, Get a Growth Card. For every Services required, you can spend 10 money instead.",
+   "effect_ops": [
+    {
+     "op": "gain_money",
+     "amount": 20
+    },
+    {
+     "op": "get_growth"
+    }
+   ],
+   "effect_modifiers": [
+    "pay_money_for_services:10"
+   ]
+  },
+  {
+   "id": "sa_eu_brand_europe",
+   "power": "eu",
+   "display_name": "Brand Europe",
+   "art": "strategic_asset/strategic_asset_001.jpg",
+   "starting_vp": 4,
+   "effect_text": "Choose a Region other than Europe. Trade, considering that Region's available Countries on the board as allied Countries. If you Exported at least 1 Consumer Goods and 1 Services to that Region's Countries, add 1 Influence there.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "add_influence",
+        "permanent": false
+       }
+      ],
+      [
+       {
+        "op": "noop"
+       }
+      ]
+     ]
+    }
+   ],
+   "effect_modifiers": [
+    "trade_region_available_countries",
+    "cond_influence_export_cg_services"
+   ]
+  },
+  {
+   "id": "sa_eu_eu_expansion",
+   "power": "eu",
+   "display_name": "EU Expansion",
+   "art": "strategic_asset/strategic_asset_002.jpg",
+   "starting_vp": 5,
+   "effect_text": "Improve Relations with a Country in Europe. You can spend 2 Diplomacy more to add 1 permanent Influence to Europe, even if there is no available slot.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    }
+   ],
+   "effect_modifiers": [
+    "region:europe",
+    "optional_spend_2dip_perm_influence"
+   ]
+  },
+  {
+   "id": "sa_eu_eu_neighborhood_policy",
+   "power": "eu",
+   "display_name": "EU Neighborhood Policy",
+   "art": "strategic_asset/strategic_asset_003.jpg",
+   "starting_vp": 1,
+   "effect_text": "Engage in Europe, Middle East-North Africa, or Central Asia (even if you don't have any allied Countries from that Region). You can then spend 10 money and Engage in 1 of the other 2 Regions as well.",
+   "effect_ops": [
+    {
+     "op": "engage"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "spend",
+        "money": 10
+       },
+       {
+        "op": "engage"
+       }
+      ],
+      [
+       {
+        "op": "noop"
+       }
+      ]
+     ]
+    }
+   ],
+   "effect_modifiers": [
+    "engage_without_allied"
+   ]
+  },
+  {
+   "id": "sa_eu_nato",
+   "power": "eu",
+   "display_name": "NATO",
+   "art": "strategic_asset/strategic_asset_004.jpg",
+   "starting_vp": 3,
+   "effect_text": "Spend 2 Diplomacy and 10 money to place 2 Armies from the supply on either Europe, Middle East-North Africa, or Central Asia (even if you don't have a Base there), and add 1 permanent Influence to that Region, even if there is no available slot.",
+   "effect_ops": [
+    {
+     "op": "spend",
+     "diplomacy": 2,
+     "money": 10
+    },
+    {
+     "op": "place_armies",
+     "n": 2,
+     "regions": [
+      "europe",
+      "middle_east_north_africa",
+      "central_asia"
+     ]
+    },
+    {
+     "op": "add_influence",
+     "permanent": true
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_arms_export",
+   "power": "usa",
+   "display_name": "Arms Export",
+   "art": "strategic_asset/strategic_asset_005.jpg",
+   "starting_vp": 4,
+   "effect_text": "Sell 2 Armies for 20 money in total to add 1 Influence to a Region of your choice.",
+   "effect_ops": [
+    {
+     "op": "sell_armies",
+     "n": 2,
+     "money": 20
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_us_navy",
+   "power": "usa",
+   "display_name": "US Navy",
+   "art": "strategic_asset/strategic_asset_006.jpg",
+   "starting_vp": 1,
+   "effect_text": "Choose up to 2 Regions other than Central Asia. Move 2 Armies to each of them, spending 5 money more per Army moved. Then, add 1 Influence to each of those Regions.",
+   "effect_ops": [
+    {
+     "op": "move_to_regions",
+     "per_region": 2,
+     "count": 2,
+     "exclude": [
+      "central_asia"
+     ]
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_rd_champion",
+   "power": "usa",
+   "display_name": "R&D Champion",
+   "art": "strategic_asset/strategic_asset_007.jpg",
+   "starting_vp": 2,
+   "effect_text": "Produce 2 resource types. Then, Get a Growth Card.",
+   "effect_ops": [
+    {
+     "op": "produce",
+     "count": 2
+    },
+    {
+     "op": "get_growth"
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_main_un_funding_contributor",
+   "power": "usa",
+   "display_name": "Main UN Funding Contributor",
+   "art": "strategic_asset/strategic_asset_008.jpg",
+   "starting_vp": 2,
+   "effect_text": "Spend up to 20 money. For every 10 money spent, gain 3 Diplomacy. Then, Engage in a Region, even if you don't have any allied Countries from that Region.",
+   "effect_ops": [
+    {
+     "op": "spend_for_gain",
+     "spend_max": 20,
+     "per": 10,
+     "gain": {
+      "op": "gain_resource",
+      "type": "diplomacy",
+      "amount": 3
+     }
+    },
+    {
+     "op": "engage"
+    }
+   ],
+   "effect_modifiers": [
+    "engage_without_allied"
+   ]
+  },
+  {
+   "id": "sa_usa_nato",
+   "power": "usa",
+   "display_name": "NATO",
+   "art": "strategic_asset/strategic_asset_009.jpg",
+   "starting_vp": 3,
+   "effect_text": "Move 2 Armies to either Europe, Middle East-North Africa, or Central Asia (even if you don't have a Base there) to add 1 permanent Influence to that Region, even if there is no available slot. Then, gain 2 Diplomacy.",
+   "effect_ops": [
+    {
+     "op": "move_free",
+     "max": 2,
+     "regions": [
+      "europe",
+      "middle_east_north_africa",
+      "central_asia"
+     ]
+    },
+    {
+     "op": "add_influence",
+     "permanent": true
+    },
+    {
+     "op": "gain_resource",
+     "type": "diplomacy",
+     "amount": 2
+    }
+   ]
+  },
+  {
+   "id": "sa_russia_csto",
+   "power": "russia",
+   "display_name": "Collective Security Treaty Organization",
+   "art": "strategic_asset/strategic_asset_010.jpg",
+   "starting_vp": 5,
+   "effect_text": "Spend 1 Diplomacy to Move up to 2 Armies to Central Asia for free and add 1 permanent Influence to that Region, even if there is no available slot.",
+   "effect_ops": [
+    {
+     "op": "spend",
+     "diplomacy": 1
+    },
+    {
+     "op": "move_free",
+     "max": 2,
+     "region": "central_asia"
+    },
+    {
+     "op": "add_influence",
+     "permanent": true
+    }
+   ]
+  },
+  {
+   "id": "sa_russia_arms_export",
+   "power": "russia",
+   "display_name": "Arms Export",
+   "art": "strategic_asset/strategic_asset_011.jpg",
+   "starting_vp": 4,
+   "effect_text": "Sell 2 Armies for 20 money in total to add 1 Influence to a Region of your choice.",
+   "effect_ops": [
+    {
+     "op": "sell_armies",
+     "n": 2,
+     "money": 20
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    }
+   ]
+  },
+  {
+   "id": "sa_russia_new_energy_markets",
+   "power": "russia",
+   "display_name": "New Energy Markets",
+   "art": "strategic_asset/strategic_asset_012.jpg",
+   "starting_vp": 2,
+   "effect_text": "Choose any 2 Regions. Trade using only those Regions' allied Countries and available Countries on the board, counting each Energy symbol twice. In each Region to which you Exported at least 4 Energy, add 1 Influence.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    }
+   ],
+   "effect_modifiers": [
+    "count_energy_twice",
+    "cond_influence_export_4_energy"
+   ]
+  },
+  {
+   "id": "sa_russia_cyber_attacks",
+   "power": "russia",
+   "display_name": "Cyber Attacks",
+   "art": "strategic_asset/strategic_asset_013.jpg",
+   "starting_vp": 4,
+   "effect_text": "Choose a Region. Spend 1 Services to Reset 1 of your temporary Influence in that Region, and then add 1 Influence there.",
+   "effect_ops": [
+    {
+     "op": "spend",
+     "services": 1
+    },
+    {
+     "op": "reset_influence"
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    }
+   ]
+  },
+  {
+   "id": "sa_russia_private_military_corporations",
+   "power": "russia",
+   "display_name": "Private Military Corporations",
+   "art": "strategic_asset/strategic_asset_014.jpg",
+   "starting_vp": 1,
+   "effect_text": "Spend 20 money to place 1 Army from the supply on Europe, Middle East-North Africa, Africa (even if you don't have a Base there), or Central Asia, and add 1 Influence to that Region. You can repeat this process once more, choosing a different Region.",
+   "effect_ops": [
+    {
+     "op": "repeat",
+     "times": 2,
+     "body": [
+      {
+       "op": "spend",
+       "money": 20
+      },
+      {
+       "op": "place_armies",
+       "n": 1,
+       "regions": [
+        "europe",
+        "middle_east_north_africa",
+        "africa",
+        "central_asia"
+       ]
+      },
+      {
+       "op": "add_influence",
+       "permanent": false
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sa_china_expansion_south_china_sea",
+   "power": "china",
+   "display_name": "Expansion in the South China Sea",
+   "art": "strategic_asset/strategic_asset_015.jpg",
+   "starting_vp": 5,
+   "effect_text": "Move 1 to 3 Armies to East Asia-Pacific to add 1 permanent Influence to the Region, even if there is no available slot.",
+   "effect_ops": [
+    {
+     "op": "move_free",
+     "min": 1,
+     "max": 3,
+     "region": "east_asia_pacific"
+    },
+    {
+     "op": "add_influence",
+     "permanent": true
+    }
+   ]
+  },
+  {
+   "id": "sa_china_brics",
+   "power": "china",
+   "display_name": "BRICS",
+   "art": "strategic_asset/strategic_asset_016.jpg",
+   "starting_vp": 2,
+   "effect_text": "Spend 30 money to add 1 Influence to 2 of the following Regions: Americas, Africa, and South Asia. Russia can then spend 20 money (or as much as it has if it has less) to add 1 Influence to the third Region.",
+   "effect_ops": [
+    {
+     "op": "spend",
+     "money": 30
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    },
+    {
+     "op": "add_influence",
+     "permanent": false
+    }
+   ],
+   "effect_modifiers": [
+    "brics_russia_third_region"
+   ]
+  },
+  {
+   "id": "sa_china_belt_and_road_initiative",
+   "power": "china",
+   "display_name": "Belt & Road Initiative",
+   "art": "strategic_asset/strategic_asset_017.jpg",
+   "starting_vp": 1,
+   "effect_text": "Invest in an allied Country. You can also Invest in an additional allied Country from another Region, spending 10 money more.",
+   "effect_ops": [
+    {
+     "op": "invest"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "spend_then",
+        "money": 10,
+        "then": [
+         {
+          "op": "invest"
+         }
+        ]
+       }
+      ],
+      [
+       {
+        "op": "noop"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sa_china_shanghai_cooperation_organization",
+   "power": "china",
+   "display_name": "Shanghai Cooperation Organization",
+   "art": "strategic_asset/strategic_asset_018.jpg",
+   "starting_vp": 3,
+   "effect_text": "Improve Relations with a Country in Middle East-North Africa, Central Asia, South Asia, or East Asia-Pacific. You can then either Invest in that Country, Build a Base in that Country (if able), or Engage in its Region.",
+   "effect_ops": [
+    {
+     "op": "improve_relations"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "invest"
+       }
+      ],
+      [
+       {
+        "op": "build_base"
+       }
+      ],
+      [
+       {
+        "op": "engage"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sa_china_rapid_industrialization",
+   "power": "china",
+   "display_name": "Rapid Industrialization",
+   "art": "strategic_asset/strategic_asset_019.jpg",
+   "starting_vp": 2,
+   "effect_text": "Spend 10 money / 20 money to increase 2 / 3 of your Productions by 1, and gain 3 VP. Then, Play another card.",
+   "effect_ops": [
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "spend",
+        "money": 10
+       },
+       {
+        "op": "increase_production",
+        "count": 2
+       },
+       {
+        "op": "gain_vp",
+        "amount": 3
+       }
+      ],
+      [
+       {
+        "op": "spend",
+        "money": 20
+       },
+       {
+        "op": "increase_production",
+        "count": 3
+       },
+       {
+        "op": "gain_vp",
+        "amount": 3
+       }
+      ]
+     ]
+    },
+    {
+     "op": "play_another"
+    }
+   ]
+  }
+ ]
 }
