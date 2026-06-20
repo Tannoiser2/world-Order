@@ -10,5 +10,15 @@
     "africa": [0.33, 0.56, 0.62, 0.82],
     "south_asia": [0.62, 0.40, 0.86, 0.66],
     "east_asia_pacific": [0.79, 0.40, 1.0, 0.66]
+  },
+  "card_slots": {
+    "_comment": "Aree designate dove posare le carte nazione, [x0,y0,x1,y1] normalizzate. Centri calibrati dalle coordinate dei 7 mazzi CountryCard nel salvataggio TTS (5 aree in basso z=-11.2, Europa+Asia centrale in alto z=10.4).",
+    "americas": [0.024, 0.80, 0.194, 0.94],
+    "middle_east_north_africa": [0.206, 0.80, 0.376, 0.94],
+    "africa": [0.387, 0.80, 0.557, 0.94],
+    "south_asia": [0.569, 0.80, 0.739, 0.94],
+    "east_asia_pacific": [0.749, 0.80, 0.919, 0.94],
+    "europe": [0.424, 0.05, 0.594, 0.185],
+    "central_asia": [0.749, 0.05, 0.919, 0.185]
   }
 }
