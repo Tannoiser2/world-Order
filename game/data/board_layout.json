@@ -1,0 +1,14 @@
+{
+  "kind": "board_layout",
+  "source": "Riquadri Regione normalizzati [x0,y0,x1,y1] sull'immagine del tabellone (game/assets/board/board.jpg), derivati dai ritagli ad alta risoluzione e coerenti con la struttura dei cubi nel salvataggio TTS. Usati dalla UI per posizionare gli overlay delle Regioni.",
+  "board_image": "res://assets/board/board.jpg",
+  "regions": {
+    "europe": [0.29, 0.09, 0.50, 0.37],
+    "central_asia": [0.58, 0.08, 0.82, 0.36],
+    "americas": [0.06, 0.47, 0.34, 0.80],
+    "middle_east_north_africa": [0.40, 0.36, 0.66, 0.58],
+    "africa": [0.33, 0.56, 0.62, 0.82],
+    "south_asia": [0.62, 0.40, 0.86, 0.66],
+    "east_asia_pacific": [0.79, 0.40, 1.0, 0.66]
+  }
+}
