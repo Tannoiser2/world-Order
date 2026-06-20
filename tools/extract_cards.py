@@ -38,9 +38,12 @@ def index_local(source):
     return local
 
 def iter_cards(objs, local):
-    """Genera ogni istanza di carta con sheet locale + posizione nella griglia."""
-    def emit(o):
-        cd = o.get("CustomDeck") or {}
+    """Genera ogni istanza di carta con sheet locale + posizione nella griglia.
+
+    Le carte dentro un Deck spesso NON portano il proprio CustomDeck (sta sul
+    Deck contenitore): lo ereditiamo dal genitore."""
+    def emit(o, parent_cd):
+        cd = o.get("CustomDeck") or parent_cd or {}
         cid = o.get("CardID")
         if cid is None:
             return
@@ -52,11 +55,12 @@ def iter_cards(objs, local):
         sheet = local.get(face_hash(v.get("FaceURL", "")))
         yield {"cardId": cid, "deckKey": ck, "grid": [W, H], "cell": [row, col],
                "sheet": sheet, "guid": o.get("GUID")}
-    def walk(o):
+    def walk(o, parent_cd=None):
         if o.get("Name") in ("Card", "CardCustom"):
-            yield from emit(o)
+            yield from emit(o, parent_cd)
+        child_cd = o.get("CustomDeck") or parent_cd
         for c in o.get("ContainedObjects", []) or []:
-            yield from walk(c)
+            yield from walk(c, child_cd)
     for o in objs:
         yield from walk(o)
 
