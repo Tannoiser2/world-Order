@@ -11,9 +11,14 @@ static var mode: String = "hotseat"   # "hotseat" | "online" (online: futuro)
 static var powers: Array = ["usa", "china", "russia", "eu"]
 
 
-## Ritorna le potenze per il numero di giocatori scelto (default sensati).
+## Ritorna le potenze per il numero di giocatori scelto (default sensati,
+## coerenti col vincolo del 2 giocatori: seggio 0 USA/UE, seggio 1 Russia/Cina).
 static func powers_for_count() -> Array:
-	match player_count:
+	return powers_for_count_n(player_count)
+
+
+static func powers_for_count_n(n: int) -> Array:
+	match n:
 		2: return ["usa", "china"]
 		3: return ["usa", "china", "russia"]
 		_: return ["usa", "china", "russia", "eu"]
