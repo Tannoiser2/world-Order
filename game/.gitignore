@@ -1,5 +1,5 @@
 # Godot 4 — cartella generata di import/cache
 .godot/
 
-# Preset di export con eventuali percorsi/credenziali locali
-export_presets.cfg
+# Nota: export_presets.cfg (preset "Web") e' versionato apposta per la CI Pages;
+# non contiene percorsi/credenziali locali.
