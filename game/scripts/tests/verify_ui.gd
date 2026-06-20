@@ -109,6 +109,28 @@ func _init() -> void:
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
 		if not auto_ok: fails += 1
 
+		# Drawer plancia: una scheda lo apre/chiude (toggle), e l'interazione con
+		# la mappa lo richiude automaticamente.
+		board.drawer_open = false
+		board._on_tab_pressed(2)  # scheda "Mano"
+		var opened: bool = board.drawer_open and board.drawer_tab == 2 \
+			and board.hand_box != null and board.hand_box.get_child_count() == ac.hand.size()
+		print("[%s] scheda Mano apre il cassetto con le carte (%d)" % ["OK" if opened else "FAIL", ac.hand.size()])
+		if not opened: fails += 1
+		board._on_tab_pressed(2)  # ri-tocco la stessa scheda -> chiude
+		var toggled: bool = board.drawer_open == false
+		print("[%s] ri-toccando la scheda attiva il cassetto si chiude" % ["OK" if toggled else "FAIL"])
+		if not toggled: fails += 1
+		board._on_tab_pressed(2)  # riapro per il test di auto-chiusura
+		ac.resources["diplomacy"] = 20
+		var card_close := {"display_name": "Engage close", "effect_ops": [{"op": "engage"}]}
+		ac.hand.append(card_close)
+		board._play_card(card_close)
+		var auto_closed: bool = board.awaiting == "region" and board.drawer_open == false
+		print("[%s] interazione mappa: il cassetto si richiude da solo" % ["OK" if auto_closed else "FAIL"])
+		if not auto_closed: fails += 1
+		board._on_region_pressed("south_asia")  # risolve e chiude la carta
+
 		# Modifiers: carta Engage con sconto -1 Diplomacy per Armata schierata.
 		ac.resources["diplomacy"] = 20
 		var mreg := "central_asia"

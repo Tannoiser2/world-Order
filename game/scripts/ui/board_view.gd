@@ -27,11 +27,19 @@ var board_rect: TextureRect
 var overlay: Control
 var layout: Dictionary
 var status_label: Label
-var player_panel: VBoxContainer
 var board_bg: TextureRect          # plancia di produzione (immagine) della potenza attiva
-var prosperity_marker: Control     # segnalino sul tracciato Prosperità
 var hand_box: HBoxContainer
 var popup_layer: Control
+# HUD persistente + cassetto (drawer) della plancia giocatore.
+var top_hud: PanelContainer
+var hud_box: HBoxContainer
+var drawer: Panel                   # foglio in basso, mostrato a richiesta
+var drawer_veil: ColorRect
+var drawer_content: VBoxContainer
+var tab_bar: HBoxContainer          # maniglie sempre visibili in basso
+var drawer_open := false
+var drawer_tab := 0                 # 0 Plancia · 1 Alleati · 2 Mano
+const DRAWER_TABS := ["Plancia", "Alleati", "Mano"]
 
 var all_countries: Array = []
 var region_countries: Dictionary = {}   # rid -> { available:[c,c], deck:[...] }
@@ -77,8 +85,8 @@ func _ready() -> void:
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(overlay)
 
-	_build_player_panel()
-	_build_hand_panel()
+	_build_hud()
+	_build_drawer()
 	popup_layer = Control.new()
 	popup_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -88,9 +96,15 @@ func _ready() -> void:
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
 
-	resized.connect(_layout_overlays)
+	resized.connect(_on_resized)
+	_layout_ui()
 	_layout_overlays()
 	_refresh()
+
+
+func _on_resized() -> void:
+	_layout_ui()
+	_layout_overlays()
 
 
 func _active() -> PlayerState:
@@ -307,8 +321,8 @@ func _advance_play() -> void:
 		"engage", "move", "add_influence", "place_armies", "move_free", "move_to_regions":
 			awaiting = "region"
 			awaiting_op = op
-			_status("Scegli una Regione per: %s" % name)
-			_layout_overlays()
+			_status("Tocca una Regione sulla mappa per: %s" % name)
+			_after_change()   # chiude il cassetto: serve la mappa
 		"improve_relations":
 			# Seleziona una Country disponibile direttamente sul tabellone.
 			awaiting = "board_country"
@@ -476,7 +490,7 @@ func _cancel_card() -> void:
 	active_mods = {}
 	awaiting = ""
 	_status("Giocata annullata.")
-	_layout_overlays()
+	_after_change()
 
 
 func _board_countries() -> Array:
@@ -492,135 +506,278 @@ func _eligible_allied(op_name: String) -> Array:
 	return p.allied_countries
 
 
-# --- Plancia, mano, stato ---
+# --- HUD persistente, cassetto (drawer) plancia, mano ---
 
-const PANEL_H := 132
-
-func _build_player_panel() -> void:
-	# Sfondo: la plancia di produzione reale della potenza attiva (immagine).
-	board_bg = TextureRect.new()
-	board_bg.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	board_bg.offset_bottom = PANEL_H
-	board_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	board_bg.modulate = Color(1, 1, 1, 0.5)   # attenuata, fa da fondale tematico
-	add_child(board_bg)
-	# Segnalino mobile sul tracciato Prosperità (posizionato in _refresh).
-	prosperity_marker = Control.new()
-	prosperity_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	prosperity_marker.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	prosperity_marker.offset_bottom = PANEL_H
-	add_child(prosperity_marker)
-
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	panel.offset_bottom = PANEL_H
+## Barra superiore sottile sempre visibile: round/potenza, Money/VP/Prosperità,
+## Fine turno e una riga di stato. Adatta in altezza al device (_layout_ui).
+func _build_hud() -> void:
+	top_hud = PanelContainer.new()
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.07, 0.09, 0.12, 0.62)   # semitrasparente: lascia vedere la plancia
-	panel.add_theme_stylebox_override("panel", st)
-	add_child(panel)
-	player_panel = VBoxContainer.new()
-	player_panel.add_theme_constant_override("separation", 6)
-	panel.add_child(player_panel)
+	st.bg_color = Color(0.06, 0.08, 0.11, 0.92)
+	top_hud.add_theme_stylebox_override("panel", st)
+	add_child(top_hud)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	top_hud.add_child(vb)
+	hud_box = HBoxContainer.new()
+	hud_box.add_theme_constant_override("separation", 12)
+	vb.add_child(hud_box)
+	status_label = Label.new()
+	status_label.add_theme_font_size_override("font_size", 12)
+	status_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
+	status_label.clip_text = true
+	vb.add_child(status_label)
+
+
+## Cassetto in basso: immagine della plancia di produzione come fondale, velo per
+## leggibilità, contenuto a schede (Plancia / Alleati / Mano). Sotto, una barra di
+## maniglie sempre visibile che apre/chiude e seleziona la scheda.
+func _build_drawer() -> void:
+	drawer = Panel.new()
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.05, 0.06, 0.09, 0.98)
+	st.set_corner_radius_all(10)
+	drawer.add_theme_stylebox_override("panel", st)
+	drawer.visible = false
+	add_child(drawer)
+
+	board_bg = TextureRect.new()
+	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	board_bg.modulate = Color(1, 1, 1, 0.35)
+	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drawer.add_child(board_bg)
+	drawer_veil = ColorRect.new()
+	drawer_veil.color = Color(0.04, 0.05, 0.08, 0.62)
+	drawer_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	drawer_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drawer.add_child(drawer_veil)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		margin.add_theme_constant_override(m, 10)
+	drawer.add_child(margin)
+	var scroll := ScrollContainer.new()
+	margin.add_child(scroll)
+	drawer_content = VBoxContainer.new()
+	drawer_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	drawer_content.add_theme_constant_override("separation", 8)
+	scroll.add_child(drawer_content)
+
+	tab_bar = HBoxContainer.new()
+	tab_bar.add_theme_constant_override("separation", 4)
+	add_child(tab_bar)
+	for i in DRAWER_TABS.size():
+		var b := Button.new()
+		b.toggle_mode = false
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(_on_tab_pressed.bind(i))
+		tab_bar.add_child(b)
+
+
+## Posiziona HUD, cassetto e barra schede in base alla dimensione corrente del
+## device (responsive). La mappa resta a tutto schermo dietro.
+func _layout_ui() -> void:
+	if top_hud == null:
+		return
+	var w := size.x
+	var h := size.y
+	var hud_h := clampf(h * 0.10, 46, 84)
+	top_hud.position = Vector2.ZERO
+	top_hud.size = Vector2(w, hud_h)
+	var tab_h := clampf(h * 0.065, 38, 56)
+	tab_bar.position = Vector2(0, h - tab_h)
+	tab_bar.size = Vector2(w, tab_h)
+	var dy := h * 0.34
+	drawer.visible = drawer_open
+	drawer.position = Vector2(0, dy)
+	drawer.size = Vector2(w, maxf(80, h - tab_h - dy - 4))
+
+
+func _on_tab_pressed(idx: int) -> void:
+	# Durante un'interazione con la mappa il cassetto resta chiuso.
+	if awaiting in ["region", "board_country"]:
+		return
+	if drawer_open and drawer_tab == idx:
+		drawer_open = false
+	else:
+		drawer_open = true
+		drawer_tab = idx
+	_refresh()
+
+
+## Apre/chiude automaticamente il cassetto in base allo stato di gioco: chiuso
+## quando si deve toccare la mappa, aperto su "Alleati" quando serve scegliere un
+## Country alleato (Invest/Build a Base).
+func _update_drawer_state() -> void:
+	if awaiting in ["region", "board_country"]:
+		drawer_open = false
+	elif awaiting == "allied_country":
+		drawer_open = true
+		drawer_tab = 1
 
 
 func _refresh() -> void:
-	for c in player_panel.get_children():
-		c.queue_free()
 	var p := _active()
-	# Plancia di produzione della potenza attiva come fondale del pannello.
+	_update_drawer_state()
+	_refresh_hud(p)
+	_refresh_tab_bar(p)
 	if board_bg:
 		var tex := load("res://assets/player_boards/%s.jpg" % p.power)
 		if tex:
 			board_bg.texture = tex
-	_update_prosperity_marker(p)
-	var row1 := HBoxContainer.new()
-	row1.add_theme_constant_override("separation", 14)
-	player_panel.add_child(row1)
+	_refresh_drawer_content(p)
+	_layout_ui()
+
+
+func _refresh_hud(p: PlayerState) -> void:
+	for c in hud_box.get_children():
+		c.queue_free()
 	var my_turn := (round_turn_count / gs.players.size()) + 1
 	var who := Label.new()
-	who.text = "Round %d  ·  %s  ·  turno %d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
+	who.text = "R%d · %s · t%d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
 	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
-	who.add_theme_font_size_override("font_size", 18)
-	row1.add_child(who)
-	row1.add_child(_kv("Money", p.money))
-	row1.add_child(_kv("VP", p.victory_points))
-	row1.add_child(_kv("Prosp", p.prosperity_level))
+	who.add_theme_font_size_override("font_size", 17)
+	hud_box.add_child(who)
+	hud_box.add_child(_kv("$", p.money))
+	hud_box.add_child(_kv("VP", p.victory_points))
+	hud_box.add_child(_kv("Prosp", p.prosperity_level))
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hud_box.add_child(spacer)
+	var endt := Button.new()
+	endt.text = "Fine turno ▶"
+	endt.disabled = game_over or not playing_card.is_empty()
+	endt.pressed.connect(_end_turn)
+	hud_box.add_child(endt)
+
+
+## Etichette delle maniglie: nome scheda + contatore, freccia su/giù secondo
+## lo stato del cassetto. Disabilitate durante un'interazione con la mappa.
+func _refresh_tab_bar(p: PlayerState) -> void:
+	var counts := ["", " (%d)" % p.allied_countries.size(), " (%d)" % p.hand.size()]
+	var map_lock: bool = awaiting in ["region", "board_country"]
+	for i in tab_bar.get_child_count():
+		var b: Button = tab_bar.get_child(i)
+		var arrow := "▼" if (drawer_open and drawer_tab == i) else "▲"
+		b.text = "%s %s%s" % [arrow, DRAWER_TABS[i], counts[i]]
+		b.disabled = map_lock
+		if drawer_open and drawer_tab == i:
+			b.add_theme_color_override("font_color", Color(0.6, 1, 0.7))
+		else:
+			b.remove_theme_color_override("font_color")
+
+
+func _refresh_drawer_content(p: PlayerState) -> void:
+	for c in drawer_content.get_children():
+		c.queue_free()
+	if not drawer_open:
+		return
+	match drawer_tab:
+		0: _build_plancia_tab(p)
+		1: _build_alleati_tab(p)
+		2: _build_mano_tab(p)
+
+
+## Scheda Plancia: Focus, produzioni/risorse, tracciato Prosperità.
+func _build_plancia_tab(p: PlayerState) -> void:
+	var focus_row := HBoxContainer.new()
+	focus_row.add_theme_constant_override("separation", 6)
+	drawer_content.add_child(_section("Focus"))
+	drawer_content.add_child(focus_row)
 	for f in 3:
 		var b := Button.new()
 		b.text = FOCUS_NAME[f]
 		b.toggle_mode = true
 		b.button_pressed = (p.focus == f)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.pressed.connect(func(): p.focus = f; _refresh())
-		row1.add_child(b)
-	var endt := Button.new()
-	endt.text = "Fine turno ▶"
-	endt.disabled = game_over or not playing_card.is_empty()
-	endt.pressed.connect(_end_turn)
-	row1.add_child(endt)
-	var row2 := HBoxContainer.new()
-	row2.add_theme_constant_override("separation", 12)
-	player_panel.add_child(row2)
+		focus_row.add_child(b)
+
+	drawer_content.add_child(_section("Risorse / Produzione"))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 4)
+	drawer_content.add_child(grid)
 	for rtype in RES:
-		row2.add_child(_kv2("%s %d/%d" % [RES_LABEL[rtype], int(p.resources.get(rtype, 0)), int(p.production.get(rtype, 0))]))
-	# Riga 3: Country alleate davanti al giocatore (cliccabili per Invest/Build).
-	var row3 := HBoxContainer.new()
-	row3.add_theme_constant_override("separation", 6)
-	player_panel.add_child(row3)
-	row3.add_child(_kv2("Alleati (%d):" % p.allied_countries.size()))
+		grid.add_child(_kv2("%s %d/%d" % [RES_LABEL[rtype], int(p.resources.get(rtype, 0)), int(p.production.get(rtype, 0))]))
+
+	drawer_content.add_child(_section("Prosperità"))
+	var pb: Dictionary = DataLoader.load_player_boards()
+	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
+	var strip := HBoxContainer.new()
+	strip.add_theme_constant_override("separation", 4)
+	drawer_content.add_child(strip)
+	for i in steps.size():
+		var step: Dictionary = steps[i]
+		var cell := Label.new()
+		cell.text = "  %dCG→%dVP  " % [int(step.get("cost_consumer_goods", 0)), int(step.get("vp", 0))]
+		cell.add_theme_font_size_override("font_size", 12)
+		var box := StyleBoxFlat.new()
+		if i < p.prosperity_level:
+			box.bg_color = Color(0.3, 0.7, 0.4, 0.9)
+		elif i == p.prosperity_level:
+			box.bg_color = Color(0.9, 0.8, 0.2, 0.95)
+			cell.add_theme_color_override("font_color", Color.BLACK)
+		else:
+			box.bg_color = Color(0.2, 0.2, 0.2, 0.8)
+		cell.add_theme_stylebox_override("normal", box)
+		strip.add_child(cell)
+
+
+## Scheda Alleati: Country alleate cliccabili (Invest/Build a Base).
+func _build_alleati_tab(p: PlayerState) -> void:
+	if awaiting == "allied_country":
+		drawer_content.add_child(_section("Scegli un Country alleato per: %s" % String(awaiting_op.get("op", ""))))
+	else:
+		drawer_content.add_child(_section("Country alleate (tocca per Invest / Build a Base)"))
+	if p.allied_countries.is_empty():
+		drawer_content.add_child(_kv2("  Nessun alleato: fai Improve Relations sul tabellone."))
+		return
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if awaiting == "allied_country" else []
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	drawer_content.add_child(grid)
 	for cn in p.allied_countries:
 		var ab := Button.new()
-		ab.text = "%s (%d)" % [cn.get("display_name", "?"), int(cn.get("value", 0))]
-		ab.add_theme_font_size_override("font_size", 11)
+		ab.text = "%s (%d) · %s" % [cn.get("display_name", "?"), int(cn.get("value", 0)), String(cn.get("region", "")).replace("_", " ")]
+		ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ab.clip_text = true
 		ab.pressed.connect(_on_allied_pressed.bind(cn))
 		if awaiting == "allied_country":
 			if cn in elig:
 				ab.add_theme_color_override("font_color", Color(0.5, 1, 0.6))
 			else:
 				ab.disabled = true
-		row3.add_child(ab)
+		grid.add_child(ab)
 
 
-## Strip del tracciato Prosperità sovrapposto al pannello: una casella per passo,
-## piene fino al livello attuale, evidenziata la prossima (con il costo in CG).
-func _update_prosperity_marker(p: PlayerState) -> void:
-	if prosperity_marker == null:
-		return
-	for c in prosperity_marker.get_children():
-		c.queue_free()
-	var pb: Dictionary = DataLoader.load_player_boards()
-	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
-	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", 4)
-	strip.position = Vector2(14, PANEL_H - 24)
-	prosperity_marker.add_child(strip)
-	var lab := Label.new()
-	lab.text = "Prosperità:"
-	lab.add_theme_font_size_override("font_size", 11)
-	strip.add_child(lab)
-	for i in steps.size():
-		var step: Dictionary = steps[i]
-		var cell := Label.new()
-		cell.text = "  %dCG→%dVP  " % [int(step.get("cost_consumer_goods", 0)), int(step.get("vp", 0))]
-		cell.add_theme_font_size_override("font_size", 11)
-		var box := StyleBoxFlat.new()
-		if i < p.prosperity_level:
-			box.bg_color = Color(0.3, 0.7, 0.4, 0.85)        # già raggiunto
-		elif i == p.prosperity_level:
-			box.bg_color = Color(0.9, 0.8, 0.2, 0.9)         # prossimo
-			cell.add_theme_color_override("font_color", Color.BLACK)
-		else:
-			box.bg_color = Color(0.2, 0.2, 0.2, 0.7)
-		cell.add_theme_stylebox_override("normal", box)
-		strip.add_child(cell)
+## Scheda Mano: le carte giocabili (tocca per giocare).
+func _build_mano_tab(p: PlayerState) -> void:
+	drawer_content.add_child(_section("La tua mano (tocca una carta per giocarla)"))
+	hand_box = HBoxContainer.new()
+	hand_box.add_theme_constant_override("separation", 6)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.custom_minimum_size = Vector2(0, _card_height() + 16)
+	scroll.add_child(hand_box)
+	drawer_content.add_child(scroll)
+	_render_hand()
+
+
+func _card_height() -> int:
+	return int(clampf(size.y * 0.22, 130, 260))
 
 
 func _kv(k: String, v: int) -> Label:
-	var l := Label.new(); l.text = "%s %d" % [k, v]; l.add_theme_font_size_override("font_size", 15); return l
+	var l := Label.new(); l.text = "%s %d" % [k, v]; l.add_theme_font_size_override("font_size", 16); return l
 
 
 func _kv2(t: String) -> Label:
-	var l := Label.new(); l.text = t; return l
+	var l := Label.new(); l.text = t; l.add_theme_font_size_override("font_size", 13); return l
 
 
 func _end_turn() -> void:
@@ -873,40 +1030,20 @@ func _show_summary(lines: Array, cb: Callable) -> void:
 func _after_change() -> void:
 	_layout_overlays()
 	_refresh()
-	_render_hand()
 
 
-func _build_hand_panel() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	panel.offset_top = -184
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.06, 0.07, 0.1, 0.92)
-	panel.add_theme_stylebox_override("panel", st)
-	var scroll := ScrollContainer.new()
-	hand_box = HBoxContainer.new()
-	hand_box.add_theme_constant_override("separation", 6)
-	scroll.add_child(hand_box)
-	panel.add_child(scroll)
-	add_child(panel)
-	status_label = Label.new()
-	status_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	status_label.offset_top = -206
-	status_label.offset_bottom = -186
-	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	add_child(status_label)
-	_render_hand()
-
-
+## Disegna le carte della mano nel contenitore della scheda "Mano".
 func _render_hand() -> void:
-	if hand_box == null:
+	if hand_box == null or not is_instance_valid(hand_box):
 		return
 	for c in hand_box.get_children():
 		c.queue_free()
+	var ch := _card_height()
 	for card in _active().hand:
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(112, 160)
+		btn.custom_minimum_size = Vector2(int(ch * 0.70), ch)
 		btn.flat = true
+		btn.disabled = not playing_card.is_empty()
 		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
 		btn.pressed.connect(_play_card.bind(card))
 		var tr := TextureRect.new()
