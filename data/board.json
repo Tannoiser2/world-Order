@@ -6,7 +6,17 @@
     "scoring_rounds": [3, 6],
     "vp_track_max": 100,
     "turn_order_places": 4,
-    "majority_tokens": ["most_money", "most_armies_on_board", "most_allied_countries"]
+    "majority_tokens": ["most_money", "most_armies_on_board", "most_allied_countries"],
+    "majority_token_bonus": {
+      "most_money": [5, 3, 1],
+      "most_armies_on_board": [6, 3, 1],
+      "most_allied_countries": [7, 4, 2]
+    },
+    "power_special_scoring": {
+      "global_superpower_status_penalty": {"0": -12, "1": -8, "2": -5, "3": -2},
+      "secured_sphere_vp_per_region": 2,
+      "global_fdi_network": {"3": 2, "4": 3, "5": 4, "6": 6, "7": 8}
+    }
   },
   "slot_notes": "permanent_slots/temporary_slots = valori VP guadagnati piazzando Influenza (da sinistra). I cubi iniziali (setup) sono indicati in starting_influence. 2 Regioni iniziano con un cubo nero 'locale' (MENA e South Asia).",
   "zone_note": "zone_of_interest = potenze la cui bandiera compare nella Regione (per THREAT/Defense). Confermate da esempi di regolamento per Europe e Central Asia. Americas/Africa/South Asia: catturate solo le bandiere chiaramente visibili (da verificare).",

@@ -174,4 +174,44 @@ static func run_all() -> Dictionary:
 	check.call("Produce CG: speso 2 Energia + 2 Materie Prime",
 		pr.resources["energy"] == 1 and pr.resources["raw_materials"] == 0 and pr.resources["consumer_goods"] == 2)
 
+	# --- 9. Aftermath: token Maggioranza (esempio regolamento pag. 21) ---
+	# Most Money [5,3,1]: Kate 121, Anna 78, Alex 54, Jim 49.
+	var money_maj := Aftermath.score_majority(
+		{"kate": 121, "anna": 78, "alex": 54, "jim": 49}, [5, 3, 1])
+	check.call("Maggioranza money: Kate 5, Anna 3, Alex 1, Jim 0",
+		money_maj["kate"] == 5 and money_maj["anna"] == 3 and money_maj["alex"] == 1 and int(money_maj.get("jim", 0)) == 0)
+	# Most Armies [6,3,1]: Alex 8, Jim 5, Kate 5 -> Jim/Kate pari 2°, prendono il 3° (1).
+	var army_maj := Aftermath.score_majority({"alex": 8, "jim": 5, "kate": 5, "anna": 0}, [6, 3, 1])
+	check.call("Maggioranza armate: Alex 6; Jim/Kate pari -> 1 ciascuno",
+		army_maj["alex"] == 6 and army_maj["jim"] == 1 and army_maj["kate"] == 1)
+	# Most Countries [7,4,2]: Anna 10, Alex 9, Jim 8, Kate 8 -> Jim/Kate pari 3° -> posizione piu' bassa (4°) = 0.
+	var ctry_maj := Aftermath.score_majority({"anna": 10, "alex": 9, "jim": 8, "kate": 8}, [7, 4, 2])
+	check.call("Maggioranza paesi: Anna 7, Alex 4, Jim/Kate 0",
+		ctry_maj["anna"] == 7 and ctry_maj["alex"] == 4 and ctry_maj["jim"] == 0 and ctry_maj["kate"] == 0)
+	# 2 giocatori: solo il 1° assoluto segna; pareggio = nessuno.
+	check.call("2p: solo il vincitore segna",
+		Aftermath.score_majority({"a": 5, "b": 3}, [5, 3, 1], true) == {"a": 5})
+	check.call("2p: pareggio -> nessuno",
+		Aftermath.score_majority({"a": 5, "b": 5}, [5, 3, 1], true).is_empty())
+
+	# --- 10. Return on Investments (esempio pag. 19) ---
+	# Anna: FDI su Paesi di valore 1,1,3 -> 2+2+6=10; scarta Engage in Africa con 2 alleati -> 10. Totale 20.
+	var pa := PlayerState.new()
+	var roi := Aftermath.return_on_investments(pa, [1, 1, 3], [2])
+	check.call("Return on Investments: 10 (FDI) + 10 (Engage) = 20", roi == 20 and pa.money == 20)
+
+	# --- 11. Abilita' speciali di fine partita ---
+	var bd := DataLoader.load_board()
+	var ssp: Dictionary = bd["global"]["power_special_scoring"]
+	check.call("USA Global Superpower Status: 2 Regioni -> -5",
+		Aftermath.global_superpower_status_penalty(2, ssp["global_superpower_status_penalty"]) == -5)
+	check.call("USA: 4+ Regioni -> nessuna penalita'",
+		Aftermath.global_superpower_status_penalty(4, ssp["global_superpower_status_penalty"]) == 0)
+	check.call("Russia Secured Sphere: 3 Regioni -> 6 VP",
+		Aftermath.secured_sphere_vp(3, int(ssp["secured_sphere_vp_per_region"])) == 6)
+	check.call("China Global FDI Network: 5 Regioni -> 4 VP",
+		Aftermath.global_fdi_network_vp(5, ssp["global_fdi_network"]) == 4)
+	check.call("China Global FDI Network: 7 Regioni -> 8 VP",
+		Aftermath.global_fdi_network_vp(7, ssp["global_fdi_network"]) == 8)
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}
