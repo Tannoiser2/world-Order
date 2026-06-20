@@ -111,11 +111,25 @@ New Allies, Foreign Military Presence, Military Reinforcements.
 
 File: [`abilities/*_starting.json`](abilities/) (testo effetto verbatim + tipo + bonus) · indice [`abilities/index.json`](abilities/index.json).
 
+## ✅ Dataset carte COMPLETO
+
+Tutte le carte del gioco sono trascritte e validate (vedi [`INDEX.json`](INDEX.json)):
+
+| Categoria | File | # distinte |
+|-----------|------|-----------|
+| Country | `countries/*.json` | 77 |
+| Starting Ability | `abilities/*_starting.json` | 36 |
+| Market | `market_cards.json` | 33 (mazzo da ~66, 2 copie/carta) |
+| Growth | `growth_cards.json` | 10 |
+| Strategic Asset | `strategic_assets.json` | 20 |
+| Trade Deals | `trade_deals.json` | 4 |
+| Auto-Influence | `auto_influence.json` | 20 |
+| Executive Order | `executive_orders.json` | 4 (fronte unico) |
+| **Totale** | | **204** |
+
 ## Prossimi passi
 
-1. Trascrivere le **Market card** (bucket `country` con costo Research, + bucket `ability` piccolo) e gli **Executive Order** (4).
-2. Trascrivere **Growth card** e **Strategic Asset** (bucket `strategic_asset`) e **Auto-Influence**.
-3. Codificare gli effetti come micro-DSL (`effect` → array di `op`), guidandosi con la logica Lua.
-4. Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`).
+1. Codificare gli effetti delle carte come **micro-DSL** (`effect` → array di `op`) per il motore (Fase 1), guidandosi con la logica Lua del prototipo.
+2. Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`) e i valori delle **Regioni** del tabellone (slot Influenza permanenti/temporanei, costi Engage, zone d'interesse).
 
 > ⚠️ **Uso personale.** Gli asset grafici sono © Hegemonic Project Limited e non vanno ridistribuiti.
