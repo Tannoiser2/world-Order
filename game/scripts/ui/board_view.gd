@@ -875,18 +875,8 @@ func _refresh_drawer_content() -> void:
 	else:
 		drawer_content.add_child(_section("Focus: %s" % FOCUS_NAME[p.focus]))
 
-	drawer_content.add_child(_section("Risorse / Produzione"))
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 4)
-	drawer_content.add_child(grid)
-	for rtype in RES:
-		grid.add_child(_kv2("%s %d/%d" % [RES_LABEL[rtype], int(p.resources.get(rtype, 0)), int(p.production.get(rtype, 0))]))
-
-	drawer_content.add_child(_section("Prosperità"))
-	drawer_content.add_child(_prosperity_strip(p))
-
+	# (Risorse/Produzione/Prosperità non servono più come testo: sono i
+	# cubi/token/segnalini sull'immagine reale della plancia qui sopra.)
 	_build_allies_section(p, is_active)
 	_build_hand_section(p, is_active)
 
@@ -899,13 +889,13 @@ const PROD_PITCH := 0.050
 ## Le 4 plance condividono il layout; la lunghezza dei tracciati cambia ma le
 ## caselle partono sempre dalle stesse coordinate, quindi: x = x0 + (livello-1)*passo.
 const PROD_TRACKS := {
-	"energy": [0.097, 0.194],
-	"raw_materials": [0.260, 0.194],
-	"food": [0.657, 0.194],
-	"consumer_goods": [0.103, 0.517],
-	"services": [0.103, 0.597],
-	"diplomacy": [0.414, 0.531],
-	"armies": [0.729, 0.531],
+	"energy": [0.119, 0.205],
+	"raw_materials": [0.282, 0.205],
+	"food": [0.679, 0.205],
+	"consumer_goods": [0.125, 0.527],
+	"services": [0.125, 0.606],
+	"diplomacy": [0.436, 0.540],
+	"armies": [0.751, 0.540],
 }
 ## Cerchi Focus (Domestic, Diplomatic, Military).
 const FOCUS_POS := [[0.307, 0.311], [0.600, 0.311], [0.921, 0.311]]
@@ -1159,13 +1149,11 @@ func _show_research() -> void:
 	vb.add_child(head)
 
 	vb.add_child(_section("Market (spendi Research):"))
+	var mrow := _card_row()
+	vb.add_child(mrow)
 	for card in market_display:
 		var cost := int(card.get("market_cost", 0))
-		var b := Button.new()
-		b.text = "%s  —  costo %d  (%s)" % [card.get("display_name", "?"), cost, card.get("type", "")]
-		b.disabled = _research_points < cost
-		b.pressed.connect(_buy_market.bind(card))
-		vb.add_child(b)
+		mrow.add_child(_market_card(card, "costo %d Ⓡ" % cost, _research_points < cost, _buy_market.bind(card)))
 
 	vb.add_child(_section("Growth (livello %d, spendi risorse):" % _next_growth_level(p)))
 	var ag := _available_growth(p)
@@ -1173,12 +1161,11 @@ func _show_research() -> void:
 		var none := Label.new()
 		none.text = "  (nessuna Growth di questo livello)"
 		vb.add_child(none)
-	for card in ag:
-		var b := Button.new()
-		b.text = "%s  —  %s  (+%d VP)" % [card.get("display_name", "?"), _cost_text(card.get("cost", {})), int(card.get("victory_points", 0))]
-		b.disabled = not p.has_resources(card.get("cost", {}))
-		b.pressed.connect(_buy_growth.bind(card))
-		vb.add_child(b)
+	else:
+		var grow := _card_row()
+		vb.add_child(grow)
+		for card in ag:
+			grow.add_child(_market_card(card, "%s  +%d VP" % [_cost_text(card.get("cost", {})), int(card.get("victory_points", 0))], not p.has_resources(card.get("cost", {})), _buy_growth.bind(card)))
 
 	var done := Button.new()
 	done.text = "Continua ▶"
@@ -1359,6 +1346,43 @@ func _render_hand() -> void:
 			if tex: tr.texture = tex
 		btn.add_child(tr)
 		hand_box.add_child(btn)
+
+
+## Riga orizzontale scrollabile di carte (Market/Growth) come la mano.
+func _card_row() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	return row
+
+
+## Carta Market/Growth come IMMAGINE reale + etichetta costo sotto, cliccabile.
+func _market_card(card: Dictionary, cost_text: String, disabled: bool, on_press: Callable) -> Control:
+	var ch := int(clampf(size.y * 0.22, 88, 180))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(int(ch * 0.70), ch)
+	b.flat = true
+	b.disabled = disabled
+	b.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
+	b.pressed.connect(on_press)
+	var tr := TextureRect.new()
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var art: String = card.get("art", "")
+	if art != "":
+		var tex := load("res://assets/cards/" + art)
+		if tex: tr.texture = tex
+	b.add_child(tr)
+	box.add_child(b)
+	var lab := Label.new()
+	lab.text = cost_text
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 3))
+	lab.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6) if not disabled else Color(0.6, 0.5, 0.5))
+	box.add_child(lab)
+	return box
 
 
 func _status(t: String) -> void:
