@@ -45,6 +45,7 @@ var hud_box: HBoxContainer
 var drawer: Panel                   # foglio in basso, mostrato a richiesta
 var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
+var hand_pinned: VBoxContainer   # mano del giocatore, fissa in basso nel cassetto
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var drawer_open := false
 var drawer_power := ""              # potenza la cui plancia è mostrata nel cassetto
@@ -710,12 +711,21 @@ func _build_drawer() -> void:
 	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(m, 10)
 	drawer.add_child(margin)
+	# Colonna: in alto la plancia+alleati (scrollabile), in basso la MANO fissa
+	# (sempre visibile, non scrolla mai via).
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	margin.add_child(col)
 	var scroll := ScrollContainer.new()
-	margin.add_child(scroll)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(scroll)
 	drawer_content = VBoxContainer.new()
 	drawer_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	drawer_content.add_theme_constant_override("separation", 8)
 	scroll.add_child(drawer_content)
+	hand_pinned = VBoxContainer.new()
+	hand_pinned.add_theme_constant_override("separation", 2)
+	col.add_child(hand_pinned)
 
 	# Una maniglia per ogni potenza in gioco (i "cassetti dei paesi").
 	tab_bar = HBoxContainer.new()
@@ -841,6 +851,9 @@ func _refresh_tab_bar() -> void:
 func _refresh_drawer_content() -> void:
 	for c in drawer_content.get_children():
 		c.queue_free()
+	if hand_pinned:
+		for c in hand_pinned.get_children():
+			c.queue_free()
 	if not drawer_open:
 		return
 	var p := gs.player_by_power(drawer_power)
@@ -1044,18 +1057,20 @@ func _build_allies_section(p: PlayerState, is_active: bool) -> void:
 ## Sezione mano: carte scoperte solo per il giocatore di turno; per gli altri
 ## (hot-seat) si mostra solo il numero, senza svelare le carte.
 func _build_hand_section(p: PlayerState, is_active: bool) -> void:
+	# La mano è SEMPRE in basso nel cassetto (hand_pinned), così non scorre mai via.
 	if not is_active:
-		drawer_content.add_child(_section("Mano: %d carte (coperte)" % p.hand.size()))
+		hand_pinned.add_child(_section("Mano: %d carte (coperte)" % p.hand.size()))
 		hand_box = null
 		return
-	drawer_content.add_child(_section("La tua mano (tocca una carta per giocarla)"))
+	hand_pinned.add_child(_section("La tua mano (tocca una carta per giocarla)"))
 	hand_box = HBoxContainer.new()
 	hand_box.add_theme_constant_override("separation", 6)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(0, _card_height() + 16)
 	scroll.add_child(hand_box)
-	drawer_content.add_child(scroll)
+	hand_pinned.add_child(scroll)
 	_render_hand()
 
 
