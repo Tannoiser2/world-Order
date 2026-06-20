@@ -853,10 +853,13 @@ const PROD_TRACKS := {
 ## Costruisce la vista plancia: immagine reale a piena visibilità + segnalini
 ## (Produzione per ogni risorsa, Risorse possedute, Prosperità).
 func _build_plancia_view(p: PlayerState) -> Control:
-	var pw := maxf(120.0, size.x - 24.0)
-	var ph := pw * PLANCIA_RATIO
+	# La plancia è limitata in ALTEZZA (max ~42% schermo) così sta nel cassetto
+	# senza diventare enorme; la larghezza ne deriva mantenendo le proporzioni.
+	var ph := minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.42)
+	var pw := ph / PLANCIA_RATIO
 	var view := Control.new()
 	view.custom_minimum_size = Vector2(pw, ph)
+	view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	board_bg = TextureRect.new()
 	board_bg.texture = load("res://assets/player_boards/%s.jpg" % p.power)
 	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
