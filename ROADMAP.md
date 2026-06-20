@@ -147,16 +147,16 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
 
 ## 5. Roadmap a fasi
 
-### Fase 0 — Fondamenta & contenuti (estrazione dati) — *in corso*
+### Fase 0 — Fondamenta & contenuti (estrazione dati) — *dataset carte completo* ✅
 **Obiettivo:** trasformare regolamento + asset in dati strutturati e versionati.
-- [x] **Pipeline di estrazione** (`tools/extract_cards.py`): dedup per identità (sheet+cella) e classificazione per forma. → **253 carte uniche** estratte come JPG in `game/assets/cards/`.
-- [x] **Manifest carte** (`data/cards_manifest.json`): tipo, file, dimensioni, sheet sorgente, cella.
-- [x] **Schema dati** (§4) come classi `Resource` GDScript in `game/scripts/data/` + JSON Schema in `data/schema/`.
+- [x] **Pipeline di estrazione** (`tools/extract_cards.py`): dedup per identità (sheet+cella) e classificazione per forma. → carte estratte come JPG in `game/assets/cards/` (+ Auto-Influence slicate a parte).
+- [x] **Manifest carte** (`game/data/cards_manifest.json`) e **schema dati** (§4) come classi `Resource` GDScript + JSON Schema.
 - [x] **Scheletro progetto Godot** (`game/project.godot` + struttura cartelle).
-- [ ] Suddividere il bucket `ability` (102) in Market / Starting per potenza / Growth / Auto-Influence (richiede ispezione contenuto).
-- [ ] Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`).
-- [ ] **Trascrivere** in dati strutturati: Country, Market, Starting Ability, Growth, Strategic Asset, Auto-Influence, Executive Orders (effetti come DSL/JSON).
-**Deliverable:** dataset completo + libreria di asset pronti. *(pipeline + schema + asset pronti; resta la trascrizione dei contenuti)*
+- [x] **Trascrizione completa di TUTTE le carte** (204 distinte, vedi `data/INDEX.json`), validate (`tools/validate_data.py`, 0 errori):
+  - 77 Country · 36 Starting Ability (4 potenze) · 33 Market · 10 Growth · 20 Strategic Asset · 4 Trade Deals · 20 Auto-Influence · 4 Executive Order.
+- [ ] Codificare gli effetti come **micro-DSL** (`effect` → array di `op`) — propedeutico alla Fase 1.
+- [ ] Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`) e i valori delle Regioni del tabellone.
+**Deliverable:** dataset completo + libreria di asset pronti. *(carte ✅; restano DSL effetti + dati tabellone/token)*
 
 ### Fase 1 — Motore di regole (core engine)
 **Obiettivo:** simulare una partita completa senza UI.
