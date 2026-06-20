@@ -4,9 +4,10 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.6.1"
+const VERSION := "v0.6.2"
 const CHANGELOG := [
-	"v0.6.1 — Tolte le scritte ridondanti nel cassetto (intestazione potenza, 'La tua mano'). Flyover anche su mano e nazioni amiche. Plancia più contenuta su desktop. (Se non vedi questa versione nello splash, svuota la cache.)",
+	"v0.6.2 — FIX plancia gigante: ora ha un tetto massimo assoluto in pixel (come le carte), quindi su desktop/monitor ad alta densità non diventa più enorme.",
+	"v0.6.1 — Tolte le scritte ridondanti nel cassetto (intestazione potenza, 'La tua mano'). Flyover anche su mano e nazioni amiche. (Se non vedi questa versione nello splash, svuota la cache.)",
 	"v0.6.0 — Flyover: passa sopra una carta per ingrandirla. Plancia adattiva (niente più gigante su desktop). Mano del giocatore sempre visibile in basso; carte più grandi.",
 	"v0.5.0 — Mazzi potenza completi (12 carte, doppioni inclusi). Nazioni amiche iniziali (dal salvataggio TTS). Plancia con cubi/token reali e Focus cliccabile direttamente sull'immagine.",
 	"v0.4.0 — Carte nazione originali posate negli slot designati del tabellone (coordinate dal TTS). Market/Growth illustrate.",
