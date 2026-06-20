@@ -1,0 +1,108 @@
+{
+  "kind": "auto_influence",
+  "source": "Estratte e trascritte dallo sheet del salvataggio (game/assets/cards/auto_influence/). Usate solo in partite 2-3 giocatori: per ogni potenza NON controllata da un giocatore, indicano la Regione dove aggiungere Influenza, se aggiungere un'Armata (tank), e l'eventuale bandiera del giocatore che gira una Commerce card e guadagna 10 monete.",
+  "fields": "rows = { power -> { region, army(bool), trade_with(power|null) } }. region/army letti in modo affidabile; trade_with (bandiera circolare piccola) e' best-effort, da verificare sull'art.",
+  "regions": ["americas","europe","middle_east_north_africa","africa","central_asia","south_asia","east_asia_pacific"],
+  "cards": [
+    { "id": "auto_influence_000", "art": "auto_influence/auto_influence_000.jpg", "rows": {
+      "usa": {"region":"americas","army":false,"trade_with":"russia"},
+      "eu": {"region":"europe","army":true,"trade_with":null},
+      "russia": {"region":"central_asia","army":false,"trade_with":"usa"},
+      "china": {"region":"middle_east_north_africa","army":true,"trade_with":null} } },
+    { "id": "auto_influence_001", "art": "auto_influence/auto_influence_001.jpg", "rows": {
+      "usa": {"region":"americas","army":false,"trade_with":null},
+      "eu": {"region":"central_asia","army":true,"trade_with":null},
+      "russia": {"region":"africa","army":true,"trade_with":null},
+      "china": {"region":"south_asia","army":false,"trade_with":null} } },
+    { "id": "auto_influence_002", "art": "auto_influence/auto_influence_002.jpg", "rows": {
+      "usa": {"region":"europe","army":false,"trade_with":null},
+      "eu": {"region":"africa","army":false,"trade_with":"russia"},
+      "russia": {"region":"americas","army":true,"trade_with":null},
+      "china": {"region":"east_asia_pacific","army":false,"trade_with":null} } },
+    { "id": "auto_influence_003", "art": "auto_influence/auto_influence_003.jpg", "rows": {
+      "usa": {"region":"europe","army":true,"trade_with":null},
+      "eu": {"region":"americas","army":false,"trade_with":null},
+      "russia": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "china": {"region":"africa","army":false,"trade_with":null} } },
+    { "id": "auto_influence_004", "art": "auto_influence/auto_influence_004.jpg", "rows": {
+      "usa": {"region":"europe","army":true,"trade_with":null},
+      "eu": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "russia": {"region":"central_asia","army":false,"trade_with":null},
+      "china": {"region":"south_asia","army":false,"trade_with":"russia"} } },
+    { "id": "auto_influence_005", "art": "auto_influence/auto_influence_005.jpg", "rows": {
+      "usa": {"region":"europe","army":true,"trade_with":null},
+      "eu": {"region":"east_asia_pacific","army":false,"trade_with":null},
+      "russia": {"region":"south_asia","army":false,"trade_with":null},
+      "china": {"region":"central_asia","army":true,"trade_with":null} } },
+    { "id": "auto_influence_006", "art": "auto_influence/auto_influence_006.jpg", "rows": {
+      "usa": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "eu": {"region":"europe","army":true,"trade_with":null},
+      "russia": {"region":"africa","army":false,"trade_with":"china"},
+      "china": {"region":"east_asia_pacific","army":false,"trade_with":"russia"} } },
+    { "id": "auto_influence_007", "art": "auto_influence/auto_influence_007.jpg", "rows": {
+      "usa": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "eu": {"region":"africa","army":false,"trade_with":null},
+      "russia": {"region":"central_asia","army":true,"trade_with":null},
+      "china": {"region":"south_asia","army":false,"trade_with":"eu"} } },
+    { "id": "auto_influence_008", "art": "auto_influence/auto_influence_008.jpg", "rows": {
+      "usa": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "eu": {"region":"south_asia","army":false,"trade_with":"china"},
+      "russia": {"region":"east_asia_pacific","army":false,"trade_with":null},
+      "china": {"region":"central_asia","army":false,"trade_with":"russia"} } },
+    { "id": "auto_influence_009", "art": "auto_influence/auto_influence_009.jpg", "rows": {
+      "usa": {"region":"africa","army":false,"trade_with":null},
+      "eu": {"region":"middle_east_north_africa","army":false,"trade_with":"russia"},
+      "russia": {"region":"europe","army":false,"trade_with":null},
+      "china": {"region":"americas","army":false,"trade_with":"usa"} } },
+    { "id": "auto_influence_010", "art": "auto_influence/auto_influence_010.jpg", "rows": {
+      "usa": {"region":"middle_east_north_africa","army":false,"trade_with":"china"},
+      "eu": {"region":"europe","army":true,"trade_with":null},
+      "russia": {"region":"central_asia","army":true,"trade_with":null},
+      "china": {"region":"americas","army":false,"trade_with":"usa"} } },
+    { "id": "auto_influence_011", "art": "auto_influence/auto_influence_011.jpg", "rows": {
+      "usa": {"region":"middle_east_north_africa","army":false,"trade_with":null},
+      "eu": {"region":"east_asia_pacific","army":true,"trade_with":null},
+      "russia": {"region":"europe","army":false,"trade_with":null},
+      "china": {"region":"south_asia","army":false,"trade_with":null} } },
+    { "id": "auto_influence_012", "art": "auto_influence/auto_influence_012.jpg", "rows": {
+      "usa": {"region":"central_asia","army":true,"trade_with":null},
+      "eu": {"region":"europe","army":false,"trade_with":"russia"},
+      "russia": {"region":"middle_east_north_africa","army":false,"trade_with":null},
+      "china": {"region":"east_asia_pacific","army":true,"trade_with":null} } },
+    { "id": "auto_influence_013", "art": "auto_influence/auto_influence_013.jpg", "rows": {
+      "usa": {"region":"south_asia","army":true,"trade_with":null},
+      "eu": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "russia": {"region":"europe","army":false,"trade_with":"eu"},
+      "china": {"region":"east_asia_pacific","army":false,"trade_with":"russia"} } },
+    { "id": "auto_influence_014", "art": "auto_influence/auto_influence_014.jpg", "rows": {
+      "usa": {"region":"east_asia_pacific","army":false,"trade_with":"china"},
+      "eu": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "russia": {"region":"europe","army":true,"trade_with":null},
+      "china": {"region":"africa","army":false,"trade_with":null} } },
+    { "id": "auto_influence_015", "art": "auto_influence/auto_influence_015.jpg", "rows": {
+      "usa": {"region":"east_asia_pacific","army":true,"trade_with":null},
+      "eu": {"region":"europe","army":false,"trade_with":null},
+      "russia": {"region":"africa","army":false,"trade_with":null},
+      "china": {"region":"central_asia","army":true,"trade_with":null} } },
+    { "id": "auto_influence_016", "art": "auto_influence/auto_influence_016.jpg", "rows": {
+      "usa": {"region":"east_asia_pacific","army":true,"trade_with":null},
+      "eu": {"region":"central_asia","army":false,"trade_with":"russia"},
+      "russia": {"region":"south_asia","army":false,"trade_with":"china"},
+      "china": {"region":"africa","army":true,"trade_with":null} } },
+    { "id": "auto_influence_017", "art": "auto_influence/auto_influence_017.jpg", "rows": {
+      "usa": {"region":"east_asia_pacific","army":false,"trade_with":null},
+      "eu": {"region":"americas","army":false,"trade_with":"usa"},
+      "russia": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "china": {"region":"europe","army":false,"trade_with":"eu"} } },
+    { "id": "auto_influence_018", "art": "auto_influence/auto_influence_018.jpg", "rows": {
+      "usa": {"region":"east_asia_pacific","army":false,"trade_with":"china"},
+      "eu": {"region":"africa","army":false,"trade_with":"russia"},
+      "russia": {"region":"middle_east_north_africa","army":true,"trade_with":null},
+      "china": {"region":"central_asia","army":true,"trade_with":null} } },
+    { "id": "auto_influence_019", "art": "auto_influence/auto_influence_019.jpg", "rows": {
+      "usa": {"region":"americas","army":false,"trade_with":null},
+      "eu": {"region":"middle_east_north_africa","army":false,"trade_with":"usa"},
+      "russia": {"region":"europe","army":true,"trade_with":null},
+      "china": {"region":"east_asia_pacific","army":true,"trade_with":null} } }
+  ]
+}
