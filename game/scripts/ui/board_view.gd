@@ -882,18 +882,28 @@ func _refresh_drawer_content() -> void:
 
 ## Rapporto altezza/larghezza delle immagini plancia (~700x499).
 const PLANCIA_RATIO := 0.713
-## Posizioni normalizzate dei tracciati Produzione: [x_casella1, x_casella5, y].
-## Stime di prima approssimazione (le 4 plance condividono il layout); da rifinire
-## sugli screenshot reali.
+## Passo orizzontale tra due caselle di un tracciato Produzione (normalizzato).
+const PROD_PITCH := 0.050
+## [x della casella 1, y] normalizzati, MISURATI sull'immagine reale della plancia.
+## Le 4 plance condividono il layout; la lunghezza dei tracciati cambia ma le
+## caselle partono sempre dalle stesse coordinate, quindi: x = x0 + (livello-1)*passo.
 const PROD_TRACKS := {
-	"energy": [0.105, 0.285, 0.205],
-	"raw_materials": [0.475, 0.655, 0.205],
-	"food": [0.795, 0.965, 0.205],
-	"consumer_goods": [0.105, 0.285, 0.50],
-	"services": [0.105, 0.285, 0.595],
-	"diplomacy": [0.45, 0.62, 0.535],
-	"armies": [0.745, 0.915, 0.535],
+	"energy": [0.097, 0.194],
+	"raw_materials": [0.260, 0.194],
+	"food": [0.657, 0.194],
+	"consumer_goods": [0.103, 0.517],
+	"services": [0.103, 0.597],
+	"diplomacy": [0.414, 0.531],
+	"armies": [0.729, 0.531],
 }
+## Cerchi Focus (Domestic, Diplomatic, Military).
+const FOCUS_POS := [[0.307, 0.311], [0.600, 0.311], [0.921, 0.311]]
+## Tracciato Prosperità: livello 0 (cerchio iniziale) .. 5.
+const PROSPERITY_POS := [[0.514, 0.631], [0.600, 0.631], [0.671, 0.631], [0.743, 0.631], [0.814, 0.631], [0.886, 0.631]]
+## Colonne x della traccia RESOURCES (numeri 1..5 in alto, 6..10 in basso).
+const RES_TRACK_X := [0.21, 0.385, 0.56, 0.735, 0.91]
+## Risorse che hanno un token-immagine (armies è un tracciato a parte).
+const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy"]
 
 
 ## Costruisce la vista plancia: immagine reale a piena visibilità + segnalini
@@ -913,50 +923,69 @@ func _build_plancia_view(p: PlayerState) -> Control:
 	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(board_bg)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
-	# Segnalini di Produzione (livello attuale per ciascuna risorsa).
+	# Cubi di Produzione: uno sul livello attuale di ogni tracciato.
 	for res in PROD_TRACKS:
 		var lvl := int(p.production.get(res, 0))
-		if lvl >= 1 and lvl <= 5:
+		if lvl >= 1:
 			var t: Array = PROD_TRACKS[res]
-			var nx: float = lerpf(t[0], t[1], (lvl - 1) / 4.0)
-			_add_marker(view, nx, t[2], pw, ph, col)
-	# Segnalini Risorse possedute (track 0..10 in basso).
-	for res in RES:
+			_add_cube(view, t[0] + (lvl - 1) * PROD_PITCH, t[1], pw, ph, col, false)
+	# Marker Focus (sul cerchio della colonna scelta).
+	if p.focus >= 0 and p.focus < FOCUS_POS.size():
+		_add_cube(view, FOCUS_POS[p.focus][0], FOCUS_POS[p.focus][1], pw, ph, col, true)
+	# Marker Prosperità.
+	var pl := clampi(p.prosperity_level, 0, PROSPERITY_POS.size() - 1)
+	_add_cube(view, PROSPERITY_POS[pl][0], PROSPERITY_POS[pl][1], pw, ph, Color(0.45, 0.95, 0.55), true)
+	# Token risorsa (immagini reali) sulla traccia RESOURCES 0..10, alla quantità.
+	var stack: Dictionary = {}
+	for res in RES_TOKENS:
 		var amt := int(p.resources.get(res, 0))
-		var pt := _resource_slot(amt)
-		if pt != Vector2.ZERO:
-			_add_marker(view, pt.x, pt.y, pw, ph, Color(0.95, 0.85, 0.2))
-	# Segnalino Prosperità.
-	var prx: float = lerpf(0.455, 0.84, clampf(p.prosperity_level / 5.0, 0.0, 1.0))
-	_add_marker(view, prx, 0.628, pw, ph, Color(0.5, 1, 0.6))
+		var slot := _resource_slot(amt)
+		var n := int(stack.get(amt, 0))
+		stack[amt] = n + 1
+		_add_token(view, res, slot.x, slot.y, pw, ph, n)
 	return view
 
 
 ## Posizione normalizzata della casella Risorse (0..10): "0" a sinistra, 1-5 in
 ## alto, 6-10 in basso.
 func _resource_slot(amount: int) -> Vector2:
-	if amount <= 0:
-		return Vector2(0.05, 0.86)
-	var row_y := 0.80 if amount <= 5 else 0.92
-	var idx := (amount - 1) % 5
-	var x := lerpf(0.22, 0.81, idx / 4.0)
-	return Vector2(x, row_y)
+	var a := clampi(amount, 0, 10)
+	if a == 0:
+		return Vector2(0.06, 0.862)
+	if a <= 5:
+		return Vector2(RES_TRACK_X[a - 1], 0.812)
+	return Vector2(RES_TRACK_X[a - 6], 0.922)
 
 
-## Disegna un segnalino (anello colorato) a coordinate normalizzate sulla plancia.
-func _add_marker(parent: Control, nx: float, ny: float, pw: float, ph: float, col: Color) -> void:
-	var ms := Vector2(pw * 0.055, ph * 0.085)
+## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
+func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col: Color, circle: bool) -> void:
+	var s := Vector2(ph * 0.040, ph * 0.040)
 	var m := Panel.new()
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	m.position = Vector2(nx * pw - ms.x * 0.5, ny * ph - ms.y * 0.5)
-	m.size = ms
+	m.position = Vector2(nx * pw - s.x * 0.5, ny * ph - s.y * 0.5)
+	m.size = s
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(col.r, col.g, col.b, 0.35)
-	sb.border_color = col
-	sb.set_border_width_all(3)
-	sb.set_corner_radius_all(int(ms.y * 0.5))
+	sb.bg_color = Color(col.r, col.g, col.b, 0.92)
+	sb.border_color = Color(0, 0, 0, 0.85)
+	sb.set_border_width_all(maxi(1, int(ph * 0.005)))
+	sb.set_corner_radius_all(int(s.y * 0.5) if circle else int(s.y * 0.18))
 	m.add_theme_stylebox_override("panel", sb)
 	parent.add_child(m)
+
+
+## Token-immagine di una risorsa sulla traccia RESOURCES (impilati con offset se
+## più risorse condividono lo stesso numero).
+func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, ph: float, stack_index: int) -> void:
+	var s := ph * 0.072
+	var tr := TextureRect.new()
+	tr.texture = load("res://assets/tokens/%s.png" % res)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.custom_minimum_size = Vector2(s, s)
+	tr.size = Vector2(s, s)
+	tr.position = Vector2(nx * pw - s * 0.5 + stack_index * s * 0.5, ny * ph - s * 0.5)
+	parent.add_child(tr)
 
 
 func _prosperity_strip(p: PlayerState) -> Control:
