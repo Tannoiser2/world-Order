@@ -45,6 +45,27 @@ static func run_all() -> Dictionary:
 	ut.add("usa", "permanent")  # 1 permanente vuoto rimane
 	check.call("Regione con permanenti non pieni non segna", Scoring.score_region(ut, [10, 7, 4, 2], {}, players).is_empty())
 
+	# --- THREAT: Esempio 1 (Central Asia, regolamento pag. 19) ---
+	# zone russia+china; armate china 2, russia 1, eu 1. Russia perde 2 (China > Difesa 1).
+	var l1 := Threat.resolve_region(["russia", "china"], {"china": 2, "russia": 1, "eu": 1}, {}, {})
+	check.call("THREAT ex1: Russia perde 2", int(l1.get("russia", 0)) == 2)
+	check.call("THREAT ex1: China non perde", int(l1.get("china", 0)) == 0)
+	check.call("THREAT ex1: EU (fuori zona) non controlla", not l1.has("eu"))
+	# Variante: se EU avesse 2 Armate, Russia perderebbe 4.
+	var l1b := Threat.resolve_region(["russia", "china"], {"china": 2, "russia": 1, "eu": 2}, {}, {})
+	check.call("THREAT ex1 variante: Russia perde 4", int(l1b.get("russia", 0)) == 4)
+
+	# --- THREAT: Esempio 2 (Europe) ---
+	# armate usa 3, russia 2, eu 1; Russia ha Military Focus (+1 THREAT/Difesa);
+	# EU scarta Engage (+6 Difesa); USA/EU = NATO. Nessuno perde VP.
+	var l2 := Threat.resolve_region(
+		["usa", "eu", "russia"],
+		{"usa": 3, "russia": 2, "eu": 1},
+		{"russia": true},
+		{"eu": 6},
+		[["usa", "eu"]])
+	check.call("THREAT ex2: nessuna perdita (NATO + Difesa)", l2.is_empty())
+
 	# --- 3. Setup partita (smoke) ---
 	var gs := GameSetup.new_game(["usa", "china"])
 	check.call("setup: 2 giocatori", gs.players.size() == 2)
