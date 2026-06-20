@@ -58,6 +58,43 @@ func _init() -> void:
 		print("[%s] risoluzione carta Engage (Influenza %d->%d, carta in scarti)" % ["OK" if played_ok else "FAIL", inf_b, inf_a])
 		if not played_ok: fails += 1
 
+		# Improve Relations via Country sul tabellone (awaiting board_country).
+		ac.resources["diplomacy"] = 20
+		var rid := gs_first_region(board)
+		var avail: Array = board.region_countries[rid]["available"]
+		var n_av: int = avail.size()
+		var target: Dictionary = avail[0]
+		var allied_b: int = ac.allied_countries.size()
+		var card_ir := {"display_name": "Test IR", "effect_ops": [{"op": "improve_relations"}]}
+		ac.hand.append(card_ir)
+		board._play_card(card_ir)
+		var ir_await: bool = board.awaiting == "board_country"
+		print("[%s] play carta Improve Relations -> attende una Country sul board" % ["OK" if ir_await else "FAIL"])
+		if not ir_await: fails += 1
+		board._on_country_pressed(target, rid)
+		var ir_ok: bool = ac.allied_countries.size() == allied_b + 1 and (target in ac.allied_countries) \
+			and board.region_countries[rid]["available"].size() == n_av \
+			and not (target in board.region_countries[rid]["available"]) \
+			and (card_ir in ac.played)
+		print("[%s] Improve Relations da board: alleato +1, Country rifornita, carta in scarti" % ["OK" if ir_ok else "FAIL"])
+		if not ir_ok: fails += 1
+
+		# Invest via Country alleata davanti al giocatore (awaiting allied_country).
+		ac.money = 50
+		var ally: Dictionary = ac.allied_countries[0]
+		ac.exhausted[ally.get("id", "")] = false
+		var money_pre: int = ac.money
+		var card_inv := {"display_name": "Test Invest", "effect_ops": [{"op": "invest"}]}
+		ac.hand.append(card_inv)
+		board._play_card(card_inv)
+		var inv_await: bool = board.awaiting == "allied_country"
+		print("[%s] play carta Invest -> attende una Country alleata" % ["OK" if inv_await else "FAIL"])
+		if not inv_await: fails += 1
+		board._on_allied_pressed(ally)
+		var inv_ok: bool = ac.money < money_pre and (card_inv in ac.played) and board.awaiting == ""
+		print("[%s] Invest da Country alleata: spesa money, carta in scarti" % ["OK" if inv_ok else "FAIL"])
+		if not inv_ok: fails += 1
+
 		# Carta auto-risolta (gain_money), nessun target.
 		var money_b: int = ac.money
 		var card_auto := {"display_name": "Test Money", "effect_ops": [{"op": "gain_money", "amount": 7}]}
@@ -89,6 +126,14 @@ func _init() -> void:
 
 	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(fails)
+
+
+## Prima Regione con almeno una Country disponibile.
+func gs_first_region(board: Node) -> String:
+	for rid in board.region_countries:
+		if (board.region_countries[rid]["available"] as Array).size() > 0:
+			return rid
+	return ""
 
 
 func _find_button(node: Node, text: String) -> Button:

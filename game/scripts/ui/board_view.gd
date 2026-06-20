@@ -32,10 +32,11 @@ var hand_box: HBoxContainer
 var popup_layer: Control
 
 var all_countries: Array = []
+var region_countries: Dictionary = {}   # rid -> { available:[c,c], deck:[...] }
 # Stato del gioco di una carta:
 var playing_card: Dictionary = {}
 var play_queue: Array = []
-var awaiting := ""          # "" | "region"
+var awaiting := ""          # "" | "region" | "board_country" | "allied_country"
 var awaiting_op: Dictionary = {}
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
@@ -51,6 +52,7 @@ func _ready() -> void:
 		p.money = 30
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
 	all_countries = DataLoader.load_countries()
+	_setup_country_decks()
 
 	board_rect = TextureRect.new()
 	board_rect.texture = load(layout.get("board_image", "res://assets/board/board.jpg"))
@@ -80,6 +82,29 @@ func _ready() -> void:
 
 func _active() -> PlayerState:
 	return gs.players[active_seat]
+
+
+## Mazzi Country per Regione: 2 carte disponibili (visibili) + mazzo.
+func _setup_country_decks() -> void:
+	var by_region := {}
+	for c in all_countries:
+		var rid: String = c.get("region", "")
+		if not by_region.has(rid):
+			by_region[rid] = []
+		by_region[rid].append(c)
+	for rid in gs.regions:
+		var deck: Array = (by_region.get(rid, []) as Array).duplicate()
+		deck.shuffle()
+		var avail := []
+		for _i in mini(2, deck.size()):
+			avail.append(deck.pop_back())
+		region_countries[rid] = {"available": avail, "deck": deck}
+
+
+func _refill_available(rid: String) -> void:
+	var rc: Dictionary = region_countries.get(rid, {})
+	while rc.get("available", []).size() < 2 and rc.get("deck", []).size() > 0:
+		rc["available"].append(rc["deck"].pop_back())
 
 
 # --- Tabellone e Regioni ---
@@ -135,13 +160,84 @@ func _make_region_button(region: String) -> Button:
 			lbl.text = "●%d" % track.count(owner)
 			lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
 			hb.add_child(lbl)
+	# Country disponibili (cliccabili per Improve Relations).
+	for cn in region_countries.get(region, {}).get("available", []):
+		var cb := Button.new()
+		cb.text = "%s (%d)" % [cn.get("display_name", "?"), int(cn.get("value", 0))]
+		cb.add_theme_font_size_override("font_size", 10)
+		cb.pressed.connect(_on_country_pressed.bind(cn, region))
+		var hl := (awaiting == "board_country")
+		if hl:
+			cb.add_theme_color_override("font_color", Color(0.5, 1, 0.6))
+		vb.add_child(cb)
 	return btn
+
+
+## Click su una Country disponibile sul board: target di Improve Relations
+## (durante una carta) oppure azione diretta.
+func _on_country_pressed(country: Dictionary, region: String) -> void:
+	if awaiting == "board_country":
+		awaiting = ""
+		_do_improve_relations(country, region)
+		_advance_play()
+		return
+	if playing_card.is_empty():
+		_do_improve_relations(country, region)
+
+
+func _do_improve_relations(country: Dictionary, region: String) -> void:
+	var p := _active()
+	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), [])
+	if p.resources.get("diplomacy", 0) < cost:
+		_status("Diplomazia insufficiente per Improve Relations con %s (serve %d)." % [country.get("display_name", ""), cost])
+		return
+	if Actions.execute_improve_relations(gs, p.power, country, []):
+		# rimuovi dalle disponibili e rifornisci
+		region_countries.get(region, {}).get("available", []).erase(country)
+		_refill_available(region)
+		_status("%s: Improve Relations con %s (−%d Dip)." % [p.power.to_upper(), country.get("display_name", ""), cost])
+		_after_change()
+
+
+## Click su una Country alleata (davanti al giocatore): target di Invest/Build a
+## Base (durante una carta) oppure menu d'azione diretto.
+func _on_allied_pressed(country: Dictionary) -> void:
+	var p := _active()
+	if awaiting == "allied_country":
+		var name := String(awaiting_op.get("op", ""))
+		awaiting = ""
+		if name == "invest":
+			Actions.execute_invest(gs, p.power, country, "temporary")
+		elif name == "build_base":
+			Actions.execute_build_base(gs, p.power, country, 1, "temporary")
+		_after_change()
+		_advance_play()
+		return
+	if playing_card.is_empty():
+		_allied_menu(country)
+
+
+func _allied_menu(country: Dictionary) -> void:
+	var p := _active()
+	var items := [
+		{"label": "Invest (%d money)" % int(country.get("invest_cost", 0)), "value": "invest"},
+	]
+	if country.get("has_base_symbol", false) and p.power in country.get("base_allowed_powers", []):
+		items.append({"label": "Build a Base", "value": "build_base"})
+	_show_popup("%s — azione:" % country.get("display_name", ""), items, func(act):
+		if act == "invest":
+			Actions.execute_invest(gs, p.power, country, "temporary")
+		elif act == "build_base":
+			Actions.execute_build_base(gs, p.power, country, 1, "temporary")
+		_after_change())
 
 
 func _on_region_pressed(region: String) -> void:
 	if awaiting == "region":
 		_resolve_region_op(region)
 		return
+	if awaiting != "":
+		return  # in attesa di una Country, non fare Engage rapido
 	# nessuna carta in gioco: Engage rapido (demo)
 	_do_engage(region)
 
@@ -185,19 +281,21 @@ func _advance_play() -> void:
 			_status("Scegli una Regione per: %s" % name)
 			_layout_overlays()
 		"improve_relations":
-			_pick_country("Scegli un Country (Improve Relations):", _board_countries(), func(cn):
-				Actions.execute_improve_relations(gs, _active().power, cn, [])
-				_status("Improve Relations con %s." % cn.get("display_name", ""))
-				_advance_play())
-		"invest":
-			_pick_country("Scegli un Country alleato (Invest):", _active().allied_countries, func(cn):
-				Actions.execute_invest(gs, _active().power, cn, "temporary")
-				_advance_play())
-		"build_base":
-			var elig := _active().allied_countries.filter(func(c): return c.get("has_base_symbol", false) and _active().power in c.get("base_allowed_powers", []))
-			_pick_country("Scegli un Country (Build a Base):", elig, func(cn):
-				Actions.execute_build_base(gs, _active().power, cn, 1, "temporary")
-				_advance_play())
+			# Seleziona una Country disponibile direttamente sul tabellone.
+			awaiting = "board_country"
+			awaiting_op = op
+			_status("Scegli una Country disponibile sul tabellone (Improve Relations).")
+			_after_change()
+		"invest", "build_base":
+			# Seleziona una Country alleata davanti al giocatore.
+			if _eligible_allied(name).is_empty():
+				_status("Nessuna Country alleata idonea per %s." % name)
+				_advance_play()
+				return
+			awaiting = "allied_country"
+			awaiting_op = op
+			_status("Scegli una Country alleata (%s)." % name)
+			_after_change()
 		"produce":
 			if op.has("types"):
 				for r in op["types"]: Actions.execute_produce(_active(), String(r))
@@ -354,6 +452,14 @@ func _board_countries() -> Array:
 	return all_countries
 
 
+## Country alleate idonee per l'op data (invest = tutte; build_base = con base).
+func _eligible_allied(op_name: String) -> Array:
+	var p := _active()
+	if op_name == "build_base":
+		return p.allied_countries.filter(func(c): return c.get("has_base_symbol", false) and p.power in c.get("base_allowed_powers", []))
+	return p.allied_countries
+
+
 # --- Plancia, mano, stato ---
 
 func _build_player_panel() -> void:
@@ -400,7 +506,23 @@ func _refresh() -> void:
 	player_panel.add_child(row2)
 	for rtype in RES:
 		row2.add_child(_kv2("%s %d/%d" % [RES_LABEL[rtype], int(p.resources.get(rtype, 0)), int(p.production.get(rtype, 0))]))
-	row2.add_child(_kv2("Alleati: %d" % p.allied_countries.size()))
+	# Riga 3: Country alleate davanti al giocatore (cliccabili per Invest/Build).
+	var row3 := HBoxContainer.new()
+	row3.add_theme_constant_override("separation", 6)
+	player_panel.add_child(row3)
+	row3.add_child(_kv2("Alleati (%d):" % p.allied_countries.size()))
+	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if awaiting == "allied_country" else []
+	for cn in p.allied_countries:
+		var ab := Button.new()
+		ab.text = "%s (%d)" % [cn.get("display_name", "?"), int(cn.get("value", 0))]
+		ab.add_theme_font_size_override("font_size", 11)
+		ab.pressed.connect(_on_allied_pressed.bind(cn))
+		if awaiting == "allied_country":
+			if cn in elig:
+				ab.add_theme_color_override("font_color", Color(0.5, 1, 0.6))
+			else:
+				ab.disabled = true
+		row3.add_child(ab)
 
 
 func _kv(k: String, v: int) -> Label:
