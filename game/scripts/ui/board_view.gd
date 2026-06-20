@@ -268,46 +268,92 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
+	var awaiting_region := (awaiting == "region")
 	var btn := Button.new()
 	btn.flat = true
 	btn.pressed.connect(_on_region_pressed.bind(region))
+	# Zona Regione: invisibile di default (il tabellone mostra già nome ed Eng);
+	# si evidenzia solo quando devi SCEGLIERE una Regione.
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.2, 0.6, 0.95, 0.30) if awaiting == "region" else Color(0, 0, 0, 0.15)
-	st.border_color = Color(0.4, 0.9, 1, 0.9) if awaiting == "region" else Color(1, 1, 1, 0.3)
-	st.set_border_width_all(2 if awaiting == "region" else 1)
+	if awaiting_region:
+		st.bg_color = Color(0.2, 0.6, 0.95, 0.28)
+		st.border_color = Color(0.4, 0.9, 1, 0.95)
+		st.set_border_width_all(4)
+		st.set_corner_radius_all(6)
+	else:
+		st.bg_color = Color(0, 0, 0, 0)
 	btn.add_theme_stylebox_override("normal", st)
-	var hv := st.duplicate(); hv.bg_color = Color(0.2, 0.5, 0.9, 0.40)
+	var hv := st.duplicate(); hv.bg_color = Color(0.3, 0.6, 0.95, 0.16)
 	btn.add_theme_stylebox_override("hover", hv)
 
 	var vb := VBoxContainer.new()
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vb.add_theme_constant_override("separation", int(board_native.y * 0.004))
 	btn.add_child(vb)
+	# Influenza presente nella Regione (stato di gioco, non stampato sul tabellone).
 	var rd: Dictionary = gs.regions.get(region, {})
-	var t := Label.new()
-	t.text = "%s (Eng %d)" % [region.replace("_", " ").to_upper(), int(rd.get("engage_cost", 0))]
-	t.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 3))
-	vb.add_child(t)
 	var track: InfluenceTrack = rd.get("track")
-	if track:
+	if track and track.owners().size() > 0:
 		var hb := HBoxContainer.new()
+		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_theme_constant_override("separation", int(board_native.x * 0.006))
 		vb.add_child(hb)
 		for owner in track.owners():
 			var lbl := Label.new()
 			lbl.text = "●%d" % track.count(owner)
 			lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
+			lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.013))
 			hb.add_child(lbl)
-	# Country disponibili (cliccabili per Improve Relations).
+	# Carte nazione disponibili, rese come mini-carte grafiche.
+	var cards := HBoxContainer.new()
+	cards.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cards.add_theme_constant_override("separation", int(board_native.x * 0.006))
+	vb.add_child(cards)
 	for cn in region_countries.get(region, {}).get("available", []):
-		var cb := Button.new()
-		cb.text = "%s (%d)" % [cn.get("display_name", "?"), int(cn.get("value", 0))]
-		cb.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 4))
-		cb.pressed.connect(_on_country_pressed.bind(cn, region))
-		var hl := (awaiting == "board_country")
-		if hl:
-			cb.add_theme_color_override("font_color", Color(0.5, 1, 0.6))
-		vb.add_child(cb)
+		cards.add_child(_make_country_card(cn, region))
 	return btn
+
+
+## Mini-carta grafica di una nazione disponibile sul tabellone (cliccabile per
+## Improve Relations / come target di carta).
+func _make_country_card(cn: Dictionary, region: String) -> Button:
+	var hl := (awaiting == "board_country")
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(board_native.x * 0.072, board_native.y * 0.052)
+	b.clip_text = false
+	b.pressed.connect(_on_country_pressed.bind(cn, region))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.96, 0.94, 0.87)
+	sb.border_color = Color(0.35, 0.85, 0.45) if hl else Color(0.16, 0.16, 0.2)
+	sb.set_border_width_all(int(board_native.y * 0.004) if hl else int(board_native.y * 0.002))
+	sb.set_corner_radius_all(int(board_native.y * 0.006))
+	sb.content_margin_left = 0; sb.content_margin_right = 0
+	b.add_theme_stylebox_override("normal", sb)
+	var hov := sb.duplicate(); hov.bg_color = Color(1, 0.99, 0.92)
+	b.add_theme_stylebox_override("hover", hov)
+	var pr := sb.duplicate(); pr.bg_color = Color(0.86, 0.84, 0.76)
+	b.add_theme_stylebox_override("pressed", pr)
+
+	var vb := VBoxContainer.new()
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(vb)
+	var nm := Label.new()
+	nm.text = String(cn.get("display_name", "?"))
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.add_theme_color_override("font_color", Color(0.1, 0.1, 0.13))
+	nm.add_theme_font_size_override("font_size", int(board_native.y * 0.011))
+	vb.add_child(nm)
+	var val := Label.new()
+	val.text = "◆ %d" % int(cn.get("value", 0))
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
+	val.add_theme_font_size_override("font_size", int(board_native.y * 0.014))
+	vb.add_child(val)
+	return b
 
 
 ## Click su una Country disponibile sul board: target di Improve Relations
