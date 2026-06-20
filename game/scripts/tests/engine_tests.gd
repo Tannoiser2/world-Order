@@ -281,6 +281,38 @@ static func run_all() -> Dictionary:
 	check.call("nessuna op sconosciuta nel dataset", unknown_ops.is_empty())
 	log.append("  (info) carte con effect_ops: %d" % with_ops)
 
+	# --- 11d. Research/Market e Add Auto-Influence ---
+	var rp := PlayerState.new()
+	# 2 carte rivelate: research 1+1; top bonus 3 money + 1 diplomacy; +2 Domestic Focus.
+	var revealed := [
+		{"research_bonus": 1, "top_bonus": {"amount": 3, "kind": "money"}},
+		{"research_bonus": 1, "top_bonus": {"amount": 1, "kind": "diplomacy"}}]
+	var avail := GamePhases.research_step(rp, revealed, true)
+	check.call("Research: 1+1 +2 (Domestic) = 4", avail == 4)
+	check.call("Research: top bonus 3 money", rp.money == 3)
+	check.call("Research: top bonus 1 Diplomacy", rp.resources["diplomacy"] == 1)
+	var spent := GamePhases.buy_market_card(rp, {"market_cost": 4, "id": "mk_x"}, avail)
+	check.call("Market: compra carta da 4 Research", spent == 4 and rp.deck.size() == 1)
+	check.call("Market: Research insufficiente -> -1",
+		GamePhases.buy_market_card(rp, {"market_cost": 7, "id": "y"}, 4) == -1)
+	# Add Auto-Influence: partita 2 giocatori (usa, china); applica una carta per
+	# Russia/EU (non controllati): aggiunge Influenza/Armata e paga il trade.
+	var gai := GameSetup.new_game(["usa", "china"])
+	var ai_card := {"rows": {
+		"usa": {"region": "americas", "army": false, "trade_with": null},
+		"china": {"region": "east_asia_pacific", "army": false, "trade_with": null},
+		"russia": {"region": "central_asia", "army": true, "trade_with": "china"},
+		"eu": {"region": "europe", "army": false, "trade_with": null}}}
+	var ru_before: int = gai.regions["central_asia"]["track"].count("russia")
+	var china_money_before: int = gai.player_by_power("china").money
+	GamePhases.add_auto_influence(gai, ai_card, ["usa", "china"])
+	check.call("Auto-Influence: +1 Influenza Russia in Central Asia",
+		gai.regions["central_asia"]["track"].count("russia") == ru_before + 1)
+	check.call("Auto-Influence: +1 Armata Russia in Central Asia",
+		int(gai.regions["central_asia"]["armies"].get("russia", 0)) == 1)
+	check.call("Auto-Influence: China guadagna 10 money (trade flag)",
+		gai.player_by_power("china").money == china_money_before + 10)
+
 	# --- 12. Simulazione end-to-end (integrazione) ---
 	var fin := GameRunner.run_game(["usa", "china", "russia", "eu"], 42)
 	check.call("partita completata: 6 round", fin.round == 6)

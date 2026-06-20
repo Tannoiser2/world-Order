@@ -159,12 +159,13 @@ Strutture principali, modellate come **`Resource` Godot** (`.gd`) e dati **JSON*
 - [x] **Micro-DSL degli effetti** (`effect_executor.gd`): vocabolario di operazioni (improve_relations, engage, trade, invest, move, build_base, get_growth, produce, gain_*, choice) che esegue le carte tramite le 8 azioni. Resta da codificare l'`effect` (op) di ciascuna delle 204 carte.
 **Deliverable:** dataset completo + libreria di asset pronti. *(carte + tabellone ✅; resta la codifica DSL degli effetti)*
 
-### Fase 1 — Motore di regole (core engine) — *in corso* (72/72 test pass, Godot 4.3)
+### Fase 1 — Motore di regole (core engine) — *in corso* (82/82 test pass, Godot 4.3)
 **Obiettivo:** simulare una partita completa senza UI.
 - [x] **Simulazione end-to-end** (`game_runner.gd`): partita completa headless (setup → 6 round → scoring Regioni + token Maggioranza → vincitore) con policy semplice. Test d'integrazione che gira un game a 4 giocatori.
 - [x] **Le 8 azioni** della fase di Azione (`actions.gd`): Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce — costi e effetti, verificati sugli esempi del regolamento.
 - [x] **Aftermath** (`aftermath.gd`): Return on Investments, 3 token Maggioranza (denaro/armate/paesi) con spareggi, abilità speciali (Global Superpower Status, Secured Sphere, Global FDI Network) — verificati sull'esempio del regolamento (pag. 21).
-- [~] Macchina a stati delle 3 fasi e dei 6 round (`game_phases.gd`: struttura + passi deterministici; resta l'orchestrazione completa dei turni: Research/Market, Add Auto-Influence).
+- [x] Macchina a stati delle 3 fasi e dei 6 round + **Research/Market** e **Add Auto-Influence** (`game_phases.gd`).
+- [x] **Effetti di tutte le carte** codificati come `effect_ops` (97 carte) ed eseguibili dall'esecutore (test di copertura: 0 op sconosciute).
 - [x] Sistema risorse (produzione primaria + cap a 10 → money; Prosperità).
 - [x] Sistema Influenza (slot permanenti/temporanei, push FIFO, conversione, reset) — `influence_track.gd`.
 - [x] THREAT/Defense (`threat.gd`) — esempi del regolamento.

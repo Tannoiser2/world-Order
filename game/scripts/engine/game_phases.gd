@@ -57,6 +57,58 @@ static func advance_phase(gs: GameState) -> String:
 	return "round %d / %s" % [gs.round, WO.Phase.keys()[gs.phase]]
 
 
+## Research step (regolamento pag. 17): rivela le carte rimaste in mano,
+## guadagna i top bonus, somma il Research; +2 se Domestic Focus.
+## Ritorna i punti Research disponibili per comprare dal Market.
+static func research_step(p: PlayerState, revealed_cards: Array, domestic_focus: bool) -> int:
+	var research := 0
+	for card in revealed_cards:
+		research += int(card.get("research_bonus", 0))
+		var tb: Dictionary = card.get("top_bonus", {})
+		match String(tb.get("kind", "")):
+			"money": p.money += int(tb.get("amount", 0))
+			"diplomacy": p.gain_resource("diplomacy", int(tb.get("amount", 0)))
+			"army": p.armies_available += int(tb.get("amount", 0))
+	if domestic_focus:
+		research += 2
+	return research
+
+
+## Compra una carta dal Market spendendo Research (eventualmente +Research da
+## Country alleati exhaustati). Ritorna il Research speso, o -1 se non basta.
+static func buy_market_card(p: PlayerState, card: Dictionary, available_research: int,
+		extra_from_countries: int = 0) -> int:
+	var cost := int(card.get("market_cost", 0))
+	if available_research + extra_from_countries < cost:
+		return -1
+	p.deck.push_back(card)  # la nuova carta va in cima al mazzo
+	return cost
+
+
+## Add Auto-Influence (regolamento pag. 18, solo 2-3 giocatori): applica una
+## carta Auto-Influence. Per ogni potenza NON controllata da un giocatore,
+## aggiunge Influenza (slot permanente se disponibile, altrimenti temporaneo)
+## e un'Armata se indicato. Se la bandiera 'trade_with' e' di un giocatore,
+## quel giocatore guadagna 10 money.
+static func add_auto_influence(gs: GameState, ai_card: Dictionary, player_powers: Array) -> void:
+	var rows: Dictionary = ai_card.get("rows", {})
+	for power in rows:
+		var row: Dictionary = rows[power]
+		if power not in player_powers:
+			var region: String = row.get("region", "")
+			if gs.regions.has(region):
+				var track: InfluenceTrack = gs.regions[region]["track"]
+				var slot := "permanent" if not track.all_permanent_filled() else "temporary"
+				track.add(power, slot)
+				if bool(row.get("army", false)):
+					var a: Dictionary = gs.regions[region]["armies"]
+					a[power] = int(a.get(power, 0)) + 1
+		var tw: Variant = row.get("trade_with", null)
+		if tw != null and String(tw) in player_powers:
+			var tp := gs.player_by_power(String(tw))
+			if tp: tp.money += 10
+
+
 ## Increase Prosperity (Aftermath): spende Consumer Goods e avanza di 1 spazio.
 ## prosperity_steps: Array di {cost_consumer_goods, vp, money}.
 static func increase_prosperity(p: PlayerState, prosperity_steps: Array) -> bool:
