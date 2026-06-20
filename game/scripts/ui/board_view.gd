@@ -28,14 +28,23 @@ var overlay: Control
 var layout: Dictionary
 var status_label: Label
 var player_panel: VBoxContainer
+var board_bg: TextureRect          # plancia di produzione (immagine) della potenza attiva
+var prosperity_marker: Control     # segnalino sul tracciato Prosperità
 var hand_box: HBoxContainer
 var popup_layer: Control
 
 var all_countries: Array = []
 var region_countries: Dictionary = {}   # rid -> { available:[c,c], deck:[...] }
+var market_deck: Array = []             # mazzo Market mescolato
+var market_display: Array = []          # carte Market scoperte (acquistabili)
+var growth_pool: Array = []             # tutte le Growth card (per livello)
+var _research_idx := 0                  # indice nel turn_order durante la Research
+var _research_points := 0               # Research disponibili al giocatore corrente
+const MARKET_SLOTS := 5
 # Stato del gioco di una carta:
 var playing_card: Dictionary = {}
 var play_queue: Array = []
+var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (parse)
 var awaiting := ""          # "" | "region" | "board_country" | "allied_country"
 var awaiting_op: Dictionary = {}
 # Gestione round/turni:
@@ -53,6 +62,10 @@ func _ready() -> void:
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
 	all_countries = DataLoader.load_countries()
 	_setup_country_decks()
+	market_deck = DataLoader.load_market().duplicate()
+	market_deck.shuffle()
+	growth_pool = DataLoader.load_growth()
+	_refill_market()
 
 	board_rect = TextureRect.new()
 	board_rect.texture = load(layout.get("board_image", "res://assets/board/board.jpg"))
@@ -187,11 +200,12 @@ func _on_country_pressed(country: Dictionary, region: String) -> void:
 
 func _do_improve_relations(country: Dictionary, region: String) -> void:
 	var p := _active()
-	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), [])
+	var disc := Modifiers.improve_discount(active_mods)
+	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), [], disc)
 	if p.resources.get("diplomacy", 0) < cost:
 		_status("Diplomazia insufficiente per Improve Relations con %s (serve %d)." % [country.get("display_name", ""), cost])
 		return
-	if Actions.execute_improve_relations(gs, p.power, country, []):
+	if Actions.execute_improve_relations(gs, p.power, country, [], disc):
 		# rimuovi dalle disponibili e rifornisci
 		region_countries.get(region, {}).get("available", []).erase(country)
 		_refill_available(region)
@@ -264,8 +278,23 @@ func _play_card(card: Dictionary) -> void:
 		return
 	playing_card = card
 	play_queue = (card["effect_ops"] as Array).duplicate(true)
-	_status("Giochi: %s" % card.get("display_name", "carta"))
+	active_mods = Modifiers.parse(card.get("effect_modifiers", []))
+	var mtxt := _mods_text(active_mods)
+	_status("Giochi: %s%s" % [card.get("display_name", "carta"), mtxt])
 	_advance_play()
+
+
+## Breve descrizione degli sconti attivi della carta (per la status bar).
+func _mods_text(mods: Dictionary) -> String:
+	var bits := []
+	if Modifiers.improve_discount(mods) > 0:
+		bits.append("Improve −%d Dip" % Modifiers.improve_discount(mods))
+	if mods.has("engage_discount_per_army"): bits.append("Engage −1/Armata")
+	if mods.has("engage_discount_per_allied"): bits.append("Engage −1/alleato")
+	if mods.has("engage_discount_1_in"): bits.append("Engage −1 in alcune Regioni")
+	if Modifiers.money_for_services(mods) > 0:
+		bits.append("paga %d money per Servizio" % Modifiers.money_for_services(mods))
+	return "  ·  [" + ", ".join(bits) + "]" if bits.size() > 0 else ""
 
 
 func _advance_play() -> void:
@@ -329,7 +358,8 @@ func _resolve_region_op(region: String) -> void:
 	var p := _active()
 	match name:
 		"engage":
-			Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary")
+			var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
+			Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary", ed)
 		"move", "move_free", "move_to_regions":
 			if p.armies_available > 0:
 				Actions.execute_move(gs, p.power, [{"region": region}]) if name == "move" else _free_move(region)
@@ -357,6 +387,7 @@ func _finish_card() -> void:
 	p.hand.erase(playing_card)
 	p.played.append(playing_card)
 	playing_card = {}
+	active_mods = {}
 	awaiting = ""
 	_status("Carta risolta.")
 	_after_change()
@@ -442,6 +473,7 @@ func _close_popup() -> void:
 func _cancel_card() -> void:
 	playing_card = {}
 	play_queue = []
+	active_mods = {}
 	awaiting = ""
 	_status("Giocata annullata.")
 	_layout_overlays()
@@ -462,15 +494,32 @@ func _eligible_allied(op_name: String) -> Array:
 
 # --- Plancia, mano, stato ---
 
+const PANEL_H := 132
+
 func _build_player_panel() -> void:
+	# Sfondo: la plancia di produzione reale della potenza attiva (immagine).
+	board_bg = TextureRect.new()
+	board_bg.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	board_bg.offset_bottom = PANEL_H
+	board_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	board_bg.modulate = Color(1, 1, 1, 0.5)   # attenuata, fa da fondale tematico
+	add_child(board_bg)
+	# Segnalino mobile sul tracciato Prosperità (posizionato in _refresh).
+	prosperity_marker = Control.new()
+	prosperity_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prosperity_marker.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	prosperity_marker.offset_bottom = PANEL_H
+	add_child(prosperity_marker)
+
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	panel.offset_bottom = 88
+	panel.offset_bottom = PANEL_H
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.07, 0.09, 0.12, 0.92)
+	st.bg_color = Color(0.07, 0.09, 0.12, 0.62)   # semitrasparente: lascia vedere la plancia
 	panel.add_theme_stylebox_override("panel", st)
 	add_child(panel)
 	player_panel = VBoxContainer.new()
+	player_panel.add_theme_constant_override("separation", 6)
 	panel.add_child(player_panel)
 
 
@@ -478,6 +527,12 @@ func _refresh() -> void:
 	for c in player_panel.get_children():
 		c.queue_free()
 	var p := _active()
+	# Plancia di produzione della potenza attiva come fondale del pannello.
+	if board_bg:
+		var tex := load("res://assets/player_boards/%s.jpg" % p.power)
+		if tex:
+			board_bg.texture = tex
+	_update_prosperity_marker(p)
 	var row1 := HBoxContainer.new()
 	row1.add_theme_constant_override("separation", 14)
 	player_panel.add_child(row1)
@@ -489,6 +544,7 @@ func _refresh() -> void:
 	row1.add_child(who)
 	row1.add_child(_kv("Money", p.money))
 	row1.add_child(_kv("VP", p.victory_points))
+	row1.add_child(_kv("Prosp", p.prosperity_level))
 	for f in 3:
 		var b := Button.new()
 		b.text = FOCUS_NAME[f]
@@ -525,6 +581,40 @@ func _refresh() -> void:
 		row3.add_child(ab)
 
 
+## Strip del tracciato Prosperità sovrapposto al pannello: una casella per passo,
+## piene fino al livello attuale, evidenziata la prossima (con il costo in CG).
+func _update_prosperity_marker(p: PlayerState) -> void:
+	if prosperity_marker == null:
+		return
+	for c in prosperity_marker.get_children():
+		c.queue_free()
+	var pb: Dictionary = DataLoader.load_player_boards()
+	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
+	var strip := HBoxContainer.new()
+	strip.add_theme_constant_override("separation", 4)
+	strip.position = Vector2(14, PANEL_H - 24)
+	prosperity_marker.add_child(strip)
+	var lab := Label.new()
+	lab.text = "Prosperità:"
+	lab.add_theme_font_size_override("font_size", 11)
+	strip.add_child(lab)
+	for i in steps.size():
+		var step: Dictionary = steps[i]
+		var cell := Label.new()
+		cell.text = "  %dCG→%dVP  " % [int(step.get("cost_consumer_goods", 0)), int(step.get("vp", 0))]
+		cell.add_theme_font_size_override("font_size", 11)
+		var box := StyleBoxFlat.new()
+		if i < p.prosperity_level:
+			box.bg_color = Color(0.3, 0.7, 0.4, 0.85)        # già raggiunto
+		elif i == p.prosperity_level:
+			box.bg_color = Color(0.9, 0.8, 0.2, 0.9)         # prossimo
+			cell.add_theme_color_override("font_color", Color.BLACK)
+		else:
+			box.bg_color = Color(0.2, 0.2, 0.2, 0.7)
+		cell.add_theme_stylebox_override("normal", box)
+		strip.add_child(cell)
+
+
 func _kv(k: String, v: int) -> Label:
 	var l := Label.new(); l.text = "%s %d" % [k, v]; l.add_theme_font_size_override("font_size", 15); return l
 
@@ -536,13 +626,141 @@ func _kv2(t: String) -> Label:
 func _end_turn() -> void:
 	if not playing_card.is_empty() or game_over:
 		return
+	if popup_layer.get_child_count() > 0:
+		return  # un popup (Research/riepilogo) e' aperto
 	round_turn_count += 1
 	if round_turn_count >= 4 * gs.players.size():
-		_run_aftermath()
+		_begin_research()
 		return
 	active_seat = gs.turn_order[round_turn_count % gs.players.size()]
 	_status("Turno di %s." % _active().power.to_upper())
 	_after_change()
+
+
+# --- Fase Research / Market (fine round, prima dell'Aftermath) ---
+
+func _refill_market() -> void:
+	while market_display.size() < MARKET_SLOTS and not market_deck.is_empty():
+		market_display.append(market_deck.pop_back())
+
+
+func _begin_research() -> void:
+	_research_idx = 0
+	_research_next()
+
+
+## Passa alla Research del prossimo giocatore (in ordine di turno); poi Aftermath.
+func _research_next() -> void:
+	if _research_idx >= gs.turn_order.size():
+		_run_aftermath()
+		return
+	active_seat = gs.turn_order[_research_idx]
+	var p := _active()
+	# Reveal della mano residua: top bonus + punti Research (+2 se Domestic).
+	_research_points = GamePhases.research_step(p, p.hand, p.focus == WO.Focus.DOMESTIC)
+	_after_change()
+	_show_research()
+
+
+## Prossima Growth card acquistabile dal giocatore (livello = possedute + 1).
+func _next_growth_level(p: PlayerState) -> int:
+	return p.growth_cards.size() + 1
+
+
+func _available_growth(p: PlayerState) -> Array:
+	var nl := _next_growth_level(p)
+	var owned := p.growth_cards.map(func(c): return c.get("id", ""))
+	return growth_pool.filter(func(c): return int(c.get("level", 0)) == nl and not (c.get("id", "") in owned))
+
+
+func _show_research() -> void:
+	var p := _active()
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	center.add_child(panel)
+	var vb := VBoxContainer.new()
+	vb.custom_minimum_size = Vector2(480, 0)
+	vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+
+	var head := Label.new()
+	head.text = "Research — %s   ·   Research disponibili: %d" % [p.power.to_upper(), _research_points]
+	head.add_theme_font_size_override("font_size", 18)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	vb.add_child(head)
+
+	vb.add_child(_section("Market (spendi Research):"))
+	for card in market_display:
+		var cost := int(card.get("market_cost", 0))
+		var b := Button.new()
+		b.text = "%s  —  costo %d  (%s)" % [card.get("display_name", "?"), cost, card.get("type", "")]
+		b.disabled = _research_points < cost
+		b.pressed.connect(_buy_market.bind(card))
+		vb.add_child(b)
+
+	vb.add_child(_section("Growth (livello %d, spendi risorse):" % _next_growth_level(p)))
+	var ag := _available_growth(p)
+	if ag.is_empty():
+		var none := Label.new()
+		none.text = "  (nessuna Growth di questo livello)"
+		vb.add_child(none)
+	for card in ag:
+		var b := Button.new()
+		b.text = "%s  —  %s  (+%d VP)" % [card.get("display_name", "?"), _cost_text(card.get("cost", {})), int(card.get("victory_points", 0))]
+		b.disabled = not p.has_resources(card.get("cost", {}))
+		b.pressed.connect(_buy_growth.bind(card))
+		vb.add_child(b)
+
+	var done := Button.new()
+	done.text = "Continua ▶"
+	done.pressed.connect(func():
+		_research_idx += 1
+		_close_popup()
+		_research_next())
+	vb.add_child(done)
+
+
+func _buy_market(card: Dictionary) -> void:
+	var spent := GamePhases.buy_market_card(_active(), card, _research_points)
+	if spent >= 0:
+		_research_points -= spent
+		market_display.erase(card)
+		_refill_market()
+		_status("Comprata dal Market: %s (−%d Research)." % [card.get("display_name", ""), spent])
+		_after_change()
+		_show_research()
+
+
+func _buy_growth(card: Dictionary) -> void:
+	var p := _active()
+	if Actions.execute_get_growth(p, card, _next_growth_level(p)):
+		_status("Get a Growth Card: %s (+%d VP)." % [card.get("display_name", ""), int(card.get("victory_points", 0))])
+		_after_change()
+		_show_research()
+
+
+func _section(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", Color(0.9, 0.9, 0.6))
+	return l
+
+
+func _cost_text(cost: Dictionary) -> String:
+	var parts := []
+	for k in cost:
+		var label: String = "money" if k == "money" else String(RES_LABEL.get(k, k))
+		parts.append("%d %s" % [int(cost[k]), label])
+	return ", ".join(parts) if parts.size() > 0 else "gratis"
 
 
 ## Aftermath del round: Increase Prosperity (auto se possibile), Resolve THREAT,

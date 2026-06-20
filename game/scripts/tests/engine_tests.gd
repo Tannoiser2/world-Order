@@ -325,6 +325,26 @@ static func run_all() -> Dictionary:
 	check.call("Auto-Influence: China guadagna 10 money (trade flag)",
 		gai.player_by_power("china").money == china_money_before + 10)
 
+	# --- 11b. Modifiers: sconti condizionali (effect_modifiers) ---
+	var mods := Modifiers.parse(["improve_discount:1", "engage_discount_per_army",
+		"engage_discount_per_allied", "engage_discount_1_in:europe,africa", "pay_money_for_services:10"])
+	check.call("parse modifier chiave:valore", int(mods.get("improve_discount", 0)) == 1)
+	check.call("parse modifier flag", mods.get("engage_discount_per_army", false) == true)
+	check.call("improve_discount = 1", Modifiers.improve_discount(mods) == 1)
+	check.call("money_for_services = 10", Modifiers.money_for_services(mods) == 10)
+	var gmod := GameSetup.new_game(["usa", "china"])
+	gmod.regions["europe"]["armies"]["usa"] = 2
+	var pu := gmod.player_by_power("usa")
+	pu.allied_countries.append({"region": "europe", "value": 3})
+	# Engage in Europe: 2 (per armata) + 1 (per alleato) + 1 (sconto fisso Europe) = 4
+	check.call("engage_discount Europe (army+allied+region) = 4",
+		Modifiers.engage_discount(mods, gmod, "usa", "europe") == 4)
+	# Africa: nessuna armata/alleato la', solo lo sconto fisso = 1
+	check.call("engage_discount Africa (solo fisso) = 1",
+		Modifiers.engage_discount(mods, gmod, "usa", "africa") == 1)
+	check.call("engage_discount senza modifier = 0",
+		Modifiers.engage_discount({}, gmod, "usa", "europe") == 0)
+
 	# --- 12. Simulazione end-to-end (integrazione) ---
 	var fin := GameRunner.run_game(["usa", "china", "russia", "eu"], 42)
 	check.call("partita completata: 6 round", fin.round == 6)

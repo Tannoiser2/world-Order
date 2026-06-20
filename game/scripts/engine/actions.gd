@@ -30,19 +30,20 @@ const SECONDARY_REQ := {
 
 ## Costo in Diplomacy: valore del Paese meno la somma dei valori degli alleati
 ## della stessa Regione che si exhaustano (minimo 0).
-static func improve_relations_cost(country_value: int, exhausted_values: Array) -> int:
-	var discount := 0
+static func improve_relations_cost(country_value: int, exhausted_values: Array,
+		extra_discount: int = 0) -> int:
+	var discount := extra_discount
 	for v in exhausted_values:
 		discount += int(v)
 	return maxi(0, country_value - discount)
 
 
 static func execute_improve_relations(gs: GameState, owner: String, country: Dictionary,
-		exhausted_values: Array = []) -> bool:
+		exhausted_values: Array = [], extra_discount: int = 0) -> bool:
 	var p := gs.player_by_power(owner)
 	if p == null:
 		return false
-	var cost := improve_relations_cost(int(country.get("value", 0)), exhausted_values)
+	var cost := improve_relations_cost(int(country.get("value", 0)), exhausted_values, extra_discount)
 	if not p.spend({"diplomacy": cost}):
 		return false
 	p.allied_countries.append(country)
@@ -53,8 +54,9 @@ static func execute_improve_relations(gs: GameState, owner: String, country: Dic
 # ENGAGE (Diplomatic)
 # ---------------------------------------------------------------------------
 
-static func engage_cost(base_cost: int, exhausted_values: Array, diplomatic_focus: bool) -> int:
-	var discount := 0
+static func engage_cost(base_cost: int, exhausted_values: Array, diplomatic_focus: bool,
+		extra_discount: int = 0) -> int:
+	var discount := extra_discount
 	for v in exhausted_values:
 		discount += int(v)
 	if diplomatic_focus:
@@ -65,11 +67,11 @@ static func engage_cost(base_cost: int, exhausted_values: Array, diplomatic_focu
 ## Ritorna i VP immediati guadagnati (dallo slot Influenza), o -1 se fallisce.
 static func execute_engage(gs: GameState, owner: String, region: String,
 		exhausted_values: Array = [], diplomatic_focus: bool = false,
-		slot_type: String = "") -> int:
+		slot_type: String = "", extra_discount: int = 0) -> int:
 	var p := gs.player_by_power(owner)
 	if p == null or not gs.regions.has(region):
 		return -1
-	var cost := engage_cost(int(gs.regions[region]["engage_cost"]), exhausted_values, diplomatic_focus)
+	var cost := engage_cost(int(gs.regions[region]["engage_cost"]), exhausted_values, diplomatic_focus, extra_discount)
 	if not p.spend({"diplomacy": cost}):
 		return -1
 	var vp: int = gs.regions[region]["track"].add(owner, slot_type)

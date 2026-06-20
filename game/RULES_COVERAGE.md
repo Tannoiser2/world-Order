@@ -1,7 +1,7 @@
 # Copertura delle regole — motore World Order
 
 Stato dell'implementazione del regolamento nel motore (`scripts/engine/`).
-**88 test** headless verdi (Godot 4.3), molti riproducono gli esempi numerici del manuale.
+**95 test** headless verdi (Godot 4.3), molti riproducono gli esempi numerici del manuale.
 
 ## ✅ Implementato e testato
 
@@ -22,16 +22,27 @@ Stato dell'implementazione del regolamento nel motore (`scripts/engine/`).
 | Aftermath: 3 token Maggioranza + spareggi + regola 2p | `aftermath.gd` | esempio pag. 21 (riprodotto esatto) |
 | Abilità speciali potenze | `aftermath.gd` | Global Superpower Status, Secured Sphere, Global FDI Network |
 | Effetti carte come `effect_ops` (97 carte) | `effect_executor.gd` + dati | 0 op sconosciute |
+| Sconti condizionali delle carte (`effect_modifiers`) | `modifiers.gd` | Improve −N, Engage −1/Armata, −1/alleato, −1 in certe Regioni, money↔Servizi/Diplomazia |
 | Setup partita da dati | `game_setup.gd` | cubi iniziali, Engage MENA=6 |
 | Simulazione end-to-end (6 round → vincitore) | `game_runner.gd` | partita a 4 completa |
+
+### Agganciato al flusso interattivo (UI, `scripts/ui/board_view.gd`)
+
+| Area | Note |
+|------|------|
+| Selezione Country sul tabellone | 2 disponibili/Regione (Improve Relations) + alleati davanti al giocatore (Invest/Build a Base) |
+| Fase Research/Market di fine round | reveal mano → top bonus + Research (+2 Domestic), acquisto carte Market e Growth (in ordine di livello) |
+| `effect_modifiers` applicati alla carta giocata | sconti su Engage/Improve Relations calcolati a runtime via `modifiers.gd` |
+| Plancia di produzione della potenza | immagine reale come fondale del pannello + tracciato Prosperità con segnalino |
 
 ## 🚧 Modellato ma da raffinare (nuance)
 
 Codificati nei dati come `effect_modifiers` / op `ongoing`, da applicare automaticamente
 durante il flusso di gioco interattivo (richiedono il turno completo guidato da UI/bot):
 
-- **Sconti/bonus condizionali** delle carte (es. *Engage spendendo 1 Diplomacy in meno per Armata*,
-  *Improve Relations pagando money invece di Diplomacy*, *count Energy ×2*).
+- **Sconti/bonus condizionali residui**: gli sconti su Engage/Improve Relations sono attivi
+  (`modifiers.gd`); restano da agganciare i condizionali sull'Influenza (*count Energy ×2*,
+  *aggiungi Influenza se hai esportato …*) e il pagamento money↔Servizi nel costo delle Growth.
 - **Abilità continuative** (Growth + alcune carte): *pesca extra/round*, *gioca una carta in più al primo turno*,
   *once-per-round draw/trash*, ecc. — l'op `ongoing` le marca; vanno agganciate ai passi del round.
 - **Trade tra giocatori** con Commerce card (export/import inter-player + 1 Services di bonus): le tabelle

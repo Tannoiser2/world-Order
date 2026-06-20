@@ -31,6 +31,11 @@ func _init() -> void:
 		var n: int = board.overlay.get_child_count() if board.overlay else 0
 		print("[%s] board.tscn istanziata; overlay Regioni: %d" % ["OK" if n == 7 else "FAIL", n])
 		if n != 7: fails += 1
+		# La plancia di produzione della potenza attiva e' usata come fondale.
+		var bg_ok: bool = board.board_bg != null and board.board_bg.texture != null
+		print("[%s] plancia di produzione caricata come fondale del pannello" % ["OK" if bg_ok else "FAIL"])
+		if not bg_ok: fails += 1
+
 		# flusso di click: Engage in Europe (cost 5, il giocatore ha 8 Diplomacy)
 		var before: int = board.gs.regions["europe"]["track"].count(board._active().power)
 		board._on_region_pressed("europe")
@@ -103,6 +108,51 @@ func _init() -> void:
 		var auto_ok: bool = ac.money == money_b + 7 and (card_auto in ac.played) and board.playing_card.is_empty()
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
 		if not auto_ok: fails += 1
+
+		# Modifiers: carta Engage con sconto -1 Diplomacy per Armata schierata.
+		ac.resources["diplomacy"] = 20
+		var mreg := "central_asia"
+		board.gs.regions[mreg]["armies"][ac.power] = 3
+		var raw_cost: int = int(board.gs.regions[mreg]["engage_cost"])
+		var diplo := ac.focus == WO.Focus.DIPLOMATIC
+		var expected_cost: int = Actions.engage_cost(raw_cost, [], diplo, 3)
+		var dip_pre: int = ac.resources["diplomacy"]
+		var card_mod := {"display_name": "Engage scontato", "effect_ops": [{"op": "engage"}],
+			"effect_modifiers": ["engage_discount_per_army"]}
+		ac.hand.append(card_mod)
+		board._play_card(card_mod)
+		board._on_region_pressed(mreg)
+		var spent: int = dip_pre - ac.resources["diplomacy"]
+		var mod_ok: bool = spent == expected_cost and (card_mod in ac.played)
+		print("[%s] effect_modifier: Engage costa %d (sconto -3 per Armata)" % ["OK" if mod_ok else "FAIL", spent])
+		if not mod_ok: fails += 1
+
+		# Research/Market: il mercato e' rifornito; l'acquisto consuma Research.
+		var mkt_full: bool = board.market_display.size() == board.MARKET_SLOTS
+		print("[%s] Market rifornito a %d carte scoperte" % ["OK" if mkt_full else "FAIL", board.market_display.size()])
+		if not mkt_full: fails += 1
+		board._research_points = 99
+		var deck_pre: int = ac.deck.size()
+		var buy: Dictionary = board.market_display[0]
+		board._buy_market(buy)
+		var buy_ok: bool = ac.deck.size() == deck_pre + 1 and not (buy in board.market_display) \
+			and board.market_display.size() == board.MARKET_SLOTS and board._research_points < 99
+		print("[%s] acquisto Market: carta nel mazzo, slot rifornito, Research speso" % ["OK" if buy_ok else "FAIL"])
+		if not buy_ok: fails += 1
+
+		# Growth: acquisto della prossima Growth (livello 1) spendendo risorse.
+		var ag: Array = board._available_growth(ac)
+		if ag.size() > 0:
+			var gcard: Dictionary = ag[0]
+			ac.money = 50
+			for rt in ac.resources: ac.resources[rt] = 10
+			var vp_pre: int = ac.victory_points
+			var growth_pre: int = ac.growth_cards.size()
+			board._buy_growth(gcard)
+			var g_ok: bool = ac.growth_cards.size() == growth_pre + 1 \
+				and ac.victory_points == vp_pre + int(gcard.get("victory_points", 0))
+			print("[%s] acquisto Growth: carta acquisita (+%d VP)" % ["OK" if g_ok else "FAIL", int(gcard.get("victory_points", 0))])
+			if not g_ok: fails += 1
 
 	# Partita completa attraverso la UI (Fine turno / Continua fino alla fine).
 	var b2: Node = load("res://scenes/board.tscn").instantiate()
