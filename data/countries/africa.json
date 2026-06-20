@@ -1,0 +1,91 @@
+{
+  "region": "africa",
+  "region_label": "Africa",
+  "source": "Trascritto dagli asset (game/assets/cards/ability/). Vedi data/RESOURCE_LEGEND.md.",
+  "countries": [
+    {
+      "id": "country_sudan", "type": "country", "display_name": "Sudan",
+      "art": "ability/ability_058.jpg", "region": "africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["food", "consumer_goods"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_south_africa", "type": "country", "display_name": "South Africa",
+      "art": "ability/ability_059.jpg", "region": "africa",
+      "value": 3, "invest_cost": 20,
+      "exports": ["energy", "consumer_goods", "consumer_goods"], "imports": ["raw_materials", "raw_materials"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_mali", "type": "country", "display_name": "Mali",
+      "art": "ability/ability_060.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["energy"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["eu", "russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_niger", "type": "country", "display_name": "Niger",
+      "art": "ability/ability_061.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["services"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu", "russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_burkina_faso", "type": "country", "display_name": "Burkina Faso",
+      "art": "ability/ability_062.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["services"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["eu", "russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_ethiopia", "type": "country", "display_name": "Ethiopia",
+      "art": "ability/ability_063.jpg", "region": "africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "services"], "imports": ["food"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_angola", "type": "country", "display_name": "Angola",
+      "art": "ability/ability_064.jpg", "region": "africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["consumer_goods", "services"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_equatorial_guinea", "type": "country", "display_name": "Equatorial Guinea",
+      "art": "ability/ability_065.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["consumer_goods"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_nigeria", "type": "country", "display_name": "Nigeria",
+      "art": "ability/ability_066.jpg", "region": "africa",
+      "value": 2, "invest_cost": 15,
+      "exports": ["food", "services"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_djibouti", "type": "country", "display_name": "Djibouti",
+      "art": "ability/ability_067.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu", "china"], "has_base_symbol": true
+    },
+    {
+      "id": "country_kenya", "type": "country", "display_name": "Kenya",
+      "art": "ability/ability_068.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["energy"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_central_african_republic", "type": "country", "display_name": "Central African Republic",
+      "art": "ability/ability_069.jpg", "region": "africa",
+      "value": 1, "invest_cost": 10,
+      "exports": ["energy"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["eu", "russia"], "has_base_symbol": true
+    }
+  ]
+}

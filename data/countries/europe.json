@@ -1,0 +1,86 @@
+{
+  "region": "europe",
+  "region_label": "Europe",
+  "source": "Trascritto dagli asset (game/assets/cards/ability/). Vedi data/RESOURCE_LEGEND.md. Nota: i Paesi 'core' (Germania, Francia, ecc.) non hanno carta perche' confluiscono nella potenza UE.",
+  "countries": [
+    {
+      "id": "country_bosnia_herzegovina", "type": "country", "display_name": "Bosnia-Herzegovina",
+      "art": "ability/ability_038.jpg", "region": "europe",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_belarus", "type": "country", "display_name": "Belarus",
+      "art": "ability/ability_039.jpg", "region": "europe",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "consumer_goods"], "imports": ["food"],
+      "no_relations_powers": ["usa", "eu"], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_switzerland", "type": "country", "display_name": "Switzerland",
+      "art": "ability/ability_040.jpg", "region": "europe",
+      "value": 3, "invest_cost": 20,
+      "exports": ["raw_materials", "services", "services"], "imports": ["consumer_goods", "consumer_goods"],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_serbia", "type": "country", "display_name": "Serbia",
+      "art": "ability/ability_041.jpg", "region": "europe",
+      "value": 1, "invest_cost": 10,
+      "exports": ["raw_materials"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_albania", "type": "country", "display_name": "Albania",
+      "art": "ability/ability_042.jpg", "region": "europe",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_ukraine", "type": "country", "display_name": "Ukraine",
+      "art": "ability/ability_043.jpg", "region": "europe",
+      "value": 2, "invest_cost": 15,
+      "exports": ["energy", "energy"], "imports": ["raw_materials"],
+      "no_relations_powers": [], "base_allowed_powers": ["russia"], "has_base_symbol": true
+    },
+    {
+      "id": "country_moldova", "type": "country", "display_name": "Moldova",
+      "art": "ability/ability_044.jpg", "region": "europe",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": ["russia"], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_iceland", "type": "country", "display_name": "Iceland",
+      "art": "ability/ability_045.jpg", "region": "europe",
+      "value": 1, "invest_cost": 10,
+      "exports": ["services"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["usa"], "has_base_symbol": true
+    },
+    {
+      "id": "country_croatia", "type": "country", "display_name": "Croatia",
+      "art": "ability/ability_046.jpg", "region": "europe",
+      "value": 1, "invest_cost": 10,
+      "exports": ["food"], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": [], "has_base_symbol": false
+    },
+    {
+      "id": "country_norway", "type": "country", "display_name": "Norway",
+      "art": "ability/ability_047.jpg", "region": "europe",
+      "value": 2, "invest_cost": 15,
+      "exports": ["consumer_goods", "services"], "imports": ["energy"],
+      "no_relations_powers": [], "base_allowed_powers": ["usa", "eu"], "has_base_symbol": true
+    },
+    {
+      "id": "country_eu_member_states", "type": "country", "display_name": "EU Member States",
+      "art": "ability/ability_024.jpg", "region": "europe",
+      "value": 2, "invest_cost": 15,
+      "exports": [], "imports": [],
+      "no_relations_powers": [], "base_allowed_powers": ["eu"], "has_base_symbol": true,
+      "starting_for_power": "eu",
+      "note": "Carta speciale: Paese iniziale della potenza UE (bandiera UE in alto = indicatore proprietario, non barrata). Striscia risorse vuota."
+    }
+  ]
+}

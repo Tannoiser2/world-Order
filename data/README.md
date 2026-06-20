@@ -64,31 +64,37 @@ Output: **253 carte uniche** in `game/assets/cards/<tipo>/` + manifest `game/dat
 > **`ability`** (485×745), mescolate con Market/Growth/Auto-Influence. Si riconoscono dal layout:
 > esagono valore, bandiera, mappa della Regione, striscia risorse in basso.
 
-Le Country card sono raggruppate per **Regione** tramite il colore della banda. Mappa rilevata
-(campionando il colore della banda del nome) nel bucket `ability`:
+### ✅ Tutte le Country card trascritte (77 Paesi)
 
-| Colore banda | Regione (probabile) | id `ability_*` |
-|--------------|---------------------|----------------|
-| oliva `#a3a548` | **Middle East – North Africa** ✅ trascritta | a008–a010 (dup.), a090–a101 |
-| viola `#a74c97` | South Asia | a013, a016, a070–a077 |
-| ciano `#3dbae1` | East Asia – Pacific | a014, a015, a078–a089 |
-| arancio acceso `#d99a3b` | Africa | a005, a017, a028–a037 |
-| bruno-rosso `#c2724e` | Americas | a006, a007, a026, a027, a048–a057 |
-| beige `#ceae84` | Europe | a011, a012, a058–a069 |
-| teal `#43868a` | (regione da confermare) | a003, a004, a024, a025, a038–a047 |
+Le Country card sono nel bucket `ability` (485×745), raggruppate per **Regione**. La Regione è
+**stampata su ogni carta** (sotto il nome): mappatura finale verificata leggendo le carte una per una.
 
-Le carte **non-Paese** del bucket `ability` (plance potenza / Auto-Influence) sono a000–a002 e a017–a023.
+| Regione | id `ability_*` (run principale) | # |
+|---------|----------------------------------|---|
+| Middle East – North Africa | a090–a101 | 12 |
+| Central Asia | a028–a037 | 10 |
+| Europe (teal) | a038–a047 + a024 (*EU Member States*) | 11 |
+| Americas | a048–a057 + a026 (Chile), a027 (Brazil) | 12 |
+| Africa | a058–a069 | 12 |
+| South Asia | a070–a077 | 8 |
+| East Asia – Pacific | a078–a089 | 12 |
+| **Totale** | | **77** |
 
-Trascrizioni completate: [`countries/middle_east_north_africa.json`](countries/) (12 Paesi, validato contro lo schema).
-Legenda dei simboli: [`RESOURCE_LEGEND.md`](RESOURCE_LEGEND.md).
+Indice: [`countries/index.json`](countries/index.json) · Legenda simboli: [`RESOURCE_LEGEND.md`](RESOURCE_LEGEND.md).
 
-> Nota: le Country compaiono in più copie su sheet diversi (partita TTS a metà). La dedup finale
-> è per **nome** durante la trascrizione.
+Le carte **non-Paese** del bucket `ability`: a000–a002 e a018–a023 = **Commerce/Trade card** delle
+potenze (es. Russia mostra 3 barili + 3 minerali, coerente col regolamento); a003–a016, a017, a025
+= **duplicati** di Country (la partita TTS è a metà, le carte sono sparse tra mazzi e tavolo).
+
+> Verifiche incrociate col regolamento: Iran/Syria → USA non può migliorare relazioni; Russia ha
+> base in Vietnam; valori di Turkey (3), Australia (3), Norway (2), Tajikistan (1) corrispondono
+> agli esempi; India fornisce import di Servizi (esempio di Trade).
 
 ## Prossimi passi
 
-1. Trascrivere le restanti 6 Regioni di Country card (stesso processo, vedi tabella sopra).
-2. Suddividere il resto del bucket `ability` (Market / Growth / Auto-Influence) e il bucket `country` (Starting Ability + Executive Order).
+1. Suddividere il resto del bucket `ability` (Market / Auto-Influence) e il bucket `country`
+   (Starting Ability a tutta pagina + Executive Order), e trascriverli.
+2. Trascrivere Growth cards e Strategic Asset (bucket `strategic_asset`).
 3. Trascrivere gli effetti delle carte come micro-DSL e definirne il vocabolario (`op`), guidandosi con la logica Lua.
 4. Catalogare token e plance (`Counter/`, `Player Production/`, `Player Aid/`).
 

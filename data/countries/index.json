@@ -1,0 +1,139 @@
+{
+ "regions": [
+  {
+   "region": "africa",
+   "label": "Africa",
+   "file": "countries/africa.json",
+   "count": 12,
+   "countries": [
+    "Sudan",
+    "South Africa",
+    "Mali",
+    "Niger",
+    "Burkina Faso",
+    "Ethiopia",
+    "Angola",
+    "Equatorial Guinea",
+    "Nigeria",
+    "Djibouti",
+    "Kenya",
+    "Central African Republic"
+   ]
+  },
+  {
+   "region": "americas",
+   "label": "Americas",
+   "file": "countries/americas.json",
+   "count": 12,
+   "countries": [
+    "Canada",
+    "Colombia",
+    "Peru",
+    "Argentina",
+    "Honduras",
+    "Venezuela",
+    "Ecuador",
+    "El Salvador",
+    "Mexico",
+    "Cuba",
+    "Chile",
+    "Brazil"
+   ]
+  },
+  {
+   "region": "central_asia",
+   "label": "Central Asia",
+   "file": "countries/central_asia.json",
+   "count": 10,
+   "countries": [
+    "Armenia",
+    "Georgia",
+    "Kazakhstan",
+    "Azerbaijan",
+    "Tajikistan",
+    "Turkmenistan",
+    "Afghanistan",
+    "Uzbekistan",
+    "Kyrgyzstan",
+    "Mongolia"
+   ]
+  },
+  {
+   "region": "east_asia_pacific",
+   "label": "East Asia – Pacific",
+   "file": "countries/east_asia_pacific.json",
+   "count": 12,
+   "countries": [
+    "New Zealand",
+    "South Korea",
+    "Vietnam",
+    "Singapore",
+    "Australia",
+    "North Korea",
+    "Cambodia",
+    "Laos",
+    "Indonesia",
+    "Philippines",
+    "Thailand",
+    "Japan"
+   ]
+  },
+  {
+   "region": "europe",
+   "label": "Europe",
+   "file": "countries/europe.json",
+   "count": 11,
+   "countries": [
+    "Bosnia-Herzegovina",
+    "Belarus",
+    "Switzerland",
+    "Serbia",
+    "Albania",
+    "Ukraine",
+    "Moldova",
+    "Iceland",
+    "Croatia",
+    "Norway",
+    "EU Member States"
+   ]
+  },
+  {
+   "region": "middle_east_north_africa",
+   "label": "Middle East – North Africa",
+   "file": "countries/middle_east_north_africa.json",
+   "count": 12,
+   "countries": [
+    "Qatar",
+    "Syria",
+    "Egypt",
+    "Iran",
+    "Saudi Arabia",
+    "Algeria",
+    "Libya",
+    "Jordan",
+    "United Arab Emirates",
+    "Israel",
+    "Turkey",
+    "Iraq"
+   ]
+  },
+  {
+   "region": "south_asia",
+   "label": "South Asia",
+   "file": "countries/south_asia.json",
+   "count": 8,
+   "countries": [
+    "Sri Lanka",
+    "Nepal",
+    "Maldives",
+    "Bhutan",
+    "Myanmar",
+    "Pakistan",
+    "Bangladesh",
+    "India"
+   ]
+  }
+ ],
+ "total_countries": 77,
+ "source": "Trascritto dagli sprite-sheet del prototipo TTS. Vedi data/RESOURCE_LEGEND.md."
+}
