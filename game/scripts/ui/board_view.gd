@@ -930,9 +930,10 @@ const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 
 
 func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
-	# La plancia è limitata in ALTEZZA (max ~42% schermo) così sta nel cassetto
-	# senza diventare enorme; la larghezza ne deriva mantenendo le proporzioni.
-	var ph := minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.38)
+	# La plancia ha un TETTO ASSOLUTO in pixel (come le carte) così non diventa mai
+	# gigante, qualunque sia la dimensione/densità della finestra; più i limiti
+	# proporzionali (larghezza disponibile e frazione d'altezza).
+	var ph := minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.38), 360.0)
 	var pw := ph / PLANCIA_RATIO
 	var view := Control.new()
 	view.custom_minimum_size = Vector2(pw, ph)
