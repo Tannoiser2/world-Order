@@ -31,6 +31,16 @@ func _init() -> void:
 		var n: int = board.overlay.get_child_count() if board.overlay else 0
 		print("[%s] board.tscn istanziata; overlay Regioni: %d" % ["OK" if n == 7 else "FAIL", n])
 		if n != 7: fails += 1
+		# flusso di click: Engage in Europe (cost 5, il giocatore ha 8 Diplomacy)
+		var before: int = board.gs.regions["europe"]["track"].count(board._active().power)
+		board._on_region_pressed("europe")
+		var after: int = board.gs.regions["europe"]["track"].count(board._active().power)
+		var ok2 := after == before + 1
+		print("[%s] click Regione -> Engage aggiunge Influenza (%d->%d)" % ["OK" if ok2 else "FAIL", before, after])
+		if not ok2: fails += 1
+		var hand_n: int = board._active().hand.size()
+		print("[%s] mano del giocatore popolata (%d carte)" % ["OK" if hand_n > 0 else "FAIL", hand_n])
+		if hand_n == 0: fails += 1
 
 	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(fails)
