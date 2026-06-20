@@ -1068,16 +1068,20 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(0, _card_height() + 16)
+	scroll.custom_minimum_size = Vector2(0, _hand_card_height() + 14)
 	scroll.add_child(hand_box)
 	hand_pinned.add_child(scroll)
 	_render_hand()
 
 
 func _card_height() -> int:
-	# Carte in-cassetto (mano/alleati) basse, così entrano intere nello spazio
-	# rimasto sotto la plancia senza venire tagliate.
-	return int(clampf(size.y * 0.16, 78, 140))
+	# Carte alleati (riferimento): compatte.
+	return int(clampf(size.y * 0.15, 74, 130))
+
+
+## Carte della MANO (giocabili): più alte e leggibili, sempre verticali.
+func _hand_card_height() -> int:
+	return int(clampf(size.y * 0.20, 120, 200))
 
 
 func _kv(k: String, v: int) -> Label:
@@ -1343,23 +1347,14 @@ func _render_hand() -> void:
 		return
 	for c in hand_box.get_children():
 		c.queue_free()
-	var ch := _card_height()
+	var ch := _hand_card_height()
 	for card in _active().hand:
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(int(ch * 0.70), ch)
-		btn.flat = true
+		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), false)
+		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		btn.disabled = not playing_card.is_empty()
 		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
 		btn.pressed.connect(_play_card.bind(card))
-		var tr := TextureRect.new()
-		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var art: String = card.get("art", "")
-		if art != "":
-			var tex := load("res://assets/cards/" + art)
-			if tex: tr.texture = tex
-		btn.add_child(tr)
 		hand_box.add_child(btn)
 
 
