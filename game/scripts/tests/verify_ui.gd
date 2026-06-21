@@ -57,6 +57,7 @@ func _init() -> void:
 		ac.resources["diplomacy"] = 20  # isola il test dal consumo precedente
 		var card_region := {"display_name": "Test Engage", "effect_ops": [{"op": "engage"}]}
 		ac.hand.append(card_region)
+		board._plays_left = 9
 		board._play_card(card_region)
 		var aw_ok: bool = board.awaiting == "region"
 		print("[%s] play carta Engage -> attende una Regione" % ["OK" if aw_ok else "FAIL"])
@@ -77,6 +78,7 @@ func _init() -> void:
 		var allied_b: int = ac.allied_countries.size()
 		var card_ir := {"display_name": "Test IR", "effect_ops": [{"op": "improve_relations"}]}
 		ac.hand.append(card_ir)
+		board._plays_left = 9
 		board._play_card(card_ir)
 		var ir_await: bool = board.awaiting == "board_country"
 		print("[%s] play carta Improve Relations -> attende una Country sul board" % ["OK" if ir_await else "FAIL"])
@@ -96,6 +98,7 @@ func _init() -> void:
 		var money_pre: int = ac.money
 		var card_inv := {"display_name": "Test Invest", "effect_ops": [{"op": "invest"}]}
 		ac.hand.append(card_inv)
+		board._plays_left = 9
 		board._play_card(card_inv)
 		var inv_await: bool = board.awaiting == "allied_country"
 		print("[%s] play carta Invest -> attende una Country alleata" % ["OK" if inv_await else "FAIL"])
@@ -109,6 +112,7 @@ func _init() -> void:
 		var money_b: int = ac.money
 		var card_auto := {"display_name": "Test Money", "effect_ops": [{"op": "gain_money", "amount": 7}]}
 		ac.hand.append(card_auto)
+		board._plays_left = 9
 		board._play_card(card_auto)
 		var auto_ok: bool = ac.money == money_b + 7 and (card_auto in ac.played) and board.playing_card.is_empty()
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
@@ -122,6 +126,7 @@ func _init() -> void:
 		var af0: int = board.gs.regions["africa"]["armies"].get(pm.power, 0)
 		var card_move := {"display_name": "Test Move", "effect_ops": [{"op": "move", "max": 2}]}
 		pm.hand.append(card_move)
+		board._plays_left = 9
 		board._play_card(card_move)
 		board._on_region_pressed("europe")
 		board._on_region_pressed("africa")   # raggiunge max 2 → applica
@@ -169,6 +174,63 @@ func _init() -> void:
 		board._trade_sel = {}
 		board._close_popup()
 
+		# Trade fra giocatori: importo Servizi dalla Commerce card di un altro
+		# giocatore → quel giocatore incassa il money e +1 Servizio, la sua Commerce
+		# card si gira (non riusabile nel round).
+		var buyer: PlayerState = board._active()
+		var seller_power := "russia" if buyer.power != "russia" else "china"
+		var seller: PlayerState = board.gs.player_by_power(seller_power)
+		if seller != null:
+			buyer.allied_countries = []  # niente import "dal mercato": solo dai giocatori
+			buyer.money = 50
+			seller.money = 0
+			var serv_pre: int = seller.resources["services"]
+			# Forziamo una Trade Deals con import_from dal venditore (1 risorsa offerta).
+			board.trade_deals = {"cards": [{"power": buyer.power, "exports": 2, "imports": 2,
+				"import_from": {seller_power: ["consumer_goods"]}}]}
+			var src: Array = board._import_sources(buyer, "consumer_goods")
+			board._open_trade_ui()
+			board._trade_adjust("consumer_goods", "import", 1)
+			var b_money_pre: int = buyer.money
+			board._trade_confirm()
+			var cost: int = Actions.IMPORT_COST["consumer_goods"]
+			var p2p_ok: bool = src.size() == 1 and String(src[0]["src"]) == seller_power \
+				and seller.money == cost \
+				and seller.resources["services"] == serv_pre + 1 \
+				and buyer.money == b_money_pre - cost \
+				and ("consumer_goods" in (board._commerce_flipped.get(seller_power, []) as Array)) \
+				and board._trade_import_cap(buyer, "consumer_goods") == 0  # card girata
+			print("[%s] Trade P2P: venditore +money +1 Servizio, Commerce card girata" % ["OK" if p2p_ok else "FAIL"])
+			if not p2p_ok: fails += 1
+			board._trade_sel = {}
+			board.trade_deals = DataLoader.load_trade_deals()  # ripristino
+
+		# Focus action: prepara (ready) le Country card esaurite; +1 con
+		# "ready_extra_on_focus". Consuma l'azione del turno.
+		var pf: PlayerState = board._active()
+		pf.exhausted = {"a": true, "b": true, "c": true, "d": true}
+		pf.growth_cards.append({"effect_ops": [{"op": "ongoing", "tag": "ready_extra_on_focus"}]})
+		board._plays_left = 1
+		board._do_focus(WO.Focus.MILITARY)
+		var readied: int = pf.exhausted.values().count(false)
+		var focus_ok: bool = pf.focus == WO.Focus.MILITARY and readied == 3 and board._plays_left == 0
+		print("[%s] Focus action: ready 3 Country (2 base +1 abilità), usa l'azione" % ["OK" if focus_ok else "FAIL"])
+		if not focus_ok: fails += 1
+		pf.growth_cards.clear()
+
+		# extra_play_first_turn: al primo turno del round +1 carta giocabile.
+		var pe: PlayerState = board._active()
+		pe.growth_cards.append({"effect_ops": [{"op": "ongoing", "tag": "extra_play_first_turn"}]})
+		board.round_turn_count = 0  # primo giro del round
+		board._reset_plays()
+		var first_ok: bool = board._plays_left == 2
+		board.round_turn_count = board.gs.players.size()  # non più primo turno
+		board._reset_plays()
+		first_ok = first_ok and board._plays_left == 1
+		print("[%s] ongoing extra_play_first_turn: 2 giocate al 1° turno, poi 1" % ["OK" if first_ok else "FAIL"])
+		if not first_ok: fails += 1
+		pe.growth_cards.clear()
+
 		# Abilità ongoing: "extra_draw_per_round" → pesca 7 invece di 6 a inizio round.
 		var po: PlayerState = board.gs.players[0]
 		po.growth_cards.append({"display_name": "Tactical Flexibility", "effect_ops": [{"op": "ongoing", "tag": "extra_draw_per_round"}]})
@@ -194,6 +256,7 @@ func _init() -> void:
 		ac.resources["diplomacy"] = 20
 		var card_close := {"display_name": "Engage close", "effect_ops": [{"op": "engage"}]}
 		ac.hand.append(card_close)
+		board._plays_left = 9
 		board._play_card(card_close)
 		var auto_closed: bool = board.awaiting == "region" and board.drawer_open == false
 		print("[%s] interazione mappa: il cassetto si richiude da solo" % ["OK" if auto_closed else "FAIL"])
@@ -211,6 +274,7 @@ func _init() -> void:
 		var card_mod := {"display_name": "Engage scontato", "effect_ops": [{"op": "engage"}],
 			"effect_modifiers": ["engage_discount_per_army"]}
 		ac.hand.append(card_mod)
+		board._plays_left = 9
 		board._play_card(card_mod)
 		board._on_region_pressed(mreg)
 		var spent: int = dip_pre - ac.resources["diplomacy"]

@@ -43,16 +43,17 @@ durante il flusso di gioco interattivo (richiedono il turno completo guidato da 
 - **Sconti/bonus condizionali residui**: gli sconti su Engage/Improve Relations sono attivi
   (`modifiers.gd`); restano da agganciare i condizionali sull'Influenza (*count Energy ×2*,
   *aggiungi Influenza se hai esportato …*) e il pagamento money↔Servizi nel costo delle Growth.
-- **Abilità continuative** (Growth + alcune carte): *pesca extra/round*, *gioca una carta in più al primo turno*,
-  *once-per-round draw/trash*, ecc. — l'op `ongoing` le marca; vanno agganciate ai passi del round.
-- **Trade tra giocatori** con Commerce card (export/import inter-player + 1 Services di bonus): le tabelle
-  e i Trade Deals sono in `data/`, manca l'orchestrazione inter-giocatore.
+- **Abilità continuative** (Growth): **agganciate** — *pesca extra/round*, *gioca una carta in più
+  al primo turno*, *prepara 1 Country in più col Focus*, e le 4 *once-per-round*. Restano gli
+  `effect_modifiers` condizionali sull'Influenza (*count Energy ×2*).
+- **Trade tra giocatori** (Commerce card): **fatto** — importando da un altro giocatore lui incassa il
+  money e +1 Servizio, e la sua Commerce card si gira (1×/round); cap d'import = `import_from`.
 - **Improve Relations su Country già alleato** (stacking + 1 Influenza) e ricerca Country sul board.
-- **Focus**: *Ready N Country cards* e *Produce X* nei passi di Focus (i bonus chiave — Engage −2,
-  +2 Research, +1 THREAT/Defense — sono già attivi).
+- **Focus**: *Ready N Country cards* **fatto** (Focus = azione del turno); resta *Produce X* nei passi di
+  Focus (i bonus chiave — Engage −2, +2 Research, +1 THREAT/Defense — sono già attivi).
 
 ## ▶️ Prossimi passi suggeriti
 
-1. Applicare automaticamente gli `effect_modifiers` e le abilità `ongoing` nel flusso del round.
-2. Trade inter-giocatore con Commerce card.
-3. Fase 2 — UI hot-seat che guida le scelte (target di azioni, Focus, acquisti Market).
+1. Fase 2 — UI hot-seat che guida le scelte (target di azioni, Focus, acquisti Market).
+2. `effect_modifiers` condizionali rimanenti e *Produce X* nei passi di Focus.
+3. Armate iniziali = produzione; eventuale bot/AI.

@@ -44,8 +44,9 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ## 🟡 Fatto ma da correggere / raffinare
 
 - 🟡 **Calibrazione fine segnalini**: produzione ora centrata; prosperità/risorse buone — restano ritocchi al pixel su feedback.
-- 🟡 **Abilità `ongoing`**: agganciate — *extra_draw_per_round* (passiva, +1 pesca/round) e le 4 *once_per_round* (draw+trash, draw highest+discard, improve again +1, convert influence) attivabili dal pannello "Abilità continuative". Restano da rifinire *extra_play_first_turn* e *ready_extra_on_focus* (servono regole turno/Focus più strutturate) e alcuni `effect_modifiers` condizionali (es. *count Energy ×2*).
-- 🟡 **Focus (passi)**: *Ready N Country cards* e *Produce X* nei passi di Focus (i bonus chiave — Engage −2, +2 Research, +1 THREAT/Defense — sono attivi).
+- 🟢 **Abilità `ongoing`**: tutte agganciate — *extra_draw_per_round* (+1 pesca/round), *extra_play_first_turn* (+1 carta al 1° turno del round), *ready_extra_on_focus* (+1 Country preparata col Focus) e le 4 *once_per_round* (draw+trash, draw highest+discard, improve again +1, convert influence). Restano alcuni `effect_modifiers` condizionali (es. *count Energy ×2*).
+- 🟢 **Turno = 1 azione**: ogni turno giochi 1 carta **oppure** fai la **Focus action** (sposta il Focus e prepara 2 Country card, +1 con *ready_extra_on_focus*). 4 turni/round.
+- 🟡 **Focus (passi)**: *Ready N Country cards* fatto; resta *Produce X* nei passi di Focus (i bonus chiave — Engage −2, +2 Research, +1 THREAT/Defense — sono attivi).
 - 🟡 **Turno guidato dalla UI**: le azioni si fanno, ma manca un flusso hot‑seat completo che guidi tutte le scelte di un turno.
 - 🟡 **Mano**: ora pesca 6 da un mazzo di 12; il regolamento divide 12 in 2 pile da 6 (esito equivalente).
 
@@ -53,7 +54,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 
 ## 🔴 Mancante
 
-- 🟡 **Trade tra giocatori**: i cap di import dagli altri giocatori (Trade Deals `import_from`) sono attivi nella UI di Trade e danno +1 Diplomazia. Resta da implementare il **trasferimento effettivo di money/risorse all'altro giocatore** e il flip della Commerce card offerta.
+- 🟢 **Trade tra giocatori**: importando da un altro giocatore, lui **incassa il money** e **+1 Servizio** (bonus di vendita) e la sua **Commerce card si gira** (riusabile solo dal round dopo); il compratore prende la risorsa +1 Diplomazia. Cap d'import dagli altri = `import_from` della Trade Deals card.
 - 🔴 **Auto‑Influence** completo per le potenze non giocate (parziale).
 - 🔴 **Modalità Online** (placeholder nel menu).
 - 🔴 **Avversari / bot (AI)**: ora è hot‑seat manuale.
@@ -62,8 +63,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ---
 
 ## Prossimi passi suggeriti (priorità)
-1. ~~Ordine di turno~~ ✓ · ~~Strategic Asset in setup~~ ✓
-2. Agganciare `effect_modifiers` / abilità `ongoing` al flusso del round.
-3. **Trade inter‑giocatore** (Commerce cards).
-4. Flusso turno guidato dalla UI (hot‑seat completo) + eventuale bot.
-5. Armate iniziali = produzione (con aggiornamento dei 2 test).
+1. ~~Ordine di turno~~ ✓ · ~~Strategic Asset in setup~~ ✓ · ~~abilità `ongoing`~~ ✓ · ~~Trade inter‑giocatore~~ ✓
+2. Flusso turno guidato dalla UI (hot‑seat completo) + eventuale bot.
+3. `effect_modifiers` condizionali rimanenti (es. *count Energy ×2*) e *Produce X* nei passi di Focus.
+4. Armate iniziali = produzione (con aggiornamento dei 2 test).

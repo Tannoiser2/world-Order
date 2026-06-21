@@ -75,6 +75,8 @@ var awaiting := ""          # "" | "region" | "board_country" | "allied_country"
 var awaiting_op: Dictionary = {}
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
+var _commerce_flipped: Dictionary = {}  # venditore(power) -> [risorse] Commerce card già usate nel round
+var _plays_left := 1                  # carte ancora giocabili nel turno corrente (1 base)
 
 ## Abilità continuative (Growth): descrizione e se sono attivabili una volta/round.
 const ONGOING_DESC := {
@@ -160,6 +162,7 @@ func _ready() -> void:
 	GamePhases.determine_turn_order(gs)
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
+	_reset_plays()
 
 	resized.connect(_on_resized)
 	_layout_ui()
@@ -514,6 +517,9 @@ func _do_engage(region: String) -> void:
 func _play_card(card: Dictionary) -> void:
 	if not playing_card.is_empty():
 		return  # gia' in risoluzione
+	if _plays_left <= 0:
+		_status("Hai già giocato in questo turno. Premi «Fine turno».")
+		return
 	if not card.has("effect_ops"):
 		_status("Questa carta non ha effetto giocabile.")
 		return
@@ -591,6 +597,9 @@ func _advance_play() -> void:
 				_advance_play()
 			else:
 				_open_trade_ui()                                # trade generico: scelta interattiva
+		"play_another":
+			_plays_left += 1   # questa carta concede un gioco extra nel turno
+			_advance_play()
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
@@ -749,6 +758,7 @@ func _finish_card() -> void:
 	playing_card = {}
 	active_mods = {}
 	awaiting = ""
+	_plays_left -= 1
 	_status("Carta risolta.")
 	_after_change()
 
@@ -806,15 +816,40 @@ func _trade_export_cap(p: PlayerState, R: String) -> int:
 	return mini(n, int(p.resources.get(R, 0)))
 
 
-## Quante unità di R puoi importare: simboli Import sulle amiche + offerte dagli
-## altri giocatori (import_from della Trade Deals card).
-func _trade_import_cap(p: PlayerState, R: String) -> int:
+## Simboli Import di R sulle nazioni amiche (import "dal mercato": paghi la banca).
+func _trade_allied_import(p: PlayerState, R: String) -> int:
 	var n := 0
 	for c in p.allied_countries:
 		n += (c.get("imports", []) as Array).count(R)
+	return n
+
+
+## Sorgenti d'importazione di R, in ordine: prima il mercato (nazioni amiche),
+## poi le Commerce card degli altri giocatori non ancora girate in questo round.
+## Ritorna [{src:"bank"|power, n:int}] per attribuire ogni unità importata.
+func _import_sources(p: PlayerState, R: String) -> Array:
+	var out := []
+	var bank := _trade_allied_import(p, R)
+	if bank > 0:
+		out.append({"src": "bank", "n": bank})
 	var td := _trade_deal(p.power)
 	for other in (td.get("import_from", {}) as Dictionary):
-		n += (td["import_from"][other] as Array).count(R)
+		if R in (_commerce_flipped.get(other, []) as Array):
+			continue   # quella Commerce card è già stata usata questo round
+		if gs.player_by_power(other) == null:
+			continue   # quella potenza non è in partita: niente commercio reale
+		var n := (td["import_from"][other] as Array).count(R)
+		if n > 0:
+			out.append({"src": other, "n": n})
+	return out
+
+
+## Quante unità di R puoi importare: simboli Import sulle amiche + offerte dagli
+## altri giocatori (Commerce card non ancora girate).
+func _trade_import_cap(p: PlayerState, R: String) -> int:
+	var n := 0
+	for s in _import_sources(p, R):
+		n += int(s["n"])
 	return n
 
 
@@ -857,16 +892,39 @@ func _trade_confirm() -> void:
 		p.resources[R] = int(p.resources.get(R, 0)) - q
 		p.money += int(Actions.EXPORT_GAIN.get(R, 0)) * q
 	var imported := false
+	var from_players := 0
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
-		p.money -= int(Actions.IMPORT_COST.get(R, 0)) * q
+		var cost := int(Actions.IMPORT_COST.get(R, 0))
+		# Attribuisci le unità alle sorgenti: prima la banca, poi gli altri giocatori.
+		var remaining := q
+		for s in _import_sources(p, R):
+			if remaining <= 0:
+				break
+			var take: int = mini(remaining, int(s["n"]))
+			p.money -= cost * take
+			if String(s["src"]) != "bank":
+				# Commercio reale: paghi il venditore, che incassa il money e prende
+				# +1 Servizio (bonus di vendita); la sua Commerce card si gira (1×/round).
+				var seller := gs.player_by_power(String(s["src"]))
+				if seller != null:
+					seller.money += cost * take
+					seller.gain_resource("services", 1, 0)
+					if not _commerce_flipped.has(s["src"]):
+						_commerce_flipped[s["src"]] = []
+					(_commerce_flipped[s["src"]] as Array).append(R)
+					from_players += take
+			remaining -= take
 		p.gain_resource(R, q, 0)
 		imported = true
 	if imported:
 		p.gain_resource("diplomacy", 1, 0)   # +1 Diplomazia comprando dagli altri
 	_close_popup()
 	_trade_sel = {}
-	_status("Trade completato.")
+	if from_players > 0:
+		_status("Trade completato (%d unità comprate da altri giocatori)." % from_players)
+	else:
+		_status("Trade completato.")
 	_refresh()
 	_advance_play()
 
@@ -1310,9 +1368,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			fb.add_theme_stylebox_override("normal", fst)
 			var fhv := StyleBoxFlat.new(); fhv.bg_color = Color(1, 1, 1, 0.08)
 			fb.add_theme_stylebox_override("hover", fhv)
-			fb.pressed.connect(func():
-				p.focus = f
-				_refresh())
+			fb.pressed.connect(_do_focus.bind(f))
 			view.add_child(fb)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
 	# Cubi di Produzione: uno sul livello attuale di ogni tracciato.
@@ -1545,7 +1601,8 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# Barra con toggle per collassare la mano (così non copre mai la plancia).
 	var bar := Button.new()
 	bar.flat = true
-	bar.text = "%s  La tua mano (%d)" % ["▼" if hand_collapsed else "▲", p.hand.size()]
+	var plays_txt := "" if _plays_left == 1 else "  ·  %d giocate" % _plays_left if _plays_left > 0 else "  ·  turno esaurito"
+	bar.text = "%s  La tua mano (%d)%s" % ["▼" if hand_collapsed else "▲", p.hand.size(), plays_txt]
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
@@ -1591,7 +1648,44 @@ func _end_turn() -> void:
 		_begin_research()
 		return
 	active_seat = gs.turn_order[round_turn_count % gs.players.size()]
+	_reset_plays()
 	_status("Turno di %s." % _active().power.to_upper())
+	_after_change()
+
+
+## Carte giocabili nel turno: 1 di base, +1 al primo turno del round con
+## l'abilità "extra_play_first_turn".
+func _reset_plays() -> void:
+	_plays_left = 1
+	if round_turn_count < gs.players.size():
+		_plays_left += _ongoing_count(_active(), "extra_play_first_turn")
+
+
+## Azione Focus: sposta la pedina Focus sulla colonna scelta e prepara (ready) le
+## Country card esaurite — 2 di base, +1 per ogni "ready_extra_on_focus". Consuma
+## l'azione del turno (come giocare una carta).
+func _do_focus(f: int) -> void:
+	if not playing_card.is_empty():
+		return
+	var p := _active()
+	if _plays_left <= 0:
+		_status("Turno esaurito: la Focus action richiede un'azione. Premi «Fine turno».")
+		return
+	p.focus = f
+	var to_ready := 2 + _ongoing_count(p, "ready_extra_on_focus")
+	var readied := 0
+	for cid in p.exhausted:
+		if to_ready <= 0:
+			break
+		if bool(p.exhausted[cid]):
+			p.exhausted[cid] = false
+			readied += 1
+			to_ready -= 1
+	_plays_left -= 1
+	if readied > 0:
+		_status("Focus %s — preparate %d Country card." % [FOCUS_NAME[f], readied])
+	else:
+		_status("Focus %s." % FOCUS_NAME[f])
 	_after_change()
 
 
@@ -1767,8 +1861,10 @@ func _next_round() -> void:
 		p.hand.clear(); p.played.clear()
 		p.draw_cards(6 + _ongoing_count(p, "extra_draw_per_round"))
 	_used_ongoing = {}   # abilità once-per-round di nuovo disponibili
+	_commerce_flipped = {}  # Commerce card di nuovo disponibili
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
+	_reset_plays()
 	_status("Round %d — Preparazione completata. Turno di %s." % [gs.round, _active().power.to_upper()])
 	_after_change()
 
@@ -1842,7 +1938,7 @@ func _render_hand() -> void:
 		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), false)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		btn.disabled = not playing_card.is_empty()
+		btn.disabled = not playing_card.is_empty() or _plays_left <= 0
 		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
 		btn.pressed.connect(_play_card.bind(card))
 		hand_box.add_child(btn)
