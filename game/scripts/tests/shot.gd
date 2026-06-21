@@ -6,11 +6,10 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out: String = args[0] if args.size() > 0 else "/tmp/shot.png"
 	var open_drawer: bool = args.size() > 1 and args[1] == "drawer"
-	get_root().set_content_scale_size(Vector2i(1340, 700))
 	var board: Node = load("res://scenes/board.tscn").instantiate()
 	get_root().add_child(board)
-	await process_frame
-	await process_frame
+	for _i in range(4):
+		await process_frame
 	if open_drawer:
 		board.drawer_open = true
 		board.drawer_power = board._active().power

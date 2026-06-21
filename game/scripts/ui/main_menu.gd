@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.20"
+const VERSION := "v0.7.21"
 const CHANGELOG := [
+	"v0.7.21 — Cubi Influenza ora posati sulle CASELLE stampate di ogni Regione (slot permanenti sopra la linea, temporanei sotto) invece che ammucchiati nell'angolo: coordinate calibrate per tutte e 7 le Regioni. La mappa inoltre si ri-centra/adatta sempre alla viewport finché non la sposti a mano.",
 	"v0.7.20 — UI tabellone e plancia: la plancia NON si deforma più (rapporto bloccato); la barra in alto è ora FUORI dalla mappa (mappa incastonata tra barra e linguette) e la mappa si trascina di nuovo col mouse. Ricalibrate le carte Country sulle Regioni, i cubi di Produzione e i token Risorse sulla plancia, e i segnalini Ordine di Turno (più grandi e centrati). Il cassetto è ora a colonne (plancia · nazioni amiche · Commercio con carte prodotto · Strategic Asset in verticale a destra), senza etichette e senza icone illeggibili.",
 	"v0.7.19 — Fasi del round più fedeli: AFTERMATH ora include Return on Investments (incassi 2 money × valore Paese per ogni FDI da Invest). PREPARATION (dal 2° round) ora rivela/ruota le carte Country delle Regioni. Il FOCUS è tornato un passo di Preparation: si sceglie GRATIS una volta per round (non costa più un'azione), con ready/produce associati.",
 	"v0.7.18 — Segnalini sul tabellone: PUNTI VITTORIA (bandiere sulla traccia perimetrale 0–99), ORDINE DI TURNO (bandiere nelle 4 caselle 1°–4° sotto il titolo) e segnalino ROUND. Tolta la riga in alto con VP/Prosperità che copriva la mappa (la barra ora mostra solo round/turno + denaro + Fine turno; la Prosperità è sulla plancia).",
