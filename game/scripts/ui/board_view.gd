@@ -568,7 +568,7 @@ func _layout_majority() -> void:
 			var owner: String = ranking[i]["owner"]
 			var bonus: int = ranking[i]["bonus"]
 			var fx := x0 + i * spacing - fw * 0.5
-			var fy := row_y + fh * 0.35    # sotto il numero stampato
+			var fy := row_y - fh * 0.25    # appena sotto/sul numero stampato (rialzato)
 			if owner == "local":
 				var disc := Panel.new()
 				disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
