@@ -4,9 +4,10 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.6.4"
+const VERSION := "v0.6.5"
 const CHANGELOG := [
-	"v0.6.4 — Cassetto: plancia allineata a sinistra, nazioni amiche sotto (senza etichetta), mano in basso che non copre più la plancia. Segnalini ancorati alla plancia reale: seguono il ridimensionamento e si allineano meglio.",
+	"v0.6.5 — Setup iniziale esatto: produzioni di partenza corrette per ogni potenza, risorse iniziali = produzione, nazioni amiche iniziali complete (4-5 per potenza). Nazioni amiche a destra della plancia (griglia). Prosperità e risorse ricalibrate.",
+	"v0.6.4 — Cassetto: plancia a sinistra, nazioni amiche, mano in basso. Segnalini ancorati alla plancia.",
 	"v0.6.3 — FIX plancia gigante: all'immagine mancava expand_mode=IGNORE_SIZE, non scendeva sotto la dimensione nativa (1400px).",
 	"v0.6.2 — Tentativo tetto massimo plancia (non bastava da solo).",
 	"v0.6.1 — Tolte le scritte ridondanti nel cassetto (intestazione potenza, 'La tua mano'). Flyover anche su mano e nazioni amiche. (Se non vedi questa versione nello splash, svuota la cache.)",

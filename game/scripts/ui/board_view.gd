@@ -888,13 +888,13 @@ func _refresh_drawer_content() -> void:
 		return
 	var is_active := (drawer_power == _active().power)
 
-	# (Niente intestazione testuale: VP/$/Prosperità sono già nella barra in alto.)
-	# Immagine reale della plancia con i segnalini sopra. Il Focus si sposta
-	# toccando direttamente la colonna giusta sulla plancia (giocatore di turno).
-	# (Risorse/Produzione/Prosperità non servono come testo: sono i cubi/token.)
-	drawer_content.add_child(_build_plancia_view(p, is_active))
-
-	_build_allies_section(p, is_active)
+	# Riga: plancia a SINISTRA, nazioni amiche a DESTRA (sempre visibili).
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	top.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	drawer_content.add_child(top)
+	top.add_child(_build_plancia_view(p, is_active))
+	_build_allies_section(p, is_active, top)
 	_build_hand_section(p, is_active)
 
 
@@ -917,9 +917,9 @@ const PROD_TRACKS := {
 ## Cerchi Focus (Domestic, Diplomatic, Military).
 const FOCUS_POS := [[0.307, 0.311], [0.600, 0.311], [0.921, 0.311]]
 ## Tracciato Prosperità: livello 0 (cerchio iniziale) .. 5.
-const PROSPERITY_POS := [[0.514, 0.631], [0.600, 0.631], [0.671, 0.631], [0.743, 0.631], [0.814, 0.631], [0.886, 0.631]]
+const PROSPERITY_POS := [[0.520, 0.645], [0.600, 0.645], [0.670, 0.645], [0.740, 0.645], [0.810, 0.645], [0.880, 0.645]]
 ## Colonne x della traccia RESOURCES (numeri 1..5 in alto, 6..10 in basso).
-const RES_TRACK_X := [0.21, 0.385, 0.56, 0.735, 0.91]
+const RES_TRACK_X := [0.23, 0.40, 0.565, 0.735, 0.905]
 ## Risorse che hanno un token-immagine (armies è un tracciato a parte).
 const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy"]
 
@@ -930,11 +930,16 @@ const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "servi
 const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 
 
+## Altezza della plancia: limiti proporzionali + tetto assoluto (no plancia gigante).
+func _plancia_height() -> float:
+	return minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.36), 340.0)
+
+
 func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# La plancia ha un TETTO ASSOLUTO in pixel (come le carte) così non diventa mai
 	# gigante, qualunque sia la dimensione/densità della finestra; più i limiti
 	# proporzionali (larghezza disponibile e frazione d'altezza).
-	var ph := minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.36), 340.0)
+	var ph := _plancia_height()
 	var pw := ph / PLANCIA_RATIO
 	var view := Control.new()
 	view.custom_minimum_size = Vector2(pw, ph)
@@ -993,10 +998,10 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 func _resource_slot(amount: int) -> Vector2:
 	var a := clampi(amount, 0, 10)
 	if a == 0:
-		return Vector2(0.06, 0.862)
+		return Vector2(0.075, 0.862)
 	if a <= 5:
-		return Vector2(RES_TRACK_X[a - 1], 0.812)
-	return Vector2(RES_TRACK_X[a - 6], 0.922)
+		return Vector2(RES_TRACK_X[a - 1], 0.82)
+	return Vector2(RES_TRACK_X[a - 6], 0.925)
 
 
 ## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
@@ -1061,30 +1066,28 @@ func _prosperity_strip(p: PlayerState) -> Control:
 
 ## Sezione alleati: le nazioni amiche come carte-immagine reali (cliccabili solo
 ## per il giocatore di turno: Invest/Build a Base).
-func _build_allies_section(p: PlayerState, is_active: bool) -> void:
-	# Solo un prompt quando serve scegliere; niente etichetta "Nazioni amiche".
-	if awaiting == "allied_country" and is_active:
-		drawer_content.add_child(_section("Scegli una nazione amica per: %s" % String(awaiting_op.get("op", ""))))
+func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> void:
 	if p.allied_countries.is_empty():
 		return
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	scroll.custom_minimum_size = Vector2(0, _card_height() + 6)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	scroll.add_child(row)
-	drawer_content.add_child(scroll)
+	# Griglia 2 colonne a destra della plancia: le carte stanno in altezza accanto
+	# alla plancia (col flyover si ingrandiscono al passaggio).
+	var rows: int = int(ceil(p.allied_countries.size() / 2.0))
+	var ch: float = clampf(_plancia_height() / maxf(rows, 1) - 8.0, 52.0, 130.0)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(grid)
 	for cn in p.allied_countries:
 		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
 		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		var card := _country_card_button(cn, Vector2(_card_height() * 0.70, _card_height()), highlight)
+		var card := _country_card_button(cn, Vector2(ch * 0.70, ch), highlight)
 		card.disabled = (not is_active) or dim
 		if is_active:
 			card.pressed.connect(_on_allied_pressed.bind(cn))
-		row.add_child(card)
+		grid.add_child(card)
 
 
 ## Sezione mano: carte scoperte solo per il giocatore di turno; per gli altri
