@@ -444,7 +444,9 @@ func _fit_map() -> void:
 	map_content.position = (mv - board_native * fit) * 0.5
 
 
-## Tiene almeno una parte della mappa visibile dopo pan/zoom.
+## Tiene almeno una parte della mappa visibile dopo pan/zoom. Su un asse dove la
+## mappa è PIÙ PICCOLA della viewport la centra (altrimenti clampf riceveva min>max
+## e rimbalzava la posizione a ogni frame -> sfarfallio durante il pan).
 func _clamp_map() -> void:
 	if map_content == null:
 		return
@@ -454,8 +456,10 @@ func _clamp_map() -> void:
 	var mv := map_viewport.size
 	var margin := 80.0
 	var pos := map_content.position
-	pos.x = clampf(pos.x, mv.x - bw - margin, margin)
-	pos.y = clampf(pos.y, mv.y - bh - margin, margin)
+	var min_x := mv.x - bw - margin
+	var min_y := mv.y - bh - margin
+	pos.x = (mv.x - bw) * 0.5 if min_x > margin else clampf(pos.x, min_x, margin)
+	pos.y = (mv.y - bh) * 0.5 if min_y > margin else clampf(pos.y, min_y, margin)
 	map_content.position = pos
 
 
@@ -651,7 +655,8 @@ func _layout_card_slots() -> void:
 		var gap: float = sw * 0.04
 		var cw: float = (sw - gap * (n - 1)) / n
 		for i in avail.size():
-			var card := _country_card_button(avail[i], Vector2(cw, sh), awaiting == "board_country")
+			# Niente flyover sulle carte sul tabellone: si leggono zoomando la mappa.
+			var card := _country_card_button(avail[i], Vector2(cw, sh), awaiting == "board_country", false)
 			card.pressed.connect(_on_country_pressed.bind(avail[i], region))
 			card.position = Vector2(x0 + i * (cw + gap), y0)
 			card_layer.add_child(card)
@@ -659,7 +664,7 @@ func _layout_card_slots() -> void:
 
 ## Carta nazione come immagine originale (campo `art`), senza handler: chi la usa
 ## collega il proprio (_on_country_pressed sul tabellone, _on_allied_pressed tra gli alleati).
-func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool) -> Button:
+func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool, with_preview: bool = true) -> Button:
 	var b := Button.new()
 	b.flat = true
 	b.size = sz
@@ -679,7 +684,8 @@ func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool) -> Butto
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	img.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	b.add_child(img)
-	_attach_preview(b, img.texture)
+	if with_preview:
+		_attach_preview(b, img.texture)
 	return b
 
 
