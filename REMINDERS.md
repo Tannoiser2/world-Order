@@ -8,6 +8,14 @@ Branch di lavoro: `claude/world-order-digital-roadmap-0msb1a`.
 - Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 - Engine: `game/scripts/engine/` · UI: `game/scripts/ui/board_view.gd` · dati: `game/data/`.
 
+## ⭐ Primo task — calibrazione plance (4 potenze)
+L'utente ha fornito 4 template coi pallini blu al centro delle caselle
+(Produzione/Prodotti/Prosperità/Focus). Salvati in
+`game/assets/calibration/plance/` (template_0..3.png + detected_dots.json + README).
+Vedi il README per i passi: identificare potenza → mappare i pallini → aggiornare
+le costanti plancia in `board_view.gd` (o layout per-potenza). **I carri NON si toccano.**
+
+
 ## Priorità #1 — allineare la meccanica al regolamento
 Vedi `TODO.md` → sezione **"📌 Prossima sessione — audit regole↔meccanica"**: 21 discrepanze
 trovate (azioni, setup/fasi, aftermath/scoring), molte **rules-breaking**. Le più gravi:
