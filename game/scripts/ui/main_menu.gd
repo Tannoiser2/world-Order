@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.5"
+const VERSION := "v0.7.6"
 const CHANGELOG := [
+	"v0.7.6 — Denaro iniziale corretto per potenza: USA 30, UE 25, Cina 20, Russia 15 (nel setup).",
 	"v0.7.5 — Denaro con le MONETE vere del gioco (asset TTS): la cifra è resa come pila di monete nei tagli 20/10/5/1 (scomposizione automatica), con il totale a fianco.",
 	"v0.7.4 — Commercio tra giocatori: importando da un altro giocatore lui incassa il money e +1 Servizio, e la sua Commerce card si gira (1×/round). Abilità continuative completate: Focus action prepara le Country card (2 + bonus), e «extra_play_first_turn» dà +1 carta al primo turno. Ora il turno = 1 azione (giochi 1 carta o fai Focus).",
 	"v0.7.3 — Azione TRADE interattiva: scegli Export/Import per risorsa con i cap dalle nazioni amiche (simboli Export/Import) e dalla carta Trade Deals (limite 2/3 transazioni, una risorsa per transazione). Export incassa money, Import lo spende; +1 Diplomazia comprando dagli altri. Δ money in tempo reale.",

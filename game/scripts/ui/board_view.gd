@@ -99,8 +99,7 @@ func _ready() -> void:
 	var powers: Array = GameConfig.powers if GameConfig.powers.size() >= 2 else GameConfig.powers_for_count_n(2)
 	gs = GameSetup.new_game(powers)
 	for p in gs.players:
-		p.draw_cards(6)
-		p.money = 30   # denaro iniziale (valore esatto per potenza da rifinire)
+		p.draw_cards(6)   # denaro iniziale: impostato per potenza in GameSetup
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
 	all_countries = DataLoader.load_countries()
 	_setup_country_decks()

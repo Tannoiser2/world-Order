@@ -11,6 +11,9 @@ const STARTING_ALLIES := {
 	"china": ["South Africa", "Pakistan", "Tajikistan", "Laos"],
 }
 
+## Denaro iniziale per potenza (regolamento / setup).
+const STARTING_MONEY := {"usa": 30, "eu": 25, "china": 20, "russia": 15}
+
 ## Crea un GameState per le potenze indicate (es. ["usa","china"]).
 static func new_game(powers: Array) -> GameState:
 	var gs := GameState.new()
@@ -52,6 +55,7 @@ static func new_game(powers: Array) -> GameState:
 	for power in powers:
 		var ps := PlayerState.new()
 		ps.power = power
+		ps.money = int(STARTING_MONEY.get(power, 0))
 		var entry: Dictionary = pdata.get(power, {})
 		# Produzione iniziale dalle plance.
 		for rtype in entry.get("starting_production", {}):

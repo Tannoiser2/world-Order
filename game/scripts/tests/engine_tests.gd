@@ -86,6 +86,8 @@ static func run_all() -> Dictionary:
 		gs.regions["americas"]["track"].count("usa") == 1)
 	check.call("setup: Engage MENA = 6", gs.regions["middle_east_north_africa"]["engage_cost"] == 6)
 	check.call("setup: mazzo iniziale USA non vuoto", gs.players[0].deck.size() > 0)
+	check.call("setup: denaro iniziale USA 30 / Cina 20",
+		gs.player_by_power("usa").money == 30 and gs.player_by_power("china").money == 20)
 
 	# --- 4. Produzione e cap risorse ---
 	var ps := PlayerState.new()
