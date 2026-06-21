@@ -336,6 +336,77 @@ func _init() -> void:
 		print("[%s] Strategic Asset: effetto risolto, carta-costo scartata, usato 1 volta" % ["OK" if sa_ok else "FAIL"])
 		if not sa_ok: fails += 1
 
+		# op ready_country: prepara N Country esaurite.
+		var prc: PlayerState = board._active()
+		prc.exhausted = {"a": true, "b": true, "c": true}
+		var card_rc := {"display_name": "RC", "effect_ops": [{"op": "ready_country", "n": 2}]}
+		prc.hand.append(card_rc); board._plays_left = 9
+		board._play_card(card_rc)
+		var rc_ok: bool = prc.exhausted.values().count(false) == 2 and board.playing_card.is_empty()
+		print("[%s] op ready_country: 2 Country preparate" % ["OK" if rc_ok else "FAIL"])
+		if not rc_ok: fails += 1
+
+		# op increase_prosperity (con sconto): avanza la Prosperità.
+		var prp: PlayerState = board._active()
+		prp.prosperity_level = 0; prp.resources["consumer_goods"] = 20
+		var card_pr := {"display_name": "PR", "effect_ops": [{"op": "increase_prosperity", "discount": 2}]}
+		prp.hand.append(card_pr); board._plays_left = 9
+		board._play_card(card_pr)
+		var pr_ok: bool = prp.prosperity_level == 1 and board.playing_card.is_empty()
+		print("[%s] op increase_prosperity: livello 0→1" % ["OK" if pr_ok else "FAIL"])
+		if not pr_ok: fails += 1
+
+		# op increase_production (popup scelta risorsa): +count alla traccia scelta.
+		var pip: PlayerState = board._active()
+		pip.production["energy"] = 1
+		var card_ip := {"display_name": "IP", "effect_ops": [{"op": "increase_production", "count": 2}]}
+		pip.hand.append(card_ip); board._plays_left = 9
+		board._play_card(card_ip)
+		var eb: Button = _find_button(board.popup_layer, board.RES_LABEL["energy"])
+		if eb: eb.pressed.emit()
+		var ip_ok: bool = pip.production["energy"] == 3 and board.playing_card.is_empty()
+		print("[%s] op increase_production: Energia 1→3 (+2)" % ["OK" if ip_ok else "FAIL"])
+		if not ip_ok: fails += 1
+
+		# op trash (popup mano): la carta scelta è rimossa dal gioco (non negli scarti).
+		var ptr: PlayerState = board._active()
+		var victim := {"display_name": "Victim", "effect_ops": [{"op": "noop"}]}
+		ptr.hand.append(victim)
+		var card_tr := {"display_name": "TR", "effect_ops": [{"op": "trash", "source": "self"}]}
+		ptr.hand.append(card_tr); board._plays_left = 9
+		board._play_card(card_tr)
+		var vb: Button = _find_button(board.popup_layer, "Victim")
+		if vb: vb.pressed.emit()
+		var tr_ok: bool = not (victim in ptr.hand) and not (victim in ptr.discard) and board.playing_card.is_empty()
+		print("[%s] op trash: carta eliminata dal gioco" % ["OK" if tr_ok else "FAIL"])
+		if not tr_ok: fails += 1
+
+		# op discard (n + then): scarta 1 carta, poi esegue play_another.
+		var pds: PlayerState = board._active()
+		var d1 := {"display_name": "D1", "effect_ops": [{"op": "noop"}]}
+		pds.hand.append(d1)
+		var card_ds := {"display_name": "DS", "effect_ops": [{"op": "discard", "n": 1, "then": [{"op": "play_another"}]}]}
+		pds.hand.append(card_ds); board._plays_left = 1
+		board._play_card(card_ds)
+		var d1b: Button = _find_button(board.popup_layer, "D1")
+		if d1b: d1b.pressed.emit()
+		var ds_ok: bool = (d1 in pds.discard) and board.playing_card.is_empty()
+		print("[%s] op discard: 1 scartata + then play_another" % ["OK" if ds_ok else "FAIL"])
+		if not ds_ok: fails += 1
+
+		# op reset_influence (regione): protegge una Influenza temporanea.
+		var prs: PlayerState = board._active()
+		board.gs.regions["africa"]["track"].add(prs.power, "temporary")
+		board.gs.regions["africa"]["track"].add(prs.power, "temporary")
+		var card_rs := {"display_name": "RS", "effect_ops": [{"op": "reset_influence"}]}
+		prs.hand.append(card_rs); board._plays_left = 9
+		board._play_card(card_rs)
+		var rs_await: bool = board.awaiting == "reset_influence"
+		board._on_region_pressed("africa")
+		var rs_ok: bool = rs_await and board.playing_card.is_empty()
+		print("[%s] op reset_influence: scelta Regione e reset" % ["OK" if rs_ok else "FAIL"])
+		if not rs_ok: fails += 1
+
 		# Stato "esaurita": la carta nazione appare grigia e ruotata (tapped).
 		var ex_card: Control = board._ally_stack({"id": "x", "art": ""}, 1, Vector2(40, 56), false, false, true)
 		var ex_ok: bool = ex_card.modulate != Color(1, 1, 1, 1) and not is_zero_approx(ex_card.rotation_degrees)

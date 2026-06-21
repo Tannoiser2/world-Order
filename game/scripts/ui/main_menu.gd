@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.14"
+const VERSION := "v0.7.15"
 const CHANGELOG := [
+	"v0.7.15 — Chiusi 6 effetti carta che prima non facevano nulla: reset_influence (proteggi Influenza temporanea), increase_production (+N a una traccia), ready_country (prepara N nazioni), trash/discard (elimina/scarta carte), increase_prosperity. Ora 106/109 carte hanno tutti gli effetti eseguiti.",
 	"v0.7.14 — Gioco a FACCIA IN GIÙ: toccando una carta scegli se giocarla per la sua azione, oppure a faccia in giù per +10 money o per attivare uno dei tuoi 2 STRATEGIC ASSET (le carte speciali del setup, usabili una volta). I Strategic Asset sono mostrati nel cassetto (grigi se usati).",
 	"v0.7.13 — Setup: Armate iniziali = Produzione di Armate (in riserva). Modificatori di carta condizionali sul Trade: «conta Energia ×2» (e Energia/Materie Prime, es. Energy Titan) raddoppiano i simboli Export; bonus Influenza concesso solo se hai esportato Beni/Servizi (o 4 Energia).",
 	"v0.7.12 — Focus completo: la Focus action ora PRODUCE il tipo del Focus (Domestic→Beni/Servizi, Diplomatic→Diplomazia, Military→Armate in riserva) e prepara il giusto numero di Country card (Domestic 1, Diplomatic 4, Military 2). AUTO-INFLUENCE: con meno di 4 giocatori, ogni fine round le potenze neutrali piazzano Influenza/Armate da una carta Auto-Influence (mostrata nel riepilogo), così contano per scoring e maggioranze.",
