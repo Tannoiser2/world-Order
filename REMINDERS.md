@@ -8,12 +8,17 @@ Branch di lavoro: `claude/world-order-digital-roadmap-0msb1a`.
 - Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 - Engine: `game/scripts/engine/` · UI: `game/scripts/ui/board_view.gd` · dati: `game/data/`.
 
-## ⭐ Primo task — calibrazione plance (4 potenze)
-L'utente ha fornito 4 template coi pallini blu al centro delle caselle
-(Produzione/Prodotti/Prosperità/Focus). Salvati in
-`game/assets/calibration/plance/` (template_0..3.png + detected_dots.json + README).
-Vedi il README per i passi: identificare potenza → mappare i pallini → aggiornare
-le costanti plancia in `board_view.gd` (o layout per-potenza). **I carri NON si toccano.**
+## ✅ Calibrazione plance (4 potenze) — FATTA (2026-06-21)
+Template utente in `game/assets/calibration/plance/` mappati e validati a video
+(overlay dei pallini + simulazione dello stato di setup sulle 4 plance reali).
+Template→potenza: **0=USA, 1=China, 2=Russia, 3=EU** (dedotto dalle lunghezze dei
+tracciati). Layout **CONDIVISO** confermato dai dati: stesse coordinate d'inizio per
+tutti, cambia solo la lunghezza. **Unica eccezione**: `raw_materials` parte da x
+diversa per potenza → costante `RAW_MATERIALS_X` in `board_view.gd`.
+Aggiornate `PROD_PITCH`, `PROD_TRACKS` (incl. produzione **armate**, sulla riga della
+Diplomazia), `FOCUS_POS`, `PROSPERITY_POS`, `RES_TRACK_X`, `_resource_slot`.
+**Riserva carri/Armate in alto (`RESERVE_ARMY_POS`) lasciata invariata** (non marcata
+nei template = "i carri non si toccano").
 
 
 ## Priorità #1 — allineare la meccanica al regolamento
