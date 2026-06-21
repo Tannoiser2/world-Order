@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.8"
+const VERSION := "v0.7.9"
 const CHANGELOG := [
+	"v0.7.9 — Azioni militari. Pedine ARMATA (tank colorati) disegnate sulla mappa, impilate al centro della Regione; riserva del giocatore in alto sulla plancia. MOVE rifatto: scegli SORGENTE (Riserva o una Regione con tue Armate) e DESTINAZIONE, spostamento libero su qualsiasi Regione (5 money/Armata). Tolto anche qui il tap-diretto: Invest/Build a Base richiedono di giocare la carta.",
 	"v0.7.8 — Azioni diplomatiche: ora SERVE giocare la carta (tolto l'Engage/Improve rapido toccando mappa/nazione). Nuovo popup per esaurire le nazioni amiche della Regione e scontare il costo in Diplomazia (Engage e Improve Relations).",
 	"v0.7.7 — Carta Commercio (Trade Deals) mostrata accanto alle nazioni amiche (clic = apre il Trade). Le carte della stessa nazione ora si IMPILANO (badge ×N): più carte = più simboli Export/Import, quindi più capacità di commercio con quella nazione.",
 	"v0.7.6 — Denaro iniziale corretto per potenza: USA 30, UE 25, Cina 20, Russia 15 (nel setup).",
