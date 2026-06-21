@@ -1465,29 +1465,96 @@ func _prosperity_strip(p: PlayerState) -> Control:
 
 
 ## Sezione alleati: le nazioni amiche come carte-immagine reali (cliccabili solo
-## per il giocatore di turno: Invest/Build a Base).
+## per il giocatore di turno: Invest/Build a Base). Le carte della STESSA nazione
+## si impilano (sovrapposte, con badge ×N): più carte = più simboli Export/Import,
+## quindi più capacità di commercio con quella nazione. Accanto, la carta Trade
+## Deals (Commercio) del giocatore.
 func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> void:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(col)
+
+	# Carta Trade Deals (Commercio) del giocatore: mostra quante transazioni può
+	# fare e da chi importare. Informativa (flyover per ingrandire), non cliccabile.
+	var td := _trade_deal(p.power)
+	if td.has("art"):
+		col.add_child(_section("Commercio"))
+		var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(118, 84), false)
+		tdcard.disabled = false   # cliccabile solo per aprire il Trade
+		tdcard.focus_mode = Control.FOCUS_NONE
+		if is_active:
+			tdcard.pressed.connect(_open_trade_ui)
+		col.add_child(tdcard)
+
 	if p.allied_countries.is_empty():
 		return
+	col.add_child(_section("Nazioni amiche"))
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
-	# Griglia 2 colonne a destra della plancia: le carte stanno in altezza accanto
-	# alla plancia (col flyover si ingrandiscono al passaggio).
-	var rows: int = int(ceil(p.allied_countries.size() / 2.0))
+	# Raggruppa le carte per nazione (id) preservando l'ordine: ogni gruppo è una pila.
+	var groups: Array = []
+	var index := {}
+	for cn in p.allied_countries:
+		var key := String(cn.get("id", cn.get("display_name", "")))
+		if index.has(key):
+			(groups[index[key]]["cards"] as Array).append(cn)
+		else:
+			index[key] = groups.size()
+			groups.append({"cards": [cn]})
+	var rows: int = int(ceil(groups.size() / 2.0))
 	var ch: float = clampf(_plancia_height() / maxf(rows, 1) - 8.0, 52.0, 130.0)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	parent.add_child(grid)
-	for cn in p.allied_countries:
+	col.add_child(grid)
+	for g in groups:
+		var cards: Array = g["cards"]
+		var cn: Dictionary = cards[0]
 		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
 		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		var card := _country_card_button(cn, Vector2(ch * 0.70, ch), highlight)
-		card.disabled = (not is_active) or dim
-		if is_active:
-			card.pressed.connect(_on_allied_pressed.bind(cn))
-		grid.add_child(card)
+		grid.add_child(_ally_stack(cn, cards.size(), Vector2(ch * 0.70, ch), highlight, is_active and not dim))
+
+
+## Pila di carte della stessa nazione: le copie in più stanno dietro, leggermente
+## sfalsate; un badge ×N indica quante sono (più simboli = più Export/Import).
+func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool) -> Control:
+	if count <= 1:
+		var single := _country_card_button(cn, sz, highlight)
+		single.disabled = not clickable
+		if clickable:
+			single.pressed.connect(_on_allied_pressed.bind(cn))
+		return single
+	var off := minf(10.0, sz.x * 0.18)
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(sz.x + off * (count - 1), sz.y + off * (count - 1))
+	# Copie dietro (semplici immagini sfalsate).
+	for i in range(count - 1):
+		var back := _country_card_button(cn, sz, false)
+		back.disabled = true
+		back.focus_mode = Control.FOCUS_NONE
+		back.position = Vector2(off * i, off * i)
+		holder.add_child(back)
+	# Carta in primo piano: cliccabile + flyover.
+	var front := _country_card_button(cn, sz, highlight)
+	front.position = Vector2(off * (count - 1), off * (count - 1))
+	front.disabled = not clickable
+	if clickable:
+		front.pressed.connect(_on_allied_pressed.bind(cn))
+	holder.add_child(front)
+	# Badge ×N.
+	var badge := Label.new()
+	badge.text = "×%d" % count
+	badge.add_theme_font_size_override("font_size", maxi(12, _base_fs()))
+	badge.add_theme_color_override("font_color", Color(1, 1, 1))
+	var bst := StyleBoxFlat.new()
+	bst.bg_color = Color(0.1, 0.5, 0.2, 0.92)
+	bst.set_corner_radius_all(6); bst.set_content_margin_all(3)
+	badge.add_theme_stylebox_override("normal", bst)
+	badge.position = Vector2(0, 0)
+	holder.add_child(badge)
+	return holder
 
 
 ## Tag delle abilità continuative (ongoing) possedute dal giocatore (dalle Growth).

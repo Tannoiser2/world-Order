@@ -174,6 +174,15 @@ func _init() -> void:
 		board._trade_sel = {}
 		board._close_popup()
 
+		# Carte nazione impilate: più carte della STESSA nazione sommano i simboli
+		# Export → più capacità di commercio (e il cap cresce di conseguenza).
+		var stack_card := {"id": "irl", "exports": ["energy"], "imports": []}
+		pt.allied_countries = [stack_card.duplicate(), stack_card.duplicate(), stack_card.duplicate()]
+		pt.resources["energy"] = 10
+		var stack_cap: int = board._trade_export_cap(pt, "energy")  # 3 carte × 1 simbolo = 3
+		print("[%s] Carte impilate: 3 copie → export cap 3 (era 1)" % ["OK" if stack_cap == 3 else "FAIL"])
+		if stack_cap != 3: fails += 1
+
 		# Trade fra giocatori: importo Servizi dalla Commerce card di un altro
 		# giocatore → quel giocatore incassa il money e +1 Servizio, la sua Commerce
 		# card si gira (non riusabile nel round).
