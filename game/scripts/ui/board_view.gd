@@ -1240,7 +1240,7 @@ func _refresh_hud(p: PlayerState) -> void:
 	who.text = "R%d · %s · t%d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
 	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	hud_box.add_child(who)
-	hud_box.add_child(_kv("$", p.money))
+	hud_box.add_child(_money_widget(p.money))
 	hud_box.add_child(_kv("VP", p.victory_points))
 	hud_box.add_child(_kv("Prosp", p.prosperity_level))
 	var spacer := Control.new()
@@ -1632,6 +1632,55 @@ func _hand_card_height() -> int:
 
 func _kv(k: String, v: int) -> Label:
 	var l := Label.new(); l.text = "%s %d" % [k, v]; return l
+
+
+## Tagli delle monete reali del gioco (asset TTS).
+const COIN_DENOMS := [20, 10, 5, 1]
+
+## Denaro come monete vere: scomposizione greedy del totale nei tagli 20/10/5/1,
+## rese come immagini sovrapposte, seguite dalla cifra totale. Se servono troppe
+## monete, mostra un taglio per denominazione con "×N".
+func _money_widget(amount: int) -> Control:
+	var fs := _base_fs()
+	var cs := fs + 6   # lato moneta ~ altezza del testo
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	# Conta quante monete per taglio (greedy).
+	var counts := {}
+	var rem := maxi(amount, 0)
+	for d in COIN_DENOMS:
+		counts[d] = rem / d
+		rem = rem % d
+	var total_coins := 0
+	for d in COIN_DENOMS:
+		total_coins += int(counts[d])
+	var compact := total_coins > 8   # troppe monete: una per taglio con ×N
+	var stack := HBoxContainer.new()
+	stack.add_theme_constant_override("separation", -int(cs * 0.45))  # leggera sovrapposizione
+	for d in COIN_DENOMS:
+		var n := int(counts[d])
+		if n == 0:
+			continue
+		var shown := 1 if compact else n
+		for _i in shown:
+			var ic := TextureRect.new()
+			ic.texture = load("res://assets/money/coin_%d.png" % d)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.custom_minimum_size = Vector2(cs, cs)
+			ic.tooltip_text = "Moneta da %d" % d
+			stack.add_child(ic)
+		if compact and n > 1:
+			var x := Label.new()
+			x.text = "×%d" % n
+			x.add_theme_font_size_override("font_size", maxi(10, fs - 3))
+			stack.add_child(x)
+	box.add_child(stack)
+	var tot := Label.new()
+	tot.text = "$%d" % maxi(amount, 0)
+	tot.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35))
+	box.add_child(tot)
+	return box
 
 
 func _kv2(t: String) -> Label:
