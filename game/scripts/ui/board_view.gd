@@ -19,7 +19,8 @@ const FOCUS_NAME := ["Domestic", "Diplomatic", "Military"]
 const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "trade",
 	"draw", "play_another", "noop", "spend", "ongoing", "research_free",
 	"gain_money_per_fdi", "increase_production", "reset_influence", "convert_influence",
-	"ready_country", "trash", "sell_armies", "spend_for_gain", "spend_then", "repeat"]
+	"ready_country", "trash", "sell_armies", "spend_for_gain", "spend_then", "repeat",
+	"discard", "increase_prosperity"]
 
 var gs: GameState
 var active_seat := 0
@@ -549,9 +550,7 @@ func _advance_play() -> void:
 					play_queue.push_front(subs[i])
 				_advance_play())
 		"get_growth":
-			# semplificazione: prende la prima Growth di livello idoneo
-			_status("Get a Growth Card (selezione automatica nel demo).")
-			_advance_play()
+			_pick_growth()
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
@@ -612,6 +611,28 @@ func _pick_country(prompt: String, countries: Array, cb: Callable) -> void:
 	for cn in countries:
 		items.append({"label": "%s (%s)" % [cn.get("display_name", "?"), cn.get("region", "")], "value": cn})
 	_show_popup(prompt, items, cb)
+
+
+## "Get a Growth Card": il giocatore sceglie una Growth del livello idoneo che può
+## permettersi (paga il costo in risorse, guadagna i VP). Risolve sul gioco.
+func _pick_growth() -> void:
+	var p := _active()
+	var nl := _next_growth_level(p)
+	var items := []
+	for c in _available_growth(p):
+		if p.has_resources(c.get("cost", {})):
+			items.append({"label": "%s — %s  (+%d VP)" % [c.get("display_name", "?"), _cost_text(c.get("cost", {})), int(c.get("victory_points", 0))], "value": c})
+	if items.is_empty():
+		_status("Get a Growth Card: nessuna Growth di livello %d acquisibile." % nl)
+		_advance_play()
+		return
+	items.append({"label": "— Salta —", "value": null})
+	_show_popup("Get a Growth Card (livello %d) — scegli:" % nl, items, func(card):
+		if card != null:
+			if Actions.execute_get_growth(p, card, nl):
+				_status("Ottenuta Growth: %s (+%d VP)." % [card.get("display_name", "?"), int(card.get("victory_points", 0))])
+		_after_change()
+		_advance_play())
 
 
 func _pick_resource(prompt: String, cb: Callable) -> void:
