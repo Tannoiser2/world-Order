@@ -2114,25 +2114,32 @@ func _refresh_drawer_content() -> void:
 ## Rapporto altezza/larghezza delle immagini plancia (~700x499).
 const PLANCIA_RATIO := 0.713
 ## Passo orizzontale tra due caselle di un tracciato Produzione (normalizzato).
-const PROD_PITCH := 0.050
-## [x della casella 1, y] normalizzati, MISURATI sull'immagine reale della plancia.
-## Le 4 plance condividono il layout; la lunghezza dei tracciati cambia ma le
-## caselle partono sempre dalle stesse coordinate, quindi: x = x0 + (livello-1)*passo.
+## Calibrato dai template utente (game/assets/calibration/plance/, 2026-06-21).
+const PROD_PITCH := 0.0510
+## [x della casella 1, y] normalizzati, MISURATI sui template di calibrazione
+## sovrapposti alle plance reali. Le 4 plance condividono il layout: la lunghezza
+## dei tracciati cambia ma le caselle partono dalle stesse coordinate, quindi:
+## x = x0 + (livello-1)*passo. UNICA eccezione: il tracciato raw_materials parte da
+## x diversa per potenza (vedi RAW_MATERIALS_X). NB: la riserva carri/Armate in alto
+## (RESERVE_ARMY_POS) NON è qui e resta invariata; "armies" qui è la PRODUZIONE armate.
 const PROD_TRACKS := {
-	"energy": [0.115, 0.205],
-	"raw_materials": [0.44, 0.205],
-	"food": [0.73, 0.205],
-	"consumer_goods": [0.115, 0.527],
-	"services": [0.115, 0.606],
-	"diplomacy": [0.44, 0.540],
-	"armies": [0.73, 0.540],
+	"energy": [0.0931, 0.1986],
+	"raw_materials": [0.4435, 0.1986],
+	"food": [0.7372, 0.1986],
+	"consumer_goods": [0.0937, 0.5048],
+	"services": [0.0937, 0.5925],
+	"diplomacy": [0.4073, 0.5212],
+	"armies": [0.7378, 0.5212],
 }
+## Il tracciato raw_materials è stampato in posizioni leggermente diverse per potenza:
+## x della casella 1 misurata dai template (override di PROD_TRACKS["raw_materials"][0]).
+const RAW_MATERIALS_X := {"usa": 0.4441, "russia": 0.4429, "china": 0.4039, "eu": 0.4054}
 ## Cerchi Focus (Domestic, Diplomatic, Military).
-const FOCUS_POS := [[0.307, 0.311], [0.600, 0.311], [0.921, 0.311]]
-## Tracciato Prosperità: livello 0 (cerchio iniziale) .. 5.
-const PROSPERITY_POS := [[0.520, 0.645], [0.600, 0.645], [0.670, 0.645], [0.740, 0.645], [0.810, 0.645], [0.880, 0.645]]
+const FOCUS_POS := [[0.2846, 0.3171], [0.6012, 0.3171], [0.9299, 0.3171]]
+## Tracciato Prosperità: livello 0 (cerchio iniziale) .. 5 (corone con i valori).
+const PROSPERITY_POS := [[0.4810, 0.6227], [0.5734, 0.6227], [0.6677, 0.6227], [0.7601, 0.6227], [0.8514, 0.6227], [0.9444, 0.6227]]
 ## Colonne x della traccia RESOURCES (numeri 1..5 in alto, 6..10 in basso).
-const RES_TRACK_X := [0.23, 0.40, 0.565, 0.735, 0.905]
+const RES_TRACK_X := [0.2332, 0.3985, 0.5662, 0.7305, 0.8985]
 ## Risorse che hanno un token-immagine (armies è un tracciato a parte).
 const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy"]
 
@@ -2194,7 +2201,9 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 		var lvl := int(p.production.get(res, 0))
 		if lvl >= 1:
 			var t: Array = PROD_TRACKS[res]
-			_add_cube(area, t[0] + (lvl - 1) * PROD_PITCH, t[1], pw, ph, col, false)
+			# raw_materials parte da x diversa per potenza (traccia stampata altrove).
+			var x0: float = RAW_MATERIALS_X.get(p.power, t[0]) if res == "raw_materials" else t[0]
+			_add_cube(area, x0 + (lvl - 1) * PROD_PITCH, t[1], pw, ph, col, false)
 	# Marker Focus (sul cerchio della colonna scelta).
 	if p.focus >= 0 and p.focus < FOCUS_POS.size():
 		_add_cube(area, FOCUS_POS[p.focus][0], FOCUS_POS[p.focus][1], pw, ph, col, true)
@@ -2255,10 +2264,10 @@ func _add_reserve_armies(view: Control, p: PlayerState, ph: float) -> void:
 func _resource_slot(amount: int) -> Vector2:
 	var a := clampi(amount, 0, 10)
 	if a == 0:
-		return Vector2(0.075, 0.83)
+		return Vector2(0.0858, 0.8348)
 	if a <= 5:
-		return Vector2(RES_TRACK_X[a - 1], 0.81)
-	return Vector2(RES_TRACK_X[a - 6], 0.912)
+		return Vector2(RES_TRACK_X[a - 1], 0.7685)
+	return Vector2(RES_TRACK_X[a - 6], 0.9036)
 
 
 ## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
