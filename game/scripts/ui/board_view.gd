@@ -318,7 +318,7 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
-	var awaiting_region := (awaiting in ["region", "move", "convert_influence"])
+	var awaiting_region := (awaiting in ["region", "move", "convert_influence", "reset_influence"])
 	var btn := Button.new()
 	btn.flat = true
 	btn.pressed.connect(_on_region_pressed.bind(region))
@@ -530,6 +530,15 @@ func _on_region_pressed(region: String) -> void:
 	if awaiting == "move":
 		_on_move_region(region)
 		return
+	if awaiting == "reset_influence":
+		awaiting = ""
+		if gs.regions[region]["track"].reset_temporary(_active().power):
+			_status("Influenza temporanea protetta (reset) in %s." % region.replace("_", " "))
+		else:
+			_status("Niente da resettare in %s." % region.replace("_", " "))
+		_layout_overlays()
+		_advance_play()
+		return
 	if awaiting == "convert_influence":
 		awaiting = ""
 		if gs.regions[region]["track"].convert_temp_to_permanent(_active().power):
@@ -693,6 +702,56 @@ func _advance_play() -> void:
 				_open_trade_ui()                                # trade generico: scelta interattiva
 		"play_another":
 			_plays_left += 1   # questa carta concede un gioco extra nel turno
+			_advance_play()
+		"reset_influence":
+			# Proteggi una Influenza temporanea: scegli una Regione dove ne hai.
+			var pr := _active()
+			var any := false
+			for rid in gs.regions:
+				if gs.regions[rid]["track"].temp.has(pr.power):
+					any = true; break
+			if not any:
+				_status("Nessuna Influenza temporanea da resettare.")
+				_advance_play()
+			else:
+				awaiting = "reset_influence"
+				_status("Tocca una Regione dove hai Influenza temporanea da proteggere (reset).")
+				_after_change()
+		"increase_production":
+			var cnt := int(op.get("count", 1))
+			_pick_resource("Aumenta quale Produzione (+%d)?" % cnt, func(rt):
+				var pp := _active()
+				pp.production[rt] = int(pp.production.get(rt, 0)) + cnt
+				_status("Produzione %s +%d." % [RES_LABEL.get(rt, rt), cnt])
+				_after_change()
+				_advance_play())
+		"ready_country":
+			var n := int(op.get("n", 1))
+			var pr2 := _active()
+			var done := 0
+			for cid in pr2.exhausted:
+				if n <= 0: break
+				if bool(pr2.exhausted[cid]):
+					pr2.exhausted[cid] = false; n -= 1; done += 1
+			_status("Preparate %d Country card." % done)
+			_after_change()
+			_advance_play()
+		"trash":
+			_pick_hand_card("Elimina una carta dal gioco (trash):", func(card):
+				_active().hand.erase(card)   # rimossa del tutto (non negli scarti)
+				_status("Carta eliminata: %s." % card.get("display_name", "?"))
+				_after_change()
+				_advance_play())
+		"discard":
+			_do_discard(int(op.get("n", 1)), op.get("then", []))
+		"increase_prosperity":
+			var pr3 := _active()
+			var disc := int(op.get("discount", 0))
+			if _increase_prosperity_discounted(pr3, disc):
+				_status("Prosperità → livello %d." % pr3.prosperity_level)
+			else:
+				_status("Prosperità: Beni di consumo insufficienti.")
+			_after_change()
 			_advance_play()
 		_:
 			if name in AUTO_OPS:
@@ -1721,7 +1780,7 @@ func _refresh_hud(p: PlayerState) -> void:
 
 ## Maniglie: una per potenza, colorate; ▶ = a chi tocca, ▼ = cassetto aperto.
 func _refresh_tab_bar() -> void:
-	var map_lock: bool = awaiting in ["region", "board_country", "move", "convert_influence"]
+	var map_lock: bool = awaiting in ["region", "board_country", "move", "convert_influence", "reset_influence"]
 	for i in tab_bar.get_child_count():
 		var b: Button = tab_bar.get_child(i)
 		var pl: PlayerState = gs.players[i]
@@ -2196,6 +2255,37 @@ func _pick_hand_card(prompt: String, cb: Callable) -> void:
 		_refresh()
 		return
 	_show_popup(prompt, items, cb)
+
+
+## Scarta n carte dalla mano (una alla volta), poi esegue gli op "then".
+func _do_discard(n: int, then_ops: Array) -> void:
+	var p := _active()
+	if n <= 0 or p.hand.is_empty():
+		for i in range(then_ops.size() - 1, -1, -1):
+			play_queue.push_front(then_ops[i])
+		_advance_play()
+		return
+	_pick_hand_card("Scarta una carta (%d rimaste):" % n, func(card):
+		p.hand.erase(card); p.discard.append(card)
+		_status("Scartata: %s." % card.get("display_name", "?"))
+		_do_discard(n - 1, then_ops))
+
+
+## Avanza la Prosperità di 1 spazio con uno sconto in Beni di consumo.
+func _increase_prosperity_discounted(p: PlayerState, discount: int) -> bool:
+	var pb: Dictionary = DataLoader.load_player_boards()
+	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
+	if p.prosperity_level >= steps.size():
+		return false
+	var step: Dictionary = steps[p.prosperity_level]
+	var cost: int = maxi(0, int(step.get("cost_consumer_goods", 999)) - discount)
+	if int(p.resources.get("consumer_goods", 0)) < cost:
+		return false
+	p.resources["consumer_goods"] = int(p.resources.get("consumer_goods", 0)) - cost
+	p.prosperity_level += 1
+	p.victory_points += int(step.get("vp", 0))
+	p.money += int(step.get("money", 0))
+	return true
 
 
 ## Sezione mano: carte scoperte solo per il giocatore di turno; per gli altri
