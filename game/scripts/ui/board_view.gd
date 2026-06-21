@@ -46,8 +46,10 @@ var drawer: Panel                   # foglio in basso, mostrato a richiesta
 var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
 var hand_pinned: VBoxContainer   # mano del giocatore, fissa in basso nel cassetto
+var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
+var tab_bg: Panel                   # sfondo solido della barra linguette
 var drawer_open := false
 var drawer_power := ""              # potenza la cui plancia è mostrata nel cassetto
 var ui_theme: Theme                 # font/scala globale proporzionale alla viewport
@@ -754,15 +756,28 @@ func _build_drawer() -> void:
 	hand_pinned.add_theme_constant_override("separation", 2)
 	col.add_child(hand_pinned)
 
-	# Una maniglia per ogni potenza in gioco (i "cassetti dei paesi").
+	# Barra delle linguette (bandiere) con sfondo solido, così non si sovrappone
+	# alla mappa: è una barra a sé in fondo.
+	tab_bg = Panel.new()
+	var tbst := StyleBoxFlat.new()
+	tbst.bg_color = Color(0.04, 0.05, 0.08, 1.0)
+	tab_bg.add_theme_stylebox_override("panel", tbst)
+	add_child(tab_bg)
 	tab_bar = HBoxContainer.new()
 	tab_bar.add_theme_constant_override("separation", 4)
 	add_child(tab_bar)
 	for pl in gs.players:
 		var b := Button.new()
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.clip_text = true
 		b.pressed.connect(_on_power_tab.bind(pl.power))
+		var fl := TextureRect.new()
+		fl.texture = load("res://assets/flags/%s.png" % pl.power)
+		fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		fl.offset_left = 8; fl.offset_top = 5; fl.offset_right = -8; fl.offset_bottom = -5
+		b.add_child(fl)
 		tab_bar.add_child(b)
 	drawer_power = _active().power
 
@@ -781,8 +796,10 @@ func _layout_ui() -> void:
 	top_hud.position = Vector2.ZERO
 	top_hud.size = Vector2(w, hud_h)
 	var tab_h := clampf(h * 0.08, 34, 64)
-	tab_bar.position = Vector2(0, h - tab_h)
-	tab_bar.size = Vector2(w, tab_h)
+	tab_bg.position = Vector2(0, h - tab_h)
+	tab_bg.size = Vector2(w, tab_h)
+	tab_bar.position = Vector2(4, h - tab_h + 2)
+	tab_bar.size = Vector2(w - 8, tab_h - 4)
 	var dy := h * 0.30   # il cassetto copre ~62% dello schermo: ci sta tutto
 	drawer.visible = drawer_open
 	drawer.position = Vector2(0, dy)
@@ -863,14 +880,20 @@ func _refresh_tab_bar() -> void:
 	for i in tab_bar.get_child_count():
 		var b: Button = tab_bar.get_child(i)
 		var pl: PlayerState = gs.players[i]
-		var mark := ""
-		if drawer_open and drawer_power == pl.power:
-			mark = "▼ "
-		elif pl.power == _active().power:
-			mark = "▶ "
-		b.text = "%s%s" % [mark, pl.power.to_upper()]
+		var is_open: bool = drawer_open and drawer_power == pl.power
+		var is_active: bool = pl.power == _active().power
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.10, 0.12, 0.16, 1.0)
+		sb.set_corner_radius_all(6)
+		if is_open:
+			sb.border_color = Color(1, 0.85, 0.3); sb.set_border_width_all(3)
+		elif is_active:
+			sb.border_color = POWER_COLORS.get(pl.power, Color.WHITE); sb.set_border_width_all(3)
+		else:
+			sb.border_color = Color(0.3, 0.3, 0.35); sb.set_border_width_all(1)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(st, sb)
 		b.disabled = map_lock
-		b.add_theme_color_override("font_color", POWER_COLORS.get(pl.power, Color.WHITE))
 
 
 ## Vista completa della plancia di una potenza: intestazione, Focus (solo per il
@@ -906,13 +929,13 @@ const PROD_PITCH := 0.050
 ## Le 4 plance condividono il layout; la lunghezza dei tracciati cambia ma le
 ## caselle partono sempre dalle stesse coordinate, quindi: x = x0 + (livello-1)*passo.
 const PROD_TRACKS := {
-	"energy": [0.119, 0.205],
-	"raw_materials": [0.282, 0.205],
-	"food": [0.679, 0.205],
-	"consumer_goods": [0.125, 0.527],
-	"services": [0.125, 0.606],
-	"diplomacy": [0.436, 0.540],
-	"armies": [0.751, 0.540],
+	"energy": [0.115, 0.205],
+	"raw_materials": [0.49, 0.205],
+	"food": [0.78, 0.205],
+	"consumer_goods": [0.115, 0.527],
+	"services": [0.115, 0.606],
+	"diplomacy": [0.49, 0.540],
+	"armies": [0.78, 0.540],
 }
 ## Cerchi Focus (Domestic, Diplomatic, Military).
 const FOCUS_POS := [[0.307, 0.311], [0.600, 0.311], [0.921, 0.311]]
@@ -1096,6 +1119,16 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# La mano è SEMPRE in basso nel cassetto (hand_pinned), così non scorre mai via.
 	if not is_active:
 		hand_pinned.add_child(_section("Mano avversario: %d carte (coperte)" % p.hand.size()))
+		hand_box = null
+		return
+	# Barra con toggle per collassare la mano (così non copre mai la plancia).
+	var bar := Button.new()
+	bar.flat = true
+	bar.text = "%s  La tua mano (%d)" % ["▼" if hand_collapsed else "▲", p.hand.size()]
+	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
+	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
+	hand_pinned.add_child(bar)
+	if hand_collapsed:
 		hand_box = null
 		return
 	hand_box = HBoxContainer.new()

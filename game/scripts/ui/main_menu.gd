@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.6.5"
+const VERSION := "v0.6.6"
 const CHANGELOG := [
+	"v0.6.6 — Cubi produzione ricalibrati (3 colonne: erano sbagliati materie prime/grano/diplomazia). Linguette potenze con BANDIERE su barra dedicata in basso (non coprono la mappa). Mano collassabile (toggle) così non copre mai la plancia.",
 	"v0.6.5 — Setup iniziale esatto: produzioni di partenza corrette per ogni potenza, risorse iniziali = produzione, nazioni amiche iniziali complete (4-5 per potenza). Nazioni amiche a destra della plancia (griglia). Prosperità e risorse ricalibrate.",
 	"v0.6.4 — Cassetto: plancia a sinistra, nazioni amiche, mano in basso. Segnalini ancorati alla plancia.",
 	"v0.6.3 — FIX plancia gigante: all'immagine mancava expand_mode=IGNORE_SIZE, non scendeva sotto la dimensione nativa (1400px).",
