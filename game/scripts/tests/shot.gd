@@ -22,11 +22,11 @@ func _initialize() -> void:
 		var R: Dictionary = board.gs.regions
 		R["europe"]["armies"] = {"usa": 2, "china": 1}
 		R["americas"]["armies"] = {"usa": 3}
-		R["central_asia"]["armies"] = {"russia": 2}
+		R["central_asia"]["armies"] = {"usa": 1, "eu": 1, "russia": 2, "china": 1}
 		R["east_asia_pacific"]["armies"] = {"china": 2, "usa": 1}
-		R["africa"]["armies"] = {"eu": 1}
+		R["africa"]["armies"] = {"eu": 1, "russia": 1}
 		R["middle_east_north_africa"]["armies"] = {"russia": 1, "eu": 1}
-		R["south_asia"]["armies"] = {"china": 1}
+		R["south_asia"]["armies"] = {"china": 1, "usa": 1}
 		R["americas"]["track"].add("usa", "temporary")
 		R["americas"]["track"].add("china", "temporary")
 		R["central_asia"]["track"].add("russia", "permanent")

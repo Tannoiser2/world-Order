@@ -24,7 +24,7 @@ const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "tra
 ## Risorse commerciabili nella Trade action (no armi/diplomazia per ora).
 const TRADE_RES := ["energy", "raw_materials", "food", "consumer_goods", "services"]
 ## Caselle "1° 2° 3° 4°" dell'area TURN ORDER sotto il titolo (normalizzato sul tabellone).
-const TURN_ORDER_SLOTS := [Vector2(0.090, 0.258), Vector2(0.163, 0.258), Vector2(0.237, 0.258), Vector2(0.310, 0.258)]
+const TURN_ORDER_SLOTS := [Vector2(0.0886, 0.2427), Vector2(0.1380, 0.2428), Vector2(0.1886, 0.2428), Vector2(0.2394, 0.2427)]
 
 var gs: GameState
 var active_seat := 0
@@ -488,40 +488,32 @@ func _make_region_button(region: String) -> Button:
 	return btn
 
 
-## Pedine Armata (tank colorati per potenza) schierate nelle Regioni: impilate
-## (leggermente sovrapposte) e centrate sull'ANCORA armate di ogni Regione (sopra
-## le sagome dei carri stampate), da board_layout.json -> army_anchors.
+## Pedine Armata schierate nelle Regioni: ogni superpotenza ha la SUA casella
+## (4 per Regione, 2x2 stampate). Coordinate da board_layout.json -> army_slots.
 func _layout_army_badges() -> void:
-	var anchors: Dictionary = layout.get("army_anchors", {})
-	var h := board_native.y * 0.026                 # altezza pedina
+	var slots: Dictionary = layout.get("army_slots", {})
+	var h := board_native.y * 0.030                 # altezza pedina
 	var bw := h * 2.0                               # larghezza pedina (tank ~2:1)
-	var step := bw - board_native.x * 0.008         # passo (pedine sovrapposte)
 	for region in gs.regions:
-		var anchor: Variant = anchors.get(region)
-		if anchor == null:
+		var conf: Dictionary = slots.get(region, {})
+		if conf.is_empty():
 			continue
 		var armies: Dictionary = gs.regions[region].get("armies", {})
-		var owners := []
 		for owner in armies:
-			if int(armies[owner]) > 0:
-				owners.append(owner)
-		if owners.is_empty():
-			continue
-		var total := step * (owners.size() - 1) + bw
-		var x0 := float(anchor[0]) * board_native.x - total * 0.5
-		var cy := float(anchor[1]) * board_native.y - h * 0.5
-		for i in owners.size():
-			var owner: String = owners[i]
-			var x := x0 + i * step
+			var cnt := int(armies[owner])
+			if cnt <= 0 or not conf.has(owner):
+				continue
+			var pos: Array = conf[owner]
+			var x := float(pos[0]) * board_native.x - bw * 0.5
+			var y := float(pos[1]) * board_native.y - h * 0.5
 			var tank := TextureRect.new()
 			tank.texture = load("res://assets/armies/%s.png" % owner)
 			tank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tank.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			tank.position = Vector2(x, cy)
+			tank.position = Vector2(x, y)
 			tank.size = Vector2(bw, h)
 			overlay.add_child(tank)
-			var cnt := int(armies[owner])
 			if cnt > 1:
 				var lbl := Label.new()
 				lbl.text = "×%d" % cnt
@@ -530,7 +522,7 @@ func _layout_army_badges() -> void:
 				lbl.add_theme_constant_override("outline_size", maxi(2, int(h * 0.12)))
 				lbl.add_theme_font_size_override("font_size", int(h * 0.62))
 				lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				lbl.position = Vector2(x + bw * 0.74, cy - h * 0.06)
+				lbl.position = Vector2(x + bw * 0.72, y - h * 0.04)
 				overlay.add_child(lbl)
 
 
