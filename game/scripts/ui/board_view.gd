@@ -443,9 +443,11 @@ func _on_allied_pressed(country: Dictionary) -> void:
 		var name := String(awaiting_op.get("op", ""))
 		awaiting = ""
 		if name == "invest":
-			Actions.execute_invest(gs, p.power, country, "temporary")
+			if Actions.execute_invest(gs, p.power, country, "temporary") < 0:
+				_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
 		elif name == "build_base":
-			Actions.execute_build_base(gs, p.power, country, 1, "temporary")
+			if Actions.execute_build_base(gs, p.power, country, 1, "temporary") < 0:
+				_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
 		_after_change()
 		_advance_play()
 		return
@@ -593,7 +595,10 @@ func _resolve_region_op(region: String) -> void:
 	match name:
 		"engage":
 			var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
-			Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary", ed)
+			var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), [], p.focus == WO.Focus.DIPLOMATIC, ed)
+			if Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary", ed) < 0:
+				_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
+				_layout_overlays(); _advance_play(); return
 		"add_influence", "place_armies":
 			var slot := "permanent" if bool(op.get("permanent", false)) else "temporary"
 			gs.regions[region]["track"].add(p.power, slot)
@@ -684,12 +689,15 @@ func _finish_move() -> void:
 			for region in moves:
 				var a: Dictionary = gs.regions[region]["armies"]
 				a[p.power] = int(a.get(p.power, 0)) + 1
+			_status("Spostate %d Armate." % moves.size())
 		else:
 			var arr := []
 			for region in moves:
 				arr.append({"region": region})
-			Actions.execute_move(gs, p.power, arr)
-		_status("Spostate %d Armate." % moves.size())
+			if Actions.execute_move(gs, p.power, arr):
+				_status("Spostate %d Armate (−%d money)." % [moves.size(), Actions.move_cost(moves.size())])
+			else:
+				_status("Money insufficiente per spostare %d Armate (serve %d)." % [moves.size(), Actions.move_cost(moves.size())])
 	_move_ctx = {}
 	awaiting = ""
 	_hide_move_bar()
