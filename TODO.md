@@ -46,7 +46,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 - 🟡 **Calibrazione fine segnalini**: produzione ora centrata; prosperità/risorse buone — restano ritocchi al pixel su feedback.
 - 🟢 **Abilità `ongoing`**: tutte agganciate — *extra_draw_per_round* (+1 pesca/round), *extra_play_first_turn* (+1 carta al 1° turno del round), *ready_extra_on_focus* (+1 Country preparata col Focus) e le 4 *once_per_round* (draw+trash, draw highest+discard, improve again +1, convert influence). Restano alcuni `effect_modifiers` condizionali (es. *count Energy ×2*).
 - 🟢 **Turno = 1 azione**: ogni turno giochi 1 carta **oppure** fai la **Focus action** (sposta il Focus e prepara 2 Country card, +1 con *ready_extra_on_focus*). 4 turni/round.
-- 🟡 **Focus (passi)**: *Ready N Country cards* fatto; resta *Produce X* nei passi di Focus (i bonus chiave — Engage −2, +2 Research, +1 THREAT/Defense — sono attivi).
+- 🟢 **Focus (passi)**: la Focus action prepara le Country card (numero per‑Focus: Domestic 1, Diplomatic 4, Military 2, +1 con *ready_extra_on_focus*) **e produce** il tipo del Focus (Domestic→Beni/Servizi, Diplomatic→Diplomazia, Military→Armate in riserva). Bonus chiave già attivi (Engage −2, +2 Research, +1 THREAT/Defense). Resta opzionale lo step "spendi 8 money per +1 Produzione".
 - 🟡 **Turno guidato dalla UI**: le azioni si fanno, ma manca un flusso hot‑seat completo che guidi tutte le scelte di un turno.
 - 🟡 **Mano**: ora pesca 6 da un mazzo di 12; il regolamento divide 12 in 2 pile da 6 (esito equivalente).
 
@@ -55,7 +55,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ## 🔴 Mancante
 
 - 🟢 **Trade tra giocatori**: importando da un altro giocatore, lui **incassa il money** e **+1 Servizio** (bonus di vendita) e la sua **Commerce card si gira** (riusabile solo dal round dopo); il compratore prende la risorsa +1 Diplomazia. Cap d'import dagli altri = `import_from` della Trade Deals card.
-- 🔴 **Auto‑Influence** completo per le potenze non giocate (parziale).
+- 🟢 **Auto‑Influence** delle potenze non giocate: con meno di 4 giocatori, ogni Aftermath pesca una carta Auto‑Influence e le potenze neutrali piazzano Influenza/Armate (contano per scoring e maggioranze). La carta è mostrata nel riepilogo di fine round.
 - 🔴 **Modalità Online** (placeholder nel menu).
 - 🔴 **Avversari / bot (AI)**: ora è hot‑seat manuale.
 - 🔴 **Comfort**: salvataggio/caricamento partita, annullo robusto, suoni, animazioni.

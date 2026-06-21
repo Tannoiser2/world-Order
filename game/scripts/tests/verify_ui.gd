@@ -221,6 +221,27 @@ func _init() -> void:
 			print("[%s] Get a Growth Card: popup carte + acquisto (+%d VP)" % ["OK" if gg_ok else "FAIL", int(av[0].get("victory_points", 0))])
 			if not gg_ok: fails += 1
 
+		# Auto-Influence: con 2 giocatori (usa, china) la potenza NEUTRALE Russia
+		# piazza Influenza da una carta Auto-Influence (board 2p dedicato).
+		var saved_powers: Array = GameConfig.powers
+		GameConfig.powers = ["usa", "china"]
+		var b3: Node = load("res://scenes/board.tscn").instantiate()
+		get_root().add_child(b3)
+		await process_frame
+		var neutral := "russia"
+		var inf_before := 0
+		for rid0 in b3.gs.regions: inf_before += b3.gs.regions[rid0]["track"].count(neutral)
+		var ai_lines := []
+		var ai_art: String = b3._apply_auto_influence(ai_lines)
+		var inf_after := 0
+		for rid1 in b3.gs.regions: inf_after += b3.gs.regions[rid1]["track"].count(neutral)
+		var ai_ok: bool = inf_after > inf_before and ai_art != "" and ai_lines.size() > 0
+		print("[%s] Auto-Influence (2p): Russia neutrale piazza Influenza (%d->%d)" % ["OK" if ai_ok else "FAIL", inf_before, inf_after])
+		if not ai_ok: fails += 1
+		b3.queue_free()
+		GameConfig.powers = saved_powers
+		await process_frame
+
 		# Trade action interattiva: export di una risorsa (cap dai simboli amici) e
 		# import di un'altra; +1 Diplomazia comprando dagli altri.
 		var pt: PlayerState = board._active()
@@ -305,16 +326,20 @@ func _init() -> void:
 			board._trade_sel = {}
 			board.trade_deals = DataLoader.load_trade_deals()  # ripristino
 
-		# Focus action: prepara (ready) le Country card esaurite; +1 con
-		# "ready_extra_on_focus". Consuma l'azione del turno.
+		# Focus action: prepara (ready) le Country card (Military=2, +1 con
+		# "ready_extra_on_focus") E produce il tipo del Focus (Armate → riserva).
 		var pf: PlayerState = board._active()
 		pf.exhausted = {"a": true, "b": true, "c": true, "d": true}
 		pf.growth_cards.append({"effect_ops": [{"op": "ongoing", "tag": "ready_extra_on_focus"}]})
+		pf.production["armies"] = 2
+		pf.resources["raw_materials"] = 5
+		pf.armies_available = 0
 		board._plays_left = 1
 		board._do_focus(WO.Focus.MILITARY)
 		var readied: int = pf.exhausted.values().count(false)
-		var focus_ok: bool = pf.focus == WO.Focus.MILITARY and readied == 3 and board._plays_left == 0
-		print("[%s] Focus action: ready 3 Country (2 base +1 abilità), usa l'azione" % ["OK" if focus_ok else "FAIL"])
+		var focus_ok: bool = pf.focus == WO.Focus.MILITARY and readied == 3 and board._plays_left == 0 \
+			and pf.armies_available == 2 and pf.resources["raw_materials"] == 3   # Produce armi → riserva
+		print("[%s] Focus Military: ready 3 (2+1) + produce 2 Armate in riserva" % ["OK" if focus_ok else "FAIL"])
 		if not focus_ok: fails += 1
 		pf.growth_cards.clear()
 
