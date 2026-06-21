@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.10"
+const VERSION := "v0.7.11"
 const CHANGELOG := [
+	"v0.7.11 — Azioni domestiche. PRODUCE rifatto: scegli quante risorse generare da PIÙ tracce nella stessa azione (primarie gratis, secondarie consumano le primarie; le Armate vanno nella riserva). GET A GROWTH CARD: le carte Sviluppo si scelgono come immagini (con flyover), non più da lista testuale; le non acquistabili sono in grigio.",
 	"v0.7.10 — Azioni economiche (Invest): le nazioni amiche ESAURITE ora si vedono (grigie e ruotate, come una carta tapped), così distingui a colpo d'occhio quali puoi ancora usare per Invest/Build a Base.",
 	"v0.7.9 — Azioni militari. Pedine ARMATA (tank colorati) disegnate sulla mappa, impilate al centro della Regione; riserva del giocatore in alto sulla plancia. MOVE rifatto: scegli SORGENTE (Riserva o una Regione con tue Armate) e DESTINAZIONE, spostamento libero su qualsiasi Regione (5 money/Armata). Tolto anche qui il tap-diretto: Invest/Build a Base richiedono di giocare la carta.",
 	"v0.7.8 — Azioni diplomatiche: ora SERVE giocare la carta (tolto l'Engage/Improve rapido toccando mappa/nazione). Nuovo popup per esaurire le nazioni amiche della Regione e scontare il costo in Diplomazia (Engage e Improve Relations).",
