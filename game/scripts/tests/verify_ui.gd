@@ -28,7 +28,10 @@ func _init() -> void:
 		get_root().add_child(board)
 		await process_frame
 		await process_frame
-		var n: int = board.overlay.get_child_count() if board.overlay else 0
+		var n := 0   # conta solo i bottoni-Regione (l'overlay ha anche i segnalini)
+		if board.overlay:
+			for c in board.overlay.get_children():
+				if c is Button: n += 1
 		print("[%s] board.tscn istanziata; overlay Regioni: %d" % ["OK" if n == 7 else "FAIL", n])
 		if n != 7: fails += 1
 		# La plancia reale viene mostrata con l'immagine (aprendo il cassetto).

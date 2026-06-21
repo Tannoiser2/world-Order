@@ -23,6 +23,8 @@ const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "tra
 	"discard", "increase_prosperity"]
 ## Risorse commerciabili nella Trade action (no armi/diplomazia per ora).
 const TRADE_RES := ["energy", "raw_materials", "food", "consumer_goods", "services"]
+## Caselle "1° 2° 3° 4°" dell'area TURN ORDER sotto il titolo (normalizzato sul tabellone).
+const TURN_ORDER_SLOTS := [Vector2(0.091, 0.235), Vector2(0.149, 0.235), Vector2(0.204, 0.235), Vector2(0.259, 0.235)]
 
 var gs: GameState
 var active_seat := 0
@@ -226,6 +228,92 @@ func _layout_overlays() -> void:
 		btn.size = Vector2((r[2] - r[0]) * board_native.x, (r[3] - r[1]) * board_native.y)
 		overlay.add_child(btn)
 	_layout_card_slots()
+	_layout_score_markers()
+	_layout_turn_order_markers()
+	_layout_round_marker()
+
+
+## --- Segnalini sul tabellone: VP (traccia perimetrale) e ordine di turno ---
+
+## Posizione normalizzata (0..1 sul tabellone) di un valore VP sulla traccia
+## perimetrale: 0 in alto-sinistra, oraria. Top 0→30, destra 30→50, basso 50→80,
+## sinistra 80→100. DA CALIBRARE al pixel se serve.
+func _vp_to_pos(vp: int) -> Vector2:
+	var v := ((vp % 100) + 100) % 100
+	if v <= 30:
+		return Vector2(0.022 + (v / 30.0) * 0.955, 0.022)        # top L→R
+	elif v <= 50:
+		return Vector2(0.978, 0.022 + ((v - 30) / 20.0) * 0.953) # destra T→B
+	elif v <= 80:
+		return Vector2(0.975 - ((v - 50) / 30.0) * 0.953, 0.975) # basso R→L
+	else:
+		return Vector2(0.022, 0.975 - ((v - 80) / 20.0) * 0.953) # sinistra B→T
+
+
+## Segnalino VP per ogni potenza sulla traccia perimetrale (bandiera + numero).
+## Potenze con lo stesso VP vengono sfalsate per non sovrapporsi.
+func _layout_score_markers() -> void:
+	var stack: Dictionary = {}   # vp -> quante già piazzate (per lo sfalsamento)
+	for p in gs.players:
+		var pos := _vp_to_pos(p.victory_points)
+		var n := int(stack.get(p.victory_points, 0)); stack[p.victory_points] = n + 1
+		var s := board_native.y * 0.026
+		var holder := Control.new()
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.position = Vector2(pos.x * board_native.x - s * 0.5, pos.y * board_native.y - s * 0.5 + n * s * 0.7)
+		holder.custom_minimum_size = Vector2(s, s)
+		var fl := TextureRect.new()
+		fl.texture = load("res://assets/flags/%s.png" % p.power)
+		fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		fl.size = Vector2(s, s)
+		fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(fl)
+		overlay.add_child(holder)
+
+
+## Segnalino Round: token "ROUND n/6" sul tabellone (il tabellone non ha una
+## traccia round stampata). Posizione DA CALIBRARE.
+const ROUND_MARKER_POS := Vector2(0.165, 0.305)
+
+func _layout_round_marker() -> void:
+	var panel := Panel.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.06, 0.09, 0.92)
+	sb.border_color = Color(0.9, 0.8, 0.3, 0.9); sb.set_border_width_all(maxi(1, int(board_native.y * 0.002)))
+	sb.set_corner_radius_all(int(board_native.y * 0.012)); sb.set_content_margin_all(int(board_native.y * 0.008))
+	panel.add_theme_stylebox_override("panel", sb)
+	var lbl := Label.new()
+	lbl.text = "ROUND %d/6" % gs.round
+	lbl.add_theme_color_override("font_color", Color(0.95, 0.88, 0.5))
+	lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.024))
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(lbl)
+	var pw := board_native.x * 0.12
+	panel.position = Vector2(ROUND_MARKER_POS.x * board_native.x - pw * 0.5, ROUND_MARKER_POS.y * board_native.y)
+	overlay.add_child(panel)
+
+
+## Segnalini ordine di turno nelle 4 caselle 1°-4° sotto il titolo (bandiere).
+func _layout_turn_order_markers() -> void:
+	for i in gs.turn_order.size():
+		if i >= TURN_ORDER_SLOTS.size():
+			break
+		var seat: int = gs.turn_order[i]
+		if seat >= gs.players.size():
+			continue
+		var power: String = gs.players[seat].power
+		var slot: Vector2 = TURN_ORDER_SLOTS[i]
+		var s := board_native.y * 0.030
+		var fl := TextureRect.new()
+		fl.texture = load("res://assets/flags/%s.png" % power)
+		fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		fl.position = Vector2(slot.x * board_native.x - s * 0.5, slot.y * board_native.y - s * 0.5)
+		fl.size = Vector2(s, s)
+		fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(fl)
 
 
 # --- Zoom & pan della mappa (pinch + trascinamento, rotella su desktop) ---
@@ -1825,13 +1913,13 @@ func _refresh_hud(p: PlayerState) -> void:
 	for c in hud_box.get_children():
 		c.queue_free()
 	var my_turn := (round_turn_count / gs.players.size()) + 1
+	# Barra snella: turno/round + denaro + Fine turno. VP sono sui segnalini del
+	# tabellone; la Prosperità è sulla plancia (così la barra non copre la mappa).
 	var who := Label.new()
-	who.text = "R%d · %s · t%d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
+	who.text = "Round %d/6 · %s · turno %d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
 	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	hud_box.add_child(who)
 	hud_box.add_child(_money_widget(p.money))
-	hud_box.add_child(_kv("VP", p.victory_points))
-	hud_box.add_child(_kv("Prosp", p.prosperity_level))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hud_box.add_child(spacer)
