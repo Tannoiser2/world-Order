@@ -641,6 +641,32 @@ func _init() -> void:
 		"OK" if game_ok else "FAIL", b2.gs.round, win, safety])
 	if not game_ok: fails += 1
 
+	# Regressione Move: dopo "Fine spostamento" non devono restare barre su
+	# popup_layer. I duplicati (rinominati da Godot quando il queue_free differito
+	# lasciava la vecchia barra in scena) si accumulavano e bloccavano _end_turn
+	# -> partita congelata. _hide_move_bar ora li rimuove via metadata.
+	var bm: Node = load("res://scenes/board.tscn").instantiate()
+	get_root().add_child(bm)
+	await process_frame
+	var seat0: int = bm.active_seat
+	var mp: PlayerState = bm._active()
+	mp.armies_available = 3
+	var mcard := {"display_name": "MoveReg", "effect_ops": [{"op": "move", "count": 3}]}
+	mp.hand.append(mcard); bm._plays_left = 1
+	bm._play_card(mcard)
+	bm._move_pick_reserve(); bm._on_region_pressed("europe")
+	bm._move_pick_reserve(); bm._on_region_pressed("americas")
+	bm._finish_move()
+	await process_frame
+	var stray_bars := 0
+	for ch in bm.popup_layer.get_children():
+		if ch.has_meta("move_bar"): stray_bars += 1
+	bm._end_turn()
+	var move_ok: bool = bm.awaiting == "" and stray_bars == 0 and bm.active_seat != seat0
+	print("[%s] Move: nessuna barra residua e Fine turno avanza (no freeze)" % ["OK" if move_ok else "FAIL"])
+	if not move_ok: fails += 1
+	bm.queue_free()
+
 	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(fails)
 

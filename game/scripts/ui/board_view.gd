@@ -1318,6 +1318,7 @@ func _refresh_move_bar() -> void:
 	var c := _move_ctx
 	var bar := HBoxContainer.new()
 	bar.name = "MoveBar"
+	bar.set_meta("move_bar", true)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_theme_constant_override("separation", 8)
 	bar.position = Vector2(size.x * 0.5 - 170, size.y * 0.15)
@@ -1337,8 +1338,13 @@ func _refresh_move_bar() -> void:
 
 
 func _hide_move_bar() -> void:
+	# Identifica le barre via metadata (NON via name: Godot rinomina i duplicati
+	# quando il queue_free differito lascia la vecchia barra in scena durante l'add,
+	# e il match per nome falliva -> barre accumulate su popup_layer che bloccavano
+	# anche _end_turn). remove_child è immediato: get_child_count torna corretto subito.
 	for ch in popup_layer.get_children():
-		if ch.name == "MoveBar" or ch.name == "MoveDoneBtn":
+		if ch.has_meta("move_bar"):
+			popup_layer.remove_child(ch)
 			ch.queue_free()
 
 
