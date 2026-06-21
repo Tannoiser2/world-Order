@@ -321,6 +321,9 @@ func _make_region_button(region: String) -> Button:
 	var awaiting_region := (awaiting in ["region", "move", "convert_influence", "reset_influence"])
 	var btn := Button.new()
 	btn.flat = true
+	# Le Regioni catturano il mouse SOLO quando devi sceglierne una; altrimenti
+	# lasciano passare il drag così puoi trascinare/pannare la mappa anche da zoomata.
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP if awaiting_region else Control.MOUSE_FILTER_IGNORE
 	btn.pressed.connect(_on_region_pressed.bind(region))
 	# Zona Regione: invisibile di default (il tabellone mostra già nome ed Eng);
 	# si evidenzia solo quando devi SCEGLIERE una Regione. Durante un Move il colore
@@ -355,11 +358,7 @@ func _make_region_button(region: String) -> Button:
 		hb.add_theme_constant_override("separation", int(board_native.x * 0.006))
 		vb.add_child(hb)
 		for owner in track.owners():
-			var lbl := Label.new()
-			lbl.text = "●%d" % track.count(owner)
-			lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
-			lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.013))
-			hb.add_child(lbl)
+			hb.add_child(_influence_cube(owner, track.count(owner)))
 	# Pedine Armata (tank colorati per potenza) schierate nella Regione: impilate
 	# (leggermente sovrapposte) e centrate sul simbolo del carro della Regione.
 	var armies: Dictionary = rd.get("armies", {})
@@ -381,6 +380,33 @@ func _make_region_button(region: String) -> Button:
 
 
 ## Pedina Armata: tank colorato della potenza + "×N".
+## Cubo Influenza: quadratino colorato della potenza + conteggio (per Regione).
+func _influence_cube(owner: String, count: int) -> Control:
+	var box := HBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 1)
+	var s := int(board_native.y * 0.020)
+	var cube := Panel.new()
+	cube.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cube.custom_minimum_size = Vector2(s, s)
+	var col: Color = POWER_COLORS.get(owner, Color(0.8, 0.8, 0.8))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.border_color = Color(0, 0, 0, 0.85)
+	sb.set_border_width_all(maxi(1, int(s * 0.12)))
+	sb.set_corner_radius_all(int(s * 0.18))
+	cube.add_theme_stylebox_override("panel", sb)
+	box.add_child(cube)
+	if count > 1:
+		var lbl := Label.new()
+		lbl.text = "%d" % count
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lbl.add_theme_color_override("font_color", Color.WHITE)
+		lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.016))
+		box.add_child(lbl)
+	return box
+
+
 func _army_badge(power: String, count: int) -> Control:
 	var h := int(board_native.y * 0.022)
 	var box := HBoxContainer.new()
@@ -516,14 +542,17 @@ func _on_allied_pressed(country: Dictionary) -> void:
 		return  # serve giocare la carta Invest/Build a Base
 	var name := String(awaiting_op.get("op", ""))
 	awaiting = ""
-	if name == "invest":
-		if Actions.execute_invest(gs, p.power, country, "temporary") < 0:
-			_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
-	elif name == "build_base":
-		if Actions.execute_build_base(gs, p.power, country, 1, "temporary") < 0:
-			_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
-	_after_change()
-	_advance_play()
+	# L'Influenza di Invest/Build va nella Regione della Country: scegli lo slot.
+	var region := String(country.get("region", ""))
+	_pick_slot(region, func(slot):
+		if name == "invest":
+			if Actions.execute_invest(gs, p.power, country, slot) < 0:
+				_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
+		elif name == "build_base":
+			if Actions.execute_build_base(gs, p.power, country, 1, slot) < 0:
+				_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
+		_after_change()
+		_advance_play())
 
 
 func _on_region_pressed(region: String) -> void:
@@ -771,25 +800,60 @@ func _resolve_region_op(region: String) -> void:
 			"Engage in %s (costo %d Dip)" % [region.replace("_", " "), int(gs.regions[region]["engage_cost"])],
 			func(chosen: Array): _resolve_engage(region, chosen))
 		return
+	if name == "add_influence":
+		# Se la carta forza il permanente lo usa; altrimenti il giocatore sceglie.
+		if bool(op.get("permanent", false)):
+			gs.regions[region]["track"].add(p.power, "permanent")
+			_status("Influenza permanente su %s." % region.replace("_", " "))
+			_layout_overlays(); _advance_play()
+		else:
+			_pick_slot(region, func(slot):
+				gs.regions[region]["track"].add(p.power, slot)
+				_status("Influenza (%s) su %s." % [slot, region.replace("_", " ")])
+				_layout_overlays(); _advance_play())
+		return
 	match name:
-		"add_influence", "place_armies":
-			var slot := "permanent" if bool(op.get("permanent", false)) else "temporary"
-			gs.regions[region]["track"].add(p.power, slot)
-			if name == "place_armies":
-				var a: Dictionary = gs.regions[region]["armies"]
-				a[p.power] = int(a.get(p.power, 0)) + int(op.get("n", 1))
+		"place_armies":
+			var a: Dictionary = gs.regions[region]["armies"]
+			a[p.power] = int(a.get(p.power, 0)) + int(op.get("n", 1))
 	_status("%s su %s." % [name, region.replace("_", " ")])
 	_layout_overlays()
 	_advance_play()
 
 
+## Slot dove mettere l'Influenza: se c'è un permanente libero il giocatore SCEGLIE
+## (regolamento: "you can choose which of the available types of slots to use"),
+## altrimenti va in temporaneo. cb riceve "permanent" o "temporary".
+func _pick_slot(region: String, cb: Callable) -> void:
+	var track: InfluenceTrack = gs.regions[region]["track"]
+	var perm_val := -1
+	for i in track.perm.size():
+		if track.perm[i] == null:
+			perm_val = track.perm_values[i]; break
+	if perm_val < 0:
+		cb.call("temporary")     # nessuno slot permanente libero
+		return
+	var temp_val := 0
+	for i in track.temp.size():
+		if track.temp[i] == null:
+			temp_val = track.temp_values[i]; break
+	_show_popup("Influenza in %s: quale slot?" % region.replace("_", " "), [
+		{"label": "⬆ Permanente  (+%d VP, resta)" % perm_val, "value": "permanent"},
+		{"label": "⬇ Temporanea  (+%d VP)" % temp_val, "value": "temporary"},
+	], cb)
+
+
 func _resolve_engage(region: String, chosen: Array) -> void:
+	_pick_slot(region, func(slot): _resolve_engage_slot(region, chosen, slot))
+
+
+func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
 	var p := _active()
 	var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
 	var values := _values_of(chosen)
 	var diplo := p.focus == WO.Focus.DIPLOMATIC
 	var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), values, diplo, ed)
-	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, "temporary", ed)
+	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, slot, ed)
 	if vp < 0:
 		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
 	else:

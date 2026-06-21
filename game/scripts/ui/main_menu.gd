@@ -4,8 +4,10 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.15"
+const VERSION := "v0.7.17"
 const CHANGELOG := [
+	"v0.7.17 — Influenza: ora SCEGLI tu se mettere il cubetto in slot PERMANENTE (sopra, resta a fine partita) o TEMPORANEO (sotto, più VP ma spingibile), come da regolamento. Vale per Engage, Invest, Build a Base e gli effetti carta (quando un permanente è libero).",
+	"v0.7.16 — Mappa: ora puoi TRASCINARLA col mouse anche da zoomata (le Regioni catturano il click solo quando devi sceglierne una). Influenza iniziale resa come CUBETTI colorati (con conteggio) invece di pallini.",
 	"v0.7.15 — Chiusi 6 effetti carta che prima non facevano nulla: reset_influence (proteggi Influenza temporanea), increase_production (+N a una traccia), ready_country (prepara N nazioni), trash/discard (elimina/scarta carte), increase_prosperity. Ora 106/109 carte hanno tutti gli effetti eseguiti.",
 	"v0.7.14 — Gioco a FACCIA IN GIÙ: toccando una carta scegli se giocarla per la sua azione, oppure a faccia in giù per +10 money o per attivare uno dei tuoi 2 STRATEGIC ASSET (le carte speciali del setup, usabili una volta). I Strategic Asset sono mostrati nel cassetto (grigi se usati).",
 	"v0.7.13 — Setup: Armate iniziali = Produzione di Armate (in riserva). Modificatori di carta condizionali sul Trade: «conta Energia ×2» (e Energia/Materie Prime, es. Energy Titan) raddoppiano i simboli Export; bonus Influenza concesso solo se hai esportato Beni/Servizi (o 4 Energia).",
