@@ -3,42 +3,592 @@
   "source": "Riquadri Regione normalizzati [x0,y0,x1,y1] sull'immagine del tabellone (game/assets/board/board.jpg), derivati dai ritagli ad alta risoluzione e coerenti con la struttura dei cubi nel salvataggio TTS. Usati dalla UI per posizionare gli overlay delle Regioni.",
   "board_image": "res://assets/board/board.jpg",
   "regions": {
-    "europe": [0.29, 0.09, 0.50, 0.37],
-    "central_asia": [0.58, 0.08, 0.82, 0.36],
-    "americas": [0.06, 0.47, 0.34, 0.80],
-    "middle_east_north_africa": [0.40, 0.36, 0.66, 0.58],
-    "africa": [0.33, 0.56, 0.62, 0.82],
-    "south_asia": [0.62, 0.40, 0.86, 0.66],
-    "east_asia_pacific": [0.79, 0.40, 1.0, 0.66]
+    "europe": [
+      0.29,
+      0.09,
+      0.5,
+      0.37
+    ],
+    "central_asia": [
+      0.58,
+      0.08,
+      0.82,
+      0.36
+    ],
+    "americas": [
+      0.06,
+      0.47,
+      0.34,
+      0.8
+    ],
+    "middle_east_north_africa": [
+      0.4,
+      0.36,
+      0.66,
+      0.58
+    ],
+    "africa": [
+      0.33,
+      0.56,
+      0.62,
+      0.82
+    ],
+    "south_asia": [
+      0.62,
+      0.4,
+      0.86,
+      0.66
+    ],
+    "east_asia_pacific": [
+      0.79,
+      0.4,
+      1.0,
+      0.66
+    ]
   },
   "card_slots": {
     "_comment": "Aree designate dove posare le carte nazione, [x0,y0,x1,y1] normalizzate. Centri calibrati dalle coordinate dei 7 mazzi CountryCard nel salvataggio TTS (5 aree in basso z=-11.2, Europa+Asia centrale in alto z=10.4).",
-    "americas": [0.030, 0.795, 0.205, 0.965],
-    "middle_east_north_africa": [0.224, 0.795, 0.399, 0.965],
-    "africa": [0.418, 0.795, 0.593, 0.965],
-    "south_asia": [0.612, 0.795, 0.787, 0.965],
-    "east_asia_pacific": [0.806, 0.795, 0.981, 0.965],
-    "europe": [0.424, 0.055, 0.594, 0.205],
-    "central_asia": [0.749, 0.055, 0.919, 0.205]
+    "americas": [
+      0.03,
+      0.795,
+      0.205,
+      0.965
+    ],
+    "middle_east_north_africa": [
+      0.224,
+      0.795,
+      0.399,
+      0.965
+    ],
+    "africa": [
+      0.418,
+      0.795,
+      0.593,
+      0.965
+    ],
+    "south_asia": [
+      0.612,
+      0.795,
+      0.787,
+      0.965
+    ],
+    "east_asia_pacific": [
+      0.806,
+      0.795,
+      0.981,
+      0.965
+    ],
+    "europe": [
+      0.424,
+      0.055,
+      0.594,
+      0.205
+    ],
+    "central_asia": [
+      0.749,
+      0.055,
+      0.919,
+      0.205
+    ]
   },
   "influence_slots": {
-    "_comment": "Centri normalizzati [x,y] delle caselle Influenza stampate su ogni Regione ('permanent' sopra la linea, 'temporary' sotto), RILEVATI A PIXEL dal template di calibrazione dell'utente. Riflettono il tabellone reale (es. MENA = 3 permanenti / 5 temporanee).",
-    "europe": {"permanent": [[0.3295,0.1613], [0.3567,0.1613], [0.3835,0.1613], [0.4118,0.1613]], "temporary": [[0.3308,0.1964], [0.3576,0.1964], [0.3853,0.1964], [0.4121,0.1964]]},
-    "central_asia": {"permanent": [[0.6898,0.1603], [0.7172,0.1603]], "temporary": [[0.6622,0.1964], [0.6890,0.1965], [0.7158,0.1964], [0.7435,0.1964]]},
-    "americas": {"permanent": [[0.1672,0.6933], [0.1945,0.6933]], "temporary": [[0.1394,0.7285], [0.1663,0.7285], [0.1945,0.7285], [0.2212,0.7284]]},
-    "middle_east_north_africa": {"permanent": [[0.3531,0.4653], [0.3804,0.4653], [0.4072,0.4653]], "temporary": [[0.3253,0.5014], [0.3522,0.5014], [0.3799,0.5014], [0.4067,0.5014], [0.4340,0.5014]]},
-    "africa": {"permanent": [[0.3858,0.6206], [0.4132,0.6206]], "temporary": [[0.3576,0.6563], [0.3853,0.6563], [0.4127,0.6563], [0.4394,0.6563]]},
-    "south_asia": {"permanent": [[0.6890,0.6206], [0.7162,0.6206]], "temporary": [[0.6621,0.6563], [0.6890,0.6563], [0.7159,0.6563], [0.7435,0.6563]]},
-    "east_asia_pacific": {"permanent": [[0.8589,0.6206], [0.8863,0.6206], [0.9131,0.6206]], "temporary": [[0.8443,0.6562], [0.8713,0.6562], [0.8990,0.6562], [0.9258,0.6563]]}
+    "_comment": "Centri normalizzati [x,y]. 'permanent' = riga COLORATA superiore (dove va il cubo: i quadrati colorati di partenza; gli slot non iniziali sono estrapolati sulla stessa riga). 'temporary' = caselle numerate sotto la linea. Rilevati a pixel dai template utente.",
+    "europe": {
+      "permanent": [
+        [
+          0.3449,
+          0.1308
+        ],
+        [
+          0.3718,
+          0.1308
+        ],
+        [
+          0.399,
+          0.1308
+        ],
+        [
+          0.4261,
+          0.1308
+        ]
+      ],
+      "temporary": [
+        [
+          0.3308,
+          0.1964
+        ],
+        [
+          0.3576,
+          0.1964
+        ],
+        [
+          0.3853,
+          0.1964
+        ],
+        [
+          0.4121,
+          0.1964
+        ]
+      ]
+    },
+    "central_asia": {
+      "permanent": [
+        [
+          0.7036,
+          0.1308
+        ],
+        [
+          0.7301,
+          0.1308
+        ]
+      ],
+      "temporary": [
+        [
+          0.6622,
+          0.1964
+        ],
+        [
+          0.689,
+          0.1965
+        ],
+        [
+          0.7158,
+          0.1964
+        ],
+        [
+          0.7435,
+          0.1964
+        ]
+      ]
+    },
+    "americas": {
+      "permanent": [
+        [
+          0.1804,
+          0.6634
+        ],
+        [
+          0.2069,
+          0.6634
+        ]
+      ],
+      "temporary": [
+        [
+          0.1394,
+          0.7285
+        ],
+        [
+          0.1663,
+          0.7285
+        ],
+        [
+          0.1945,
+          0.7285
+        ],
+        [
+          0.2212,
+          0.7284
+        ]
+      ]
+    },
+    "middle_east_north_africa": {
+      "permanent": [
+        [
+          0.3527,
+          0.4358
+        ],
+        [
+          0.3796,
+          0.4358
+        ],
+        [
+          0.4068,
+          0.4358
+        ]
+      ],
+      "temporary": [
+        [
+          0.3253,
+          0.5014
+        ],
+        [
+          0.3522,
+          0.5014
+        ],
+        [
+          0.3799,
+          0.5014
+        ],
+        [
+          0.4067,
+          0.5014
+        ],
+        [
+          0.434,
+          0.5014
+        ]
+      ]
+    },
+    "africa": {
+      "permanent": [
+        [
+          0.3858,
+          0.5906
+        ],
+        [
+          0.4132,
+          0.5906
+        ]
+      ],
+      "temporary": [
+        [
+          0.3576,
+          0.6563
+        ],
+        [
+          0.3853,
+          0.6563
+        ],
+        [
+          0.4127,
+          0.6563
+        ],
+        [
+          0.4394,
+          0.6563
+        ]
+      ]
+    },
+    "south_asia": {
+      "permanent": [
+        [
+          0.69,
+          0.5906
+        ],
+        [
+          0.7173,
+          0.5906
+        ]
+      ],
+      "temporary": [
+        [
+          0.6621,
+          0.6563
+        ],
+        [
+          0.689,
+          0.6563
+        ],
+        [
+          0.7159,
+          0.6563
+        ],
+        [
+          0.7435,
+          0.6563
+        ]
+      ]
+    },
+    "east_asia_pacific": {
+      "permanent": [
+        [
+          0.8732,
+          0.5906
+        ],
+        [
+          0.8991,
+          0.5906
+        ],
+        [
+          0.925,
+          0.5906
+        ]
+      ],
+      "temporary": [
+        [
+          0.8443,
+          0.6562
+        ],
+        [
+          0.8713,
+          0.6562
+        ],
+        [
+          0.899,
+          0.6562
+        ],
+        [
+          0.9258,
+          0.6563
+        ]
+      ]
+    }
   },
   "army_slots": {
     "_comment": "Posizione [x,y] normalizzata della pedina Armata di OGNI superpotenza in ogni Regione (4 caselle 2x2 stampate), RILEVATE A PIXEL dal template utente. Mappatura potenza->casella dal colore del carro stampato: alto-sx=EU, alto-dx=Russia, basso-sx=USA, basso-dx=Cina.",
-    "europe": {"usa": [0.3362,0.3252], "eu": [0.3362,0.2845], "russia": [0.4008,0.2845], "china": [0.4008,0.3252]},
-    "central_asia": {"usa": [0.6689,0.3161], "eu": [0.6690,0.2754], "russia": [0.7335,0.2754], "china": [0.7335,0.3161]},
-    "americas": {"usa": [0.1458,0.5972], "eu": [0.1458,0.5564], "russia": [0.2104,0.5564], "china": [0.2104,0.5972]},
-    "middle_east_north_africa": {"usa": [0.4985,0.4964], "eu": [0.4986,0.4556], "russia": [0.5631,0.4556], "china": [0.5631,0.4964]},
-    "africa": {"usa": [0.4985,0.6776], "eu": [0.4985,0.6369], "russia": [0.5631,0.6369], "china": [0.5631,0.6775]},
-    "south_asia": {"usa": [0.6689,0.5188], "eu": [0.6690,0.4780], "russia": [0.7335,0.4780], "china": [0.7335,0.5188]},
-    "east_asia_pacific": {"usa": [0.8545,0.5188], "eu": [0.8545,0.4780], "russia": [0.9190,0.4780], "china": [0.9190,0.5188]}
+    "europe": {
+      "usa": [
+        0.3362,
+        0.3252
+      ],
+      "eu": [
+        0.3362,
+        0.2845
+      ],
+      "russia": [
+        0.4008,
+        0.2845
+      ],
+      "china": [
+        0.4008,
+        0.3252
+      ]
+    },
+    "central_asia": {
+      "usa": [
+        0.6689,
+        0.3161
+      ],
+      "eu": [
+        0.669,
+        0.2754
+      ],
+      "russia": [
+        0.7335,
+        0.2754
+      ],
+      "china": [
+        0.7335,
+        0.3161
+      ]
+    },
+    "americas": {
+      "usa": [
+        0.1458,
+        0.5972
+      ],
+      "eu": [
+        0.1458,
+        0.5564
+      ],
+      "russia": [
+        0.2104,
+        0.5564
+      ],
+      "china": [
+        0.2104,
+        0.5972
+      ]
+    },
+    "middle_east_north_africa": {
+      "usa": [
+        0.4985,
+        0.4964
+      ],
+      "eu": [
+        0.4986,
+        0.4556
+      ],
+      "russia": [
+        0.5631,
+        0.4556
+      ],
+      "china": [
+        0.5631,
+        0.4964
+      ]
+    },
+    "africa": {
+      "usa": [
+        0.4985,
+        0.6776
+      ],
+      "eu": [
+        0.4985,
+        0.6369
+      ],
+      "russia": [
+        0.5631,
+        0.6369
+      ],
+      "china": [
+        0.5631,
+        0.6775
+      ]
+    },
+    "south_asia": {
+      "usa": [
+        0.6689,
+        0.5188
+      ],
+      "eu": [
+        0.669,
+        0.478
+      ],
+      "russia": [
+        0.7335,
+        0.478
+      ],
+      "china": [
+        0.7335,
+        0.5188
+      ]
+    },
+    "east_asia_pacific": {
+      "usa": [
+        0.8545,
+        0.5188
+      ],
+      "eu": [
+        0.8545,
+        0.478
+      ],
+      "russia": [
+        0.919,
+        0.478
+      ],
+      "china": [
+        0.919,
+        0.5188
+      ]
+    }
+  },
+  "majority_slots": {
+    "_comment": "Centri [x,y] dei numeri della traccia maggioranza (PV per posizione), da sinistra (1deg) a destra. Su questi si mostrano bandiera+PV della classifica.",
+    "europe": [
+      [
+        0.3563,
+        0.225
+      ],
+      [
+        0.3759,
+        0.225
+      ],
+      [
+        0.3963,
+        0.225
+      ],
+      [
+        0.4168,
+        0.225
+      ]
+    ],
+    "central_asia": [
+      [
+        0.709,
+        0.225
+      ],
+      [
+        0.7295,
+        0.225
+      ],
+      [
+        0.75,
+        0.225
+      ]
+    ],
+    "americas": [
+      [
+        0.1854,
+        0.7556
+      ],
+      [
+        0.2059,
+        0.7556
+      ],
+      [
+        0.2263,
+        0.7555
+      ]
+    ],
+    "middle_east_north_africa": [
+      [
+        0.3822,
+        0.5315
+      ],
+      [
+        0.4018,
+        0.5315
+      ],
+      [
+        0.4222,
+        0.5315
+      ],
+      [
+        0.4427,
+        0.5315
+      ]
+    ],
+    "africa": [
+      [
+        0.4041,
+        0.6843
+      ],
+      [
+        0.4245,
+        0.6843
+      ],
+      [
+        0.445,
+        0.6843
+      ]
+    ],
+    "south_asia": [
+      [
+        0.7091,
+        0.6843
+      ],
+      [
+        0.7295,
+        0.6843
+      ],
+      [
+        0.75,
+        0.6843
+      ]
+    ],
+    "east_asia_pacific": [
+      [
+        0.8904,
+        0.6843
+      ],
+      [
+        0.9109,
+        0.6843
+      ],
+      [
+        0.9313,
+        0.6843
+      ]
+    ]
+  },
+  "round_slots": {
+    "_comment": "Centri [x,y] delle 6 caselle della traccia ROUND (indice 0 = round 1 in basso .. indice 5 = round 6 in alto).",
+    "slots": [
+      [
+        0.0683,
+        0.7511
+      ],
+      [
+        0.0683,
+        0.7069
+      ],
+      [
+        0.0684,
+        0.6641
+      ],
+      [
+        0.0684,
+        0.6202
+      ],
+      [
+        0.0683,
+        0.5775
+      ],
+      [
+        0.0683,
+        0.5332
+      ]
+    ]
   }
 }

@@ -241,6 +241,7 @@ func _layout_overlays() -> void:
 	_layout_influence_cubes()
 	_layout_army_badges()
 	_layout_engage_tokens()
+	_layout_majority()
 	_layout_score_markers()
 	_layout_turn_order_markers()
 	_layout_round_marker()
@@ -321,26 +322,25 @@ func _layout_score_markers() -> void:
 		overlay.add_child(holder)
 
 
-## Segnalino Round: token "ROUND n/6" sul tabellone (il tabellone non ha una
-## traccia round stampata). Posizione DA CALIBRARE.
-const ROUND_MARKER_POS := Vector2(0.165, 0.305)
-
+## Segnalino Round: un riquadro evidenziato sulla casella del round corrente nella
+## traccia ROUND stampata (coordinate round_slots, indice 0 = round 1).
 func _layout_round_marker() -> void:
+	var rs: Array = layout.get("round_slots", {}).get("slots", [])
+	var idx := gs.round - 1
+	if idx < 0 or idx >= rs.size():
+		return
+	var pos: Array = rs[idx]
+	var s := board_native.y * 0.052
 	var panel := Panel.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.06, 0.09, 0.92)
-	sb.border_color = Color(0.9, 0.8, 0.3, 0.9); sb.set_border_width_all(maxi(1, int(board_native.y * 0.002)))
-	sb.set_corner_radius_all(int(board_native.y * 0.012)); sb.set_content_margin_all(int(board_native.y * 0.008))
+	sb.bg_color = Color(0.95, 0.8, 0.2, 0.30)
+	sb.border_color = Color(1.0, 0.85, 0.25, 0.95)
+	sb.set_border_width_all(maxi(2, int(board_native.y * 0.004)))
+	sb.set_corner_radius_all(int(board_native.y * 0.006))
 	panel.add_theme_stylebox_override("panel", sb)
-	var lbl := Label.new()
-	lbl.text = "ROUND %d/6" % gs.round
-	lbl.add_theme_color_override("font_color", Color(0.95, 0.88, 0.5))
-	lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.024))
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(lbl)
-	var pw := board_native.x * 0.12
-	panel.position = Vector2(ROUND_MARKER_POS.x * board_native.x - pw * 0.5, ROUND_MARKER_POS.y * board_native.y)
+	panel.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
+	panel.size = Vector2(s, s)
 	overlay.add_child(panel)
 
 
@@ -531,6 +531,61 @@ func _layout_army_badges() -> void:
 				lbl.position = Vector2(x + bw * 0.72, y - h * 0.04)
 				overlay.add_child(lbl)
 
+
+
+## Classifica di maggioranza in tempo reale: su ogni numero della traccia maggioranza
+## (PV per posizione) mostra la BANDIERA della potenza in quella posizione + i PV.
+## Dal più alto a sinistra. Calcolata con le regole del regolamento (Scoring).
+func _layout_majority() -> void:
+	var mslots: Dictionary = layout.get("majority_slots", {})
+	var fw := board_native.y * 0.034
+	var fh := fw * 0.66
+	for region in gs.regions:
+		var positions: Array = mslots.get(region, [])
+		if positions.is_empty():
+			continue
+		var rd: Dictionary = gs.regions[region]
+		var track: InfluenceTrack = rd.get("track")
+		if track == null:
+			continue
+		var ranking: Array = Scoring.region_ranking(track, rd.get("majority_bonus", []), rd.get("armies", {}))
+		for i in ranking.size():
+			if i >= positions.size():
+				break
+			var owner: String = ranking[i]["owner"]
+			var bonus: int = ranking[i]["bonus"]
+			var cx := float(positions[i][0]) * board_native.x
+			var cy := float(positions[i][1]) * board_native.y
+			# Bandiera (o disco neutro per 'local') sopra il numero stampato.
+			if owner == "local":
+				var disc := Panel.new()
+				disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				var ds := StyleBoxFlat.new()
+				ds.bg_color = Color(0.55, 0.55, 0.58, 0.95)
+				ds.set_corner_radius_all(int(fh))
+				disc.add_theme_stylebox_override("panel", ds)
+				disc.position = Vector2(cx - fh * 0.5, cy - fh - fh * 0.55)
+				disc.size = Vector2(fh, fh)
+				overlay.add_child(disc)
+			else:
+				var fl := TextureRect.new()
+				fl.texture = load("res://assets/flags/%s.png" % owner)
+				fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				fl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				fl.position = Vector2(cx - fw * 0.5, cy - fh - fh * 0.55)
+				fl.size = Vector2(fw, fh)
+				overlay.add_child(fl)
+			# PV (bonus effettivo) come piccola etichetta sul numero stampato.
+			var lbl := Label.new()
+			lbl.text = str(bonus)
+			lbl.add_theme_color_override("font_color", Color(1, 1, 1))
+			lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+			lbl.add_theme_constant_override("outline_size", maxi(2, int(fh * 0.18)))
+			lbl.add_theme_font_size_override("font_size", int(fh * 0.95))
+			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			lbl.position = Vector2(cx - fw * 0.5, cy - fh * 0.35)
+			overlay.add_child(lbl)
 
 
 ## Engage token (stretta di mano colorata per potenza) sulle Regioni dove il

@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.26"
+const VERSION := "v0.7.27"
 const CHANGELOG := [
+	"v0.7.27 — Cubi Influenza iniziali ora sulle CASELLE COLORATE in alto (non più sulle caselle valore \u201c1\u201d). Nuovo: CLASSIFICA MAGGIORANZA in tempo reale — su ogni numero della traccia maggioranza compare la bandiera della potenza in quella posizione + i PV (regole del regolamento: Influenza, pareggi rotti dalle Armate, i local contano ma non segnano, conteggia solo a permanenti pieni). Segnalino ROUND ora sulla casella giusta della traccia round. Tutto calibrato a pixel dal template.",
 	"v0.7.26 — Segnalini di gioco ora visibili: Engage token (stretta di mano della potenza, max 3) sulle Regioni dove fai Engage; token FDI (Invest) e Base militare (Build a Base) sulle carte delle nazioni alleate. Prima non erano implementati.",
 	"v0.7.25 — Quando bisogna toccare la mappa (spostare Armate, piazzare/convertire Influenza, ecc.) il cassetto plancia ora si CHIUDE da solo così la mappa è cliccabile (prima restava aperto e la bloccava). MENA allineato al tabellone reale (3 permanenti / 5 temporanee) con i cubi iniziali eu+usa+local.",
 	"v0.7.24 — Posizioni RICALIBRATE A PIXEL dal template: segnalini Ordine di Turno ora esattamente nelle caselle 1°-4°; cubi Influenza sulle caselle reali di ogni Regione (incluse le tracce più lunghe di MENA); ogni superpotenza ha la sua casella per i carri armati (4 per Regione, 2x2: EU alto-sx, Russia alto-dx, USA basso-sx, Cina basso-dx).",
