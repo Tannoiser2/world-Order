@@ -30,7 +30,8 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 - 🟢 **Nazioni amiche iniziali** complete (4–5 per potenza, pag. 9 punto 14).
 - 🟢 Mazzo iniziale 12 carte (doppioni inclusi).
 - 🟢 **Ordine di turno** = più VP per primo (spareggio: meno money), regolamento pag. 9.
-- 🟢 **Strategic Asset**: pesca 3 dei 5, ne tiene 2, **VP iniziali = somma** (pag. 9 punto 17). *(Auto: tiene i 2 con più VP; la scelta manuale arriverà col flusso interattivo.)*
+- 🟢 **Strategic Asset**: pesca 3 dei 5, ne tiene 2, **VP iniziali = somma** (pag. 9 punto 17). *(Auto: tiene i 2 con più VP; la scelta manuale arriverà col flusso interattivo.)* **Ora attivabili in partita** giocando una carta a faccia in giù (una volta ciascuno); mostrati nel cassetto.
+- 🟢 **Gioco a faccia in giù**: toccando una carta scegli azione normale / +10 money / attiva uno Strategic Asset (la carta di mano è il costo).
 
 ### UI / presentazione
 - 🟢 Mappa con **zoom + trascinamento**; carte nazione (immagini originali) negli **slot designati** (coordinate dal salvataggio TTS).

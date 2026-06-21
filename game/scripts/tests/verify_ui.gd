@@ -310,6 +310,32 @@ func _init() -> void:
 		print("[%s] Influenza condizionale all'Export: concessa se hai esportato Beni/Servizi" % ["OK" if cond_met and cond_unmet else "FAIL"])
 		if not (cond_met and cond_unmet): fails += 1
 
+		# Carta a faccia in giù → +10 money (la carta va negli scarti, usa l'azione).
+		var pfd: PlayerState = board._active()
+		pfd.money = 0
+		var fd_card := {"display_name": "FD", "effect_ops": [{"op": "engage"}]}
+		pfd.hand.append(fd_card)
+		board._plays_left = 9
+		board._play_facedown_money(fd_card)
+		var fd_ok: bool = pfd.money == 10 and (fd_card in pfd.discard) and not (fd_card in pfd.hand)
+		print("[%s] Faccia in giù: +10 money, carta negli scarti" % ["OK" if fd_ok else "FAIL"])
+		if not fd_ok: fails += 1
+
+		# Strategic Asset: attivato spendendo una carta di mano; usabile una volta.
+		var psa: PlayerState = board._active()
+		psa.money = 0
+		psa.strategic_assets = [{"display_name": "SA", "effect_ops": [{"op": "gain_money", "amount": 5}]}]
+		psa.used_strategic_assets = []
+		var cost_card := {"display_name": "Cost", "effect_ops": [{"op": "engage"}]}
+		psa.hand.append(cost_card)
+		var sa: Dictionary = psa.strategic_assets[0]
+		board._plays_left = 9
+		board._play_strategic_asset(cost_card, sa)
+		var sa_ok: bool = psa.money == 5 and (sa in psa.used_strategic_assets) \
+			and not (sa in psa.strategic_assets) and (cost_card in psa.discard) and board.playing_card.is_empty()
+		print("[%s] Strategic Asset: effetto risolto, carta-costo scartata, usato 1 volta" % ["OK" if sa_ok else "FAIL"])
+		if not sa_ok: fails += 1
+
 		# Stato "esaurita": la carta nazione appare grigia e ruotata (tapped).
 		var ex_card: Control = board._ally_stack({"id": "x", "art": ""}, 1, Vector2(40, 56), false, false, true)
 		var ex_ok: bool = ex_card.modulate != Color(1, 1, 1, 1) and not is_zero_approx(ex_card.rotation_degrees)

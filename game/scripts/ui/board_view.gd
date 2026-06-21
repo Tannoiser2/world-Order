@@ -69,6 +69,7 @@ var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, imp
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
+var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -547,6 +548,62 @@ func _on_region_pressed(region: String) -> void:
 
 # --- Gioco di una carta ---
 
+## Tocco su una carta della mano: scegli se giocarla a faccia su (la sua azione)
+## o a faccia in giù per +10 money, oppure per attivare un tuo Strategic Asset.
+func _on_hand_card(card: Dictionary) -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	var p := _active()
+	var items := [
+		{"label": "▶  Gioca: %s" % card.get("display_name", "carta"), "value": {"t": "play"}},
+		{"label": "🪙  Faccia in giù → +10 money", "value": {"t": "money"}},
+	]
+	for asset in p.strategic_assets:
+		items.append({"label": "★  Strategic Asset: %s" % asset.get("display_name", "?"), "value": {"t": "asset", "asset": asset}})
+	_show_popup("Come giochi «%s»?" % card.get("display_name", "carta"), items, func(choice):
+		var t := String(choice.get("t", ""))
+		if t == "play":
+			_play_card(card)
+		elif t == "money":
+			_play_facedown_money(card)
+		elif t == "asset":
+			_play_strategic_asset(card, choice["asset"]))
+
+
+## Carta a faccia in giù per +10 money: la carta va negli scarti, +10 money,
+## consuma l'azione del turno.
+func _play_facedown_money(card: Dictionary) -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	var p := _active()
+	p.hand.erase(card)
+	p.discard.append(card)
+	p.money += 10
+	_plays_left -= 1
+	_status("Carta a faccia in giù: +10 money.")
+	_after_change()
+
+
+## Carta a faccia in giù per attivare un Strategic Asset: la carta di mano è il
+## costo (negli scarti), l'asset si usa UNA volta e ne risolve l'effetto.
+func _play_strategic_asset(hand_card: Dictionary, asset: Dictionary) -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	var p := _active()
+	if not (asset in p.strategic_assets):
+		return
+	p.hand.erase(hand_card)
+	p.discard.append(hand_card)              # la carta di mano è il costo (faccia in giù)
+	p.strategic_assets.erase(asset)
+	p.used_strategic_assets.append(asset)    # usabile una volta sola
+	_playing_asset = true
+	playing_card = asset
+	play_queue = (asset.get("effect_ops", []) as Array).duplicate(true)
+	active_mods = Modifiers.parse(asset.get("effect_modifiers", []))
+	_status("Strategic Asset: %s%s" % [asset.get("display_name", "?"), _mods_text(active_mods)])
+	_advance_play()
+
+
 func _play_card(card: Dictionary) -> void:
 	if not playing_card.is_empty():
 		return  # gia' in risoluzione
@@ -961,8 +1018,11 @@ func _hide_move_bar() -> void:
 
 func _finish_card() -> void:
 	var p := _active()
-	p.hand.erase(playing_card)
-	p.played.append(playing_card)
+	if not _playing_asset:
+		# Carta normale: va negli scarti. Un Strategic Asset NON entra nel mazzo.
+		p.hand.erase(playing_card)
+		p.played.append(playing_card)
+	_playing_asset = false
 	playing_card = {}
 	active_mods = {}
 	awaiting = ""
@@ -1703,6 +1763,7 @@ func _refresh_drawer_content() -> void:
 	drawer_content.add_child(top)
 	top.add_child(_build_plancia_view(p, is_active))
 	_build_allies_section(p, is_active, top)
+	_build_strategic_section(p, is_active)
 	_build_ongoing_section(p, is_active)
 	_build_hand_section(p, is_active)
 
@@ -2037,6 +2098,27 @@ func _ongoing_used(power: String, tag: String) -> bool:
 
 ## Pannello "Abilità continuative": elenca le ongoing possedute; quelle once-per-round
 ## hanno un pulsante "Usa" (disabilitato se già usate nel round).
+## Strategic Asset del giocatore (le 2 carte speciali tenute al setup): disponibili
+## o già usate (grigie). Si attivano giocando una carta di mano a faccia in giù.
+func _build_strategic_section(p: PlayerState, is_active: bool) -> void:
+	var assets: Array = (p.strategic_assets as Array).duplicate()
+	assets.append_array(p.used_strategic_assets)
+	if assets.is_empty():
+		return
+	drawer_content.add_child(_section("Strategic Asset (faccia in giù di una carta)"))
+	var row := _card_row()
+	var ch := _hand_card_height() * 0.9
+	for a in assets:
+		var used: bool = a in p.used_strategic_assets
+		var card := _country_card_button(a, Vector2(int(ch * 2.4), ch), false)
+		card.disabled = true            # informativi: si attivano dal menu della mano
+		card.tooltip_text = "%s%s\n%s" % [a.get("display_name", ""), "  (usato)" if used else "", a.get("effect_text", "")]
+		if used:
+			card.modulate = Color(0.5, 0.5, 0.55)
+		row.add_child(card)
+	drawer_content.add_child(row)
+
+
 func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 	var tags := _ongoing_tags(p)
 	if tags.is_empty():
@@ -2583,7 +2665,7 @@ func _render_hand() -> void:
 		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		btn.disabled = not playing_card.is_empty() or _plays_left <= 0
 		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
-		btn.pressed.connect(_play_card.bind(card))
+		btn.pressed.connect(_on_hand_card.bind(card))
 		hand_box.add_child(btn)
 
 
