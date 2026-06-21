@@ -24,7 +24,7 @@ const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "tra
 ## Risorse commerciabili nella Trade action (no armi/diplomazia per ora).
 const TRADE_RES := ["energy", "raw_materials", "food", "consumer_goods", "services"]
 ## Caselle "1° 2° 3° 4°" dell'area TURN ORDER sotto il titolo (normalizzato sul tabellone).
-const TURN_ORDER_SLOTS := [Vector2(0.091, 0.235), Vector2(0.149, 0.235), Vector2(0.204, 0.235), Vector2(0.259, 0.235)]
+const TURN_ORDER_SLOTS := [Vector2(0.125, 0.262), Vector2(0.205, 0.262), Vector2(0.285, 0.262), Vector2(0.365, 0.262)]
 
 var gs: GameState
 var active_seat := 0
@@ -121,9 +121,13 @@ func _ready() -> void:
 	_auto_inf_deck.shuffle()
 	_refill_market()
 
+	# La radice non cattura il mouse: gli eventi sulle zone vuote della mappa
+	# arrivano a _unhandled_input (così il trascinamento col mouse panna la mappa).
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# La mappa vive dentro un nodo pannabile/zoomabile (pinch + trascinamento).
+	# Il suo rettangolo è impostato in _layout_ui, INCASTONATO tra HUD e linguette
+	# (fuori dalla barra in alto, come le schede in basso).
 	map_viewport = Control.new()
-	map_viewport.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_viewport.clip_contents = true
 	map_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(map_viewport)
@@ -306,7 +310,7 @@ func _layout_turn_order_markers() -> void:
 			continue
 		var power: String = gs.players[seat].power
 		var slot: Vector2 = TURN_ORDER_SLOTS[i]
-		var s := board_native.y * 0.030
+		var s := board_native.y * 0.050
 		var fl := TextureRect.new()
 		fl.texture = load("res://assets/flags/%s.png" % power)
 		fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -369,9 +373,10 @@ func _pan(delta: Vector2) -> void:
 
 
 ## Zoom attorno a un punto-schermo mantenendolo fermo.
-func _zoom_at(factor: float, focal: Vector2) -> void:
+func _zoom_at(factor: float, focal_screen: Vector2) -> void:
 	if map_content == null:
 		return
+	var focal := focal_screen - map_viewport.position   # coord. locali alla viewport mappa
 	var s0: float = map_content.scale.x
 	var s1: float = clampf(s0 * factor, _min_zoom, _min_zoom * 6.0)
 	if is_equal_approx(s0, s1):
@@ -386,10 +391,11 @@ func _zoom_at(factor: float, focal: Vector2) -> void:
 func _fit_map() -> void:
 	if map_content == null or board_native.x <= 0:
 		return
-	var fit := minf(size.x / board_native.x, size.y / board_native.y)
+	var mv := map_viewport.size
+	var fit := minf(mv.x / board_native.x, mv.y / board_native.y)
 	_min_zoom = fit
 	map_content.scale = Vector2(fit, fit)
-	map_content.position = (size - board_native * fit) * 0.5
+	map_content.position = (mv - board_native * fit) * 0.5
 
 
 ## Tiene almeno una parte della mappa visibile dopo pan/zoom.
@@ -399,10 +405,11 @@ func _clamp_map() -> void:
 	var sc: float = map_content.scale.x
 	var bw := board_native.x * sc
 	var bh := board_native.y * sc
+	var mv := map_viewport.size
 	var margin := 80.0
 	var pos := map_content.position
-	pos.x = clampf(pos.x, size.x - bw - margin, margin)
-	pos.y = clampf(pos.y, size.y - bh - margin, margin)
+	pos.x = clampf(pos.x, mv.x - bw - margin, margin)
+	pos.y = clampf(pos.y, mv.y - bh - margin, margin)
 	map_content.position = pos
 
 
@@ -682,11 +689,11 @@ func _on_hand_card(card: Dictionary) -> void:
 		return
 	var p := _active()
 	var items := [
-		{"label": "▶  Gioca: %s" % card.get("display_name", "carta"), "value": {"t": "play"}},
-		{"label": "🪙  Faccia in giù → +10 money", "value": {"t": "money"}},
+		{"label": "Gioca: %s" % card.get("display_name", "carta"), "value": {"t": "play"}},
+		{"label": "Faccia in giù: +10 money", "value": {"t": "money"}},
 	]
 	for asset in p.strategic_assets:
-		items.append({"label": "★  Strategic Asset: %s" % asset.get("display_name", "?"), "value": {"t": "asset", "asset": asset}})
+		items.append({"label": "Strategic Asset: %s" % asset.get("display_name", "?"), "value": {"t": "asset", "asset": asset}})
 	_show_popup("Come giochi «%s»?" % card.get("display_name", "carta"), items, func(choice):
 		var t := String(choice.get("t", ""))
 		if t == "play":
@@ -927,8 +934,8 @@ func _pick_slot(region: String, cb: Callable) -> void:
 		if track.temp[i] == null:
 			temp_val = track.temp_values[i]; break
 	_show_popup("Influenza in %s: quale slot?" % region.replace("_", " "), [
-		{"label": "⬆ Permanente  (+%d VP, resta)" % perm_val, "value": "permanent"},
-		{"label": "⬇ Temporanea  (+%d VP)" % temp_val, "value": "temporary"},
+		{"label": "Permanente  (+%d VP, resta)" % perm_val, "value": "permanent"},
+		{"label": "Temporanea  (+%d VP)" % temp_val, "value": "temporary"},
 	], cb)
 
 
@@ -1024,14 +1031,14 @@ func _render_exhaust_ui(region: String, elig: Array, title: String, cb: Callable
 		var b := Button.new()
 		b.toggle_mode = true
 		b.button_pressed = on
-		b.text = "%s %s (valore %d)" % ["☑" if on else "☐", c.get("display_name", "?"), int(c.get("value", 0))]
+		b.text = "%s %s (valore %d)" % ["[x]" if on else "[  ]", c.get("display_name", "?"), int(c.get("value", 0))]
 		b.pressed.connect(func():
 			_exhaust_sel[id] = not bool(_exhaust_sel.get(id, false))
 			_render_exhaust_ui(region, elig, title, cb))
 		vb.add_child(b)
 	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
 	vb.add_child(btns)
-	var ok := Button.new(); ok.text = "✓ Conferma"
+	var ok := Button.new(); ok.text = "Conferma"
 	ok.pressed.connect(func():
 		var chosen := []
 		for c in elig:
@@ -1208,13 +1215,13 @@ func _refresh_move_bar() -> void:
 	bar.add_theme_constant_override("separation", 8)
 	bar.position = Vector2(size.x * 0.5 - 170, size.y * 0.15)
 	var res := Button.new()
-	res.text = "Riserva (%d)%s" % [p.armies_available, "  ✓" if c.get("source", null) == "_reserve" else ""]
+	res.text = "Riserva (%d)%s" % [p.armies_available, "  (scelta)" if c.get("source", null) == "_reserve" else ""]
 	res.disabled = p.armies_available <= 0
 	res.add_theme_font_size_override("font_size", _base_fs() + 1)
 	res.pressed.connect(_move_pick_reserve)
 	bar.add_child(res)
 	var done := Button.new()
-	done.text = "✓ Fine spostamento"
+	done.text = "Fine spostamento"
 	done.add_theme_font_size_override("font_size", _base_fs() + 1)
 	done.pressed.connect(_finish_move)
 	bar.add_child(done)
@@ -1513,7 +1520,7 @@ func _render_trade_ui() -> void:
 		grid.add_child(_trade_stepper(R, "import", _trade_import_cap(p, R)))
 	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
 	vb.add_child(btns)
-	var ok := Button.new(); ok.text = "✓ Conferma Trade"; ok.pressed.connect(_trade_confirm)
+	var ok := Button.new(); ok.text = "Conferma Trade"; ok.pressed.connect(_trade_confirm)
 	btns.add_child(ok)
 	var cancel := Button.new(); cancel.text = "Annulla"
 	cancel.pressed.connect(func(): _close_popup(); _trade_sel = {}; _advance_play())
@@ -1622,7 +1629,7 @@ func _render_produce_ui() -> void:
 		grid.add_child(_produce_stepper(rt, int(p.production.get(rt, 0))))
 	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
 	vb.add_child(btns)
-	var ok := Button.new(); ok.text = "✓ Conferma Produzione"; ok.pressed.connect(_produce_confirm)
+	var ok := Button.new(); ok.text = "Conferma Produzione"; ok.pressed.connect(_produce_confirm)
 	btns.add_child(ok)
 	var cancel := Button.new(); cancel.text = "Annulla"
 	cancel.pressed.connect(func(): _close_popup(); _produce_sel = {}; _advance_play())
@@ -1857,6 +1864,9 @@ func _layout_ui() -> void:
 	tab_bg.size = Vector2(w, tab_h)
 	tab_bar.position = Vector2(4, h - tab_h + 2)
 	tab_bar.size = Vector2(w - 8, tab_h - 4)
+	# La mappa occupa SOLO lo spazio tra HUD (in alto) e barra linguette (in basso).
+	map_viewport.position = Vector2(0, hud_h)
+	map_viewport.size = Vector2(w, maxf(1.0, h - hud_h - tab_h))
 	var dy := h * 0.30   # il cassetto copre ~62% dello schermo: ci sta tutto
 	drawer.visible = drawer_open
 	drawer.position = Vector2(0, dy)
@@ -1925,7 +1935,7 @@ func _refresh_hud(p: PlayerState) -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hud_box.add_child(spacer)
 	var endt := Button.new()
-	endt.text = "Fine turno ▶"
+	endt.text = "Fine turno"
 	endt.disabled = game_over or not playing_card.is_empty()
 	endt.pressed.connect(_end_turn)
 	hud_box.add_child(endt)
@@ -1968,14 +1978,16 @@ func _refresh_drawer_content() -> void:
 		return
 	var is_active := (drawer_power == _active().power)
 
-	# Riga: plancia a SINISTRA, nazioni amiche a DESTRA (sempre visibili).
+	# Riga in colonne: plancia · nazioni amiche · commercio · strategic asset.
+	# Niente più etichette di testo: le sezioni si riconoscono dalle carte stesse.
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 10)
+	top.add_theme_constant_override("separation", 14)
 	top.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	drawer_content.add_child(top)
 	top.add_child(_build_plancia_view(p, is_active))
 	_build_allies_section(p, is_active, top)
-	_build_strategic_section(p, is_active)
+	_build_commerce_section(p, is_active, top)
+	_build_strategic_section(p, is_active, top)
 	_build_ongoing_section(p, is_active)
 	_build_hand_section(p, is_active)
 
@@ -1989,12 +2001,12 @@ const PROD_PITCH := 0.050
 ## caselle partono sempre dalle stesse coordinate, quindi: x = x0 + (livello-1)*passo.
 const PROD_TRACKS := {
 	"energy": [0.115, 0.205],
-	"raw_materials": [0.49, 0.205],
-	"food": [0.78, 0.205],
+	"raw_materials": [0.44, 0.205],
+	"food": [0.73, 0.205],
 	"consumer_goods": [0.115, 0.527],
 	"services": [0.115, 0.606],
-	"diplomacy": [0.49, 0.540],
-	"armies": [0.78, 0.540],
+	"diplomacy": [0.44, 0.540],
+	"armies": [0.73, 0.540],
 }
 ## Cerchi Focus (Domestic, Diplomatic, Military).
 const FOCUS_POS := [[0.307, 0.311], [0.600, 0.311], [0.921, 0.311]]
@@ -2026,15 +2038,23 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	var view := Control.new()
 	view.custom_minimum_size = Vector2(pw, ph)
 	view.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	view.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# Area interna a DIMENSIONE FISSA (pw×ph) col rapporto reale dell'immagine: tutti
+	# i segnalini si ancorano qui, così la plancia non si deforma mai anche se il
+	# contenitore prova a stirarla.
+	var area := Control.new()
+	area.custom_minimum_size = Vector2(pw, ph)
+	area.size = Vector2(pw, ph)
+	area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(area)
 	board_bg = TextureRect.new()
 	board_bg.texture = load("res://assets/player_boards/%s.jpg" % p.power)
+	# Full-rect dell'area (pw×ph, rapporto reale): segue l'area senza deformarsi.
 	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# IGNORE_SIZE: senza questo la TextureRect non scende sotto la dimensione
-	# nativa dell'immagine (1400x1000) e la plancia resta gigante a prescindere.
 	board_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	board_bg.stretch_mode = TextureRect.STRETCH_SCALE
 	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	view.add_child(board_bg)
+	area.add_child(board_bg)
 	# Zone Focus cliccabili (solo per il giocatore di turno): toccando la colonna
 	# si sposta la pedina del Focus lì. Niente più bottoni di testo sotto.
 	if is_active:
@@ -2048,20 +2068,20 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			var fhv := StyleBoxFlat.new(); fhv.bg_color = Color(1, 1, 1, 0.08)
 			fb.add_theme_stylebox_override("hover", fhv)
 			fb.pressed.connect(_do_focus.bind(f))
-			view.add_child(fb)
+			area.add_child(fb)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
 	# Cubi di Produzione: uno sul livello attuale di ogni tracciato.
 	for res in PROD_TRACKS:
 		var lvl := int(p.production.get(res, 0))
 		if lvl >= 1:
 			var t: Array = PROD_TRACKS[res]
-			_add_cube(view, t[0] + (lvl - 1) * PROD_PITCH, t[1], pw, ph, col, false)
+			_add_cube(area, t[0] + (lvl - 1) * PROD_PITCH, t[1], pw, ph, col, false)
 	# Marker Focus (sul cerchio della colonna scelta).
 	if p.focus >= 0 and p.focus < FOCUS_POS.size():
-		_add_cube(view, FOCUS_POS[p.focus][0], FOCUS_POS[p.focus][1], pw, ph, col, true)
+		_add_cube(area, FOCUS_POS[p.focus][0], FOCUS_POS[p.focus][1], pw, ph, col, true)
 	# Marker Prosperità.
 	var pl := clampi(p.prosperity_level, 0, PROSPERITY_POS.size() - 1)
-	_add_cube(view, PROSPERITY_POS[pl][0], PROSPERITY_POS[pl][1], pw, ph, Color(0.45, 0.95, 0.55), true)
+	_add_cube(area, PROSPERITY_POS[pl][0], PROSPERITY_POS[pl][1], pw, ph, Color(0.45, 0.95, 0.55), true)
 	# Token risorsa (immagini reali) sulla traccia RESOURCES 0..10, alla quantità.
 	var stack: Dictionary = {}
 	for res in RES_TOKENS:
@@ -2069,9 +2089,9 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 		var slot := _resource_slot(amt)
 		var n := int(stack.get(amt, 0))
 		stack[amt] = n + 1
-		_add_token(view, res, slot.x, slot.y, pw, ph, n)
+		_add_token(area, res, slot.x, slot.y, pw, ph, n)
 	# Riserva Armate (pedine tank) in alto sulla plancia.
-	_add_reserve_armies(view, p, ph)
+	_add_reserve_armies(area, p, ph)
 	return view
 
 
@@ -2116,10 +2136,10 @@ func _add_reserve_armies(view: Control, p: PlayerState, ph: float) -> void:
 func _resource_slot(amount: int) -> Vector2:
 	var a := clampi(amount, 0, 10)
 	if a == 0:
-		return Vector2(0.075, 0.862)
+		return Vector2(0.075, 0.83)
 	if a <= 5:
-		return Vector2(RES_TRACK_X[a - 1], 0.82)
-	return Vector2(RES_TRACK_X[a - 6], 0.925)
+		return Vector2(RES_TRACK_X[a - 1], 0.81)
+	return Vector2(RES_TRACK_X[a - 6], 0.912)
 
 
 ## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
@@ -2188,26 +2208,12 @@ func _prosperity_strip(p: PlayerState) -> Control:
 ## quindi più capacità di commercio con quella nazione. Accanto, la carta Trade
 ## Deals (Commercio) del giocatore.
 func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> void:
+	if p.allied_countries.is_empty():
+		return
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
 	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(col)
-
-	# Carta Trade Deals (Commercio) del giocatore: mostra quante transazioni può
-	# fare e da chi importare. Informativa (flyover per ingrandire), non cliccabile.
-	var td := _trade_deal(p.power)
-	if td.has("art"):
-		col.add_child(_section("Commercio"))
-		var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(118, 84), false)
-		tdcard.disabled = false   # cliccabile solo per aprire il Trade
-		tdcard.focus_mode = Control.FOCUS_NONE
-		if is_active:
-			tdcard.pressed.connect(_open_trade_ui)
-		col.add_child(tdcard)
-
-	if p.allied_countries.is_empty():
-		return
-	col.add_child(_section("Nazioni amiche"))
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
 	# Raggruppa le carte per nazione (id) preservando l'ordine: ogni gruppo è una pila.
 	var groups: Array = []
@@ -2312,23 +2318,81 @@ func _ongoing_used(power: String, tag: String) -> bool:
 ## hanno un pulsante "Usa" (disabilitato se già usate nel round).
 ## Strategic Asset del giocatore (le 2 carte speciali tenute al setup): disponibili
 ## o già usate (grigie). Si attivano giocando una carta di mano a faccia in giù.
-func _build_strategic_section(p: PlayerState, is_active: bool) -> void:
+## Colonna Commercio: in alto la carta Trade Deals del giocatore, sotto le carte
+## "prodotto" (Commerce card = le risorse che la potenza può vendere). Quelle già
+## usate nel round sono girate (grigie/ruotate).
+func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -> void:
+	var td := _trade_deal(p.power)
+	if not td.has("art"):
+		return
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(col)
+	var cardw: float = clampf(_plancia_height() * 0.62, 96.0, 150.0)
+	var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(cardw, cardw * 0.71), false)
+	tdcard.disabled = false
+	tdcard.focus_mode = Control.FOCUS_NONE
+	if is_active:
+		tdcard.pressed.connect(_open_trade_ui)
+	col.add_child(tdcard)
+	# Carte prodotto (Commerce card) = risorse offerte da questa potenza.
+	var offered: Array = trade_deals.get("commerce_offered", {}).get(p.power, [])
+	if offered.is_empty():
+		return
+	var flipped: Array = _commerce_flipped.get(p.power, [])
+	var prow := HBoxContainer.new()
+	prow.add_theme_constant_override("separation", 4)
+	col.add_child(prow)
+	var ps := int(clampf(cardw * 0.34, 30.0, 56.0))
+	for res in offered:
+		prow.add_child(_commerce_card(String(res), ps, String(res) in flipped))
+
+
+## Carta prodotto (Commerce card): immagine token risorsa su sfondo carta;
+## "girata" (grigia) quando già usata nel commercio del round.
+func _commerce_card(res: String, s: int, used: bool) -> Control:
+	var panel := Panel.new()
+	panel.custom_minimum_size = Vector2(s, int(s * 1.3))
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.16, 0.17, 0.22) if not used else Color(0.10, 0.10, 0.12)
+	sb.border_color = Color(0.45, 0.5, 0.6, 0.9)
+	sb.set_border_width_all(1); sb.set_corner_radius_all(4)
+	panel.add_theme_stylebox_override("panel", sb)
+	var tex := TextureRect.new()
+	tex.texture = load("res://assets/tokens/%s.png" % res)
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tex.offset_left = 3; tex.offset_top = 3; tex.offset_right = -3; tex.offset_bottom = -3
+	if used:
+		tex.modulate = Color(0.45, 0.45, 0.45)
+	panel.add_child(tex)
+	panel.tooltip_text = "%s%s" % [RES_LABEL.get(res, res), "  (già usata)" if used else ""]
+	return panel
+
+
+## Strategic Asset del giocatore: colonna a DESTRA, carte impilate una sopra l'altra.
+## Le carte già usate sono grigie. Informativi: si attivano dal menu della mano.
+func _build_strategic_section(p: PlayerState, is_active: bool, parent: Control) -> void:
 	var assets: Array = (p.strategic_assets as Array).duplicate()
 	assets.append_array(p.used_strategic_assets)
 	if assets.is_empty():
 		return
-	drawer_content.add_child(_section("Strategic Asset (faccia in giù di una carta)"))
-	var row := _card_row()
-	var ch := _hand_card_height() * 0.9
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(col)
+	var cw: float = clampf(_plancia_height() * 0.78, 120.0, 200.0)
 	for a in assets:
 		var used: bool = a in p.used_strategic_assets
-		var card := _country_card_button(a, Vector2(int(ch * 2.4), ch), false)
-		card.disabled = true            # informativi: si attivano dal menu della mano
+		var card := _country_card_button(a, Vector2(cw, cw / 2.4), false)
+		card.disabled = true
 		card.tooltip_text = "%s%s\n%s" % [a.get("display_name", ""), "  (usato)" if used else "", a.get("effect_text", "")]
 		if used:
 			card.modulate = Color(0.5, 0.5, 0.55)
-		row.add_child(card)
-	drawer_content.add_child(row)
+		col.add_child(card)
 
 
 func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
@@ -2453,7 +2517,7 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	var bar := Button.new()
 	bar.flat = true
 	var plays_txt := "" if _plays_left == 1 else "  ·  %d giocate" % _plays_left if _plays_left > 0 else "  ·  turno esaurito"
-	bar.text = "%s  La tua mano (%d)%s" % ["▼" if hand_collapsed else "▲", p.hand.size(), plays_txt]
+	bar.text = "%s  La tua mano (%d)%s" % ["[+]" if hand_collapsed else "[–]", p.hand.size(), plays_txt]
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
@@ -2678,7 +2742,7 @@ func _show_research() -> void:
 	vb.add_child(mrow)
 	for card in market_display:
 		var cost := int(card.get("market_cost", 0))
-		mrow.add_child(_market_card(card, "costo %d Ⓡ" % cost, _research_points < cost, _buy_market.bind(card)))
+		mrow.add_child(_market_card(card, "costo %d R" % cost, _research_points < cost, _buy_market.bind(card)))
 
 	vb.add_child(_section("Growth (livello %d, spendi risorse):" % _next_growth_level(p)))
 	var ag := _available_growth(p)
@@ -2693,7 +2757,7 @@ func _show_research() -> void:
 			grow.add_child(_market_card(card, "%s  +%d VP" % [_cost_text(card.get("cost", {})), int(card.get("victory_points", 0))], not p.has_resources(card.get("cost", {})), _buy_growth.bind(card)))
 
 	var done := Button.new()
-	done.text = "Continua ▶"
+	done.text = "Continua"
 	done.pressed.connect(func():
 		_research_idx += 1
 		_close_popup()
@@ -2858,7 +2922,7 @@ func _game_end() -> void:
 	for i in ranking.size():
 		lines.append("%d) %s — %d VP" % [i + 1, ranking[i].power.to_upper(), ranking[i].victory_points])
 	lines.append("")
-	lines.append("🏆 Vincitore: %s" % GameRunner.winner(gs).to_upper())
+	lines.append("Vincitore: %s" % GameRunner.winner(gs).to_upper())
 	_show_summary(lines, func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
 	_after_change()
 
@@ -2906,7 +2970,7 @@ func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 		l.text = String(line)
 		vb.add_child(l)
 	var ok := Button.new()
-	ok.text = "Continua ▶"
+	ok.text = "Continua"
 	ok.pressed.connect(func():
 		_close_popup()
 		cb.call())
