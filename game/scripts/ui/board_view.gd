@@ -533,12 +533,14 @@ func _layout_army_badges() -> void:
 
 
 
-## Classifica di maggioranza in tempo reale: su ogni numero della traccia maggioranza
-## (PV per posizione) mostra la BANDIERA della potenza in quella posizione + i PV.
-## Dal più alto a sinistra. Calcolata con le regole del regolamento (Scoring).
+## Classifica di maggioranza in tempo reale: SOTTO ogni numero della traccia
+## maggioranza mostra la BANDIERA della potenza in quella posizione + i PV.
+## Dal più alto a sinistra. Le bandiere sono distanziate e centrate sulla traccia.
+## Se i permanenti della Regione NON sono tutti pieni la classifica è OPACA (la
+## Regione non segna ancora, regolamento pag. 20).
 func _layout_majority() -> void:
 	var mslots: Dictionary = layout.get("majority_slots", {})
-	var fw := board_native.y * 0.034
+	var fw := board_native.y * 0.026
 	var fh := fw * 0.66
 	for region in gs.regions:
 		var positions: Array = mslots.get(region, [])
@@ -549,23 +551,34 @@ func _layout_majority() -> void:
 		if track == null:
 			continue
 		var ranking: Array = Scoring.region_ranking(track, rd.get("majority_bonus", []), rd.get("armies", {}))
-		for i in ranking.size():
-			if i >= positions.size():
-				break
+		if ranking.is_empty():
+			continue
+		var alpha := 1.0 if track.all_permanent_filled() else 0.4
+		var n: int = mini(ranking.size(), positions.size())
+		# Riga di bandiere distanziata e centrata sulla traccia, posata SOTTO i numeri.
+		var pitch_px := (float(positions[1][0]) - float(positions[0][0])) * board_native.x if positions.size() >= 2 else fw * 1.2
+		var spacing: float = maxf(pitch_px, fw * 1.18)
+		var center_x := 0.0
+		for k in n:
+			center_x += float(positions[k][0]) * board_native.x
+		center_x /= float(n)
+		var row_y := float(positions[0][1]) * board_native.y
+		var x0 := center_x - spacing * (n - 1) * 0.5
+		for i in n:
 			var owner: String = ranking[i]["owner"]
 			var bonus: int = ranking[i]["bonus"]
-			var cx := float(positions[i][0]) * board_native.x
-			var cy := float(positions[i][1]) * board_native.y
-			# Bandiera (o disco neutro per 'local') sopra il numero stampato.
+			var fx := x0 + i * spacing - fw * 0.5
+			var fy := row_y + fh * 0.35    # sotto il numero stampato
 			if owner == "local":
 				var disc := Panel.new()
 				disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				var ds := StyleBoxFlat.new()
-				ds.bg_color = Color(0.55, 0.55, 0.58, 0.95)
+				ds.bg_color = Color(0.55, 0.55, 0.58)
 				ds.set_corner_radius_all(int(fh))
 				disc.add_theme_stylebox_override("panel", ds)
-				disc.position = Vector2(cx - fh * 0.5, cy - fh - fh * 0.55)
+				disc.position = Vector2(x0 + i * spacing - fh * 0.5, fy)
 				disc.size = Vector2(fh, fh)
+				disc.modulate.a = alpha
 				overlay.add_child(disc)
 			else:
 				var fl := TextureRect.new()
@@ -573,18 +586,19 @@ func _layout_majority() -> void:
 				fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				fl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 				fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				fl.position = Vector2(cx - fw * 0.5, cy - fh - fh * 0.55)
+				fl.position = Vector2(fx, fy)
 				fl.size = Vector2(fw, fh)
+				fl.modulate.a = alpha
 				overlay.add_child(fl)
-			# PV (bonus effettivo) come piccola etichetta sul numero stampato.
+			# PV (bonus effettivo) come piccolo numero accanto alla bandiera.
 			var lbl := Label.new()
 			lbl.text = str(bonus)
-			lbl.add_theme_color_override("font_color", Color(1, 1, 1))
-			lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-			lbl.add_theme_constant_override("outline_size", maxi(2, int(fh * 0.18)))
-			lbl.add_theme_font_size_override("font_size", int(fh * 0.95))
+			lbl.add_theme_color_override("font_color", Color(1, 1, 1, alpha))
+			lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, alpha))
+			lbl.add_theme_constant_override("outline_size", maxi(2, int(fh * 0.16)))
+			lbl.add_theme_font_size_override("font_size", int(fh * 0.85))
 			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			lbl.position = Vector2(cx - fw * 0.5, cy - fh * 0.35)
+			lbl.position = Vector2(x0 + i * spacing + fw * 0.30, fy + fh * 0.05)
 			overlay.add_child(lbl)
 
 

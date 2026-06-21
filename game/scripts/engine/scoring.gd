@@ -56,9 +56,9 @@ static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: D
 ## Riflette le stesse regole di score_region (ordina per Influenza desc, poi Armate;
 ## i pari condividono la posizione più bassa). Ritorna [] se la Regione non segna
 ## (permanenti non tutti pieni). Il chiamante mostra bandiera+bonus sulle posizioni.
+## NB: per la UI calcola SEMPRE la classifica provvisoria (anche se i permanenti
+## non sono pieni); è il chiamante a renderla opaca finché la Regione non segna.
 static func region_ranking(track: InfluenceTrack, majority_bonus: Array, armies: Dictionary) -> Array:
-	if not track.all_permanent_filled():
-		return []
 	var entries := []
 	for owner in track.owners():
 		var c: int = track.count(owner)

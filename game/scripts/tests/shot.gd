@@ -27,14 +27,30 @@ func _initialize() -> void:
 		R["africa"]["armies"] = {"eu": 1, "russia": 1}
 		R["middle_east_north_africa"]["armies"] = {"russia": 1, "eu": 1}
 		R["south_asia"]["armies"] = {"china": 1, "usa": 1}
-		R["americas"]["track"].add("usa", "temporary")
-		R["americas"]["track"].add("china", "temporary")
-		R["central_asia"]["track"].add("russia", "permanent")
-		R["central_asia"]["track"].add("eu", "temporary")
-		R["east_asia_pacific"]["track"].add("china", "permanent")
-		R["east_asia_pacific"]["track"].add("usa", "temporary")
-		R["africa"]["track"].add("eu", "temporary")
-		R["africa"]["track"].add("russia", "temporary")
+		# Influenza simulata: rendo le classifiche differenziate. Quasi tutte le
+		# Regioni hanno i permanenti PIENI (maggioranza attiva/opaca al 100%);
+		# Africa resta coi permanenti VUOTI -> classifica provvisoria OPACA.
+		# europe (perm: eu,usa,russia; slot4 vuoto)
+		R["europe"]["track"].add("china", "permanent")   # riempie il 4° permanente
+		R["europe"]["track"].add("usa", "temporary"); R["europe"]["track"].add("usa", "temporary")
+		R["europe"]["track"].add("eu", "temporary")
+		# central_asia (perm: russia; slot2 vuoto)
+		R["central_asia"]["track"].add("china", "permanent")
+		R["central_asia"]["track"].add("russia", "temporary"); R["central_asia"]["track"].add("usa", "temporary")
+		# americas (perm: usa; slot2 vuoto)
+		R["americas"]["track"].add("eu", "permanent")
+		R["americas"]["track"].add("usa", "temporary"); R["americas"]["track"].add("usa", "temporary")
+		# mena (perm pieni: eu,usa,local)
+		R["middle_east_north_africa"]["track"].add("usa", "temporary"); R["middle_east_north_africa"]["track"].add("usa", "temporary")
+		R["middle_east_north_africa"]["track"].add("eu", "temporary")
+		# africa (perm VUOTI -> opaca): solo temporanee
+		R["africa"]["track"].add("eu", "temporary"); R["africa"]["track"].add("eu", "temporary")
+		R["africa"]["track"].add("china", "temporary")
+		# south_asia (perm pieni: china,local)
+		R["south_asia"]["track"].add("china", "temporary"); R["south_asia"]["track"].add("usa", "temporary")
+		# east_asia (perm: china,usa; slot3 vuoto)
+		R["east_asia_pacific"]["track"].add("russia", "permanent")
+		R["east_asia_pacific"]["track"].add("china", "temporary"); R["east_asia_pacific"]["track"].add("china", "temporary")
 		# Engage token (max 3) per alcune potenze, su varie Regioni.
 		for pl in board.gs.players:
 			if pl.power == "usa": pl.engage_tokens = ["europe", "americas", "east_asia_pacific"]
