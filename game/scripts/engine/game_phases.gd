@@ -24,6 +24,8 @@ static func produce_primary_resources(gs: GameState) -> void:
 
 ## Ordine di turno: chi ha meno VP sceglie per primo dove posizionarsi.
 ## Modello di default: ordina i posti per VP crescente (spareggio: meno money).
+## Ordine di turno (regolamento pag. 9): chi ha PIÙ VP gioca per primo; a parità
+## di VP gioca prima chi ha meno money.
 static func determine_turn_order(gs: GameState) -> void:
 	var seats := range(gs.players.size())
 	var sorted_seats := Array(seats)
@@ -31,7 +33,7 @@ static func determine_turn_order(gs: GameState) -> void:
 		var pa: PlayerState = gs.players[a]
 		var pb: PlayerState = gs.players[b]
 		if pa.victory_points != pb.victory_points:
-			return pa.victory_points < pb.victory_points
+			return pa.victory_points > pb.victory_points
 		return pa.money < pb.money)
 	gs.turn_order.clear()
 	for s in sorted_seats:

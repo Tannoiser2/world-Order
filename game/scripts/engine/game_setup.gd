@@ -18,6 +18,13 @@ static func new_game(powers: Array) -> GameState:
 	gs.board_data = DataLoader.load_board()
 	var pboards := DataLoader.load_player_boards()
 	var starting_abilities := DataLoader.load_starting_abilities()
+	# Strategic Asset per potenza (5 ciascuna).
+	var strategic_by_power := {}
+	for sa in DataLoader.load_strategic_assets():
+		var pw := String(sa.get("power", ""))
+		if not strategic_by_power.has(pw):
+			strategic_by_power[pw] = []
+		strategic_by_power[pw].append(sa)
 
 	# Regioni: crea gli InfluenceTrack e piazza i cubi iniziali.
 	for region in gs.board_data.get("regions", []):
@@ -58,6 +65,16 @@ static func new_game(powers: Array) -> GameState:
 		for cname in STARTING_ALLIES.get(power, []):
 			if by_name.has(cname):
 				ps.allied_countries.append((by_name[cname] as Dictionary).duplicate())
+		# Strategic Asset (regolamento pag. 9): pesca 3 dei 5, ne tiene 2; i VP
+		# iniziali sono la somma degli "starting_vp" dei 2 tenuti. (Auto: tiene i 2
+		# con più VP; la scelta manuale arriverà col flusso interattivo.)
+		var sa_all: Array = (strategic_by_power.get(power, []) as Array).duplicate()
+		sa_all.shuffle()
+		var drawn := sa_all.slice(0, 3)
+		drawn.sort_custom(func(a, b): return int(a.get("starting_vp", 0)) > int(b.get("starting_vp", 0)))
+		for c in drawn.slice(0, 2):
+			ps.strategic_assets.append(c)
+			ps.victory_points += int(c.get("starting_vp", 0))
 		# Mazzo iniziale completo (12 carte, doppioni inclusi).
 		ps.deck = (starting_abilities.get(power, []) as Array).duplicate()
 		gs.players.append(ps)
