@@ -477,10 +477,11 @@ func _init() -> void:
 		pf.resources["raw_materials"] = 5
 		pf.armies_available = 0
 		board._plays_left = 1
+		board._focus_round = {}     # non ancora scelto il Focus questo round
 		board._do_focus(WO.Focus.MILITARY)
 		var readied: int = pf.exhausted.values().count(false)
-		var focus_ok: bool = pf.focus == WO.Focus.MILITARY and readied == 3 and board._plays_left == 0 \
-			and pf.armies_available == 2 and pf.resources["raw_materials"] == 3   # Produce armi → riserva
+		var focus_ok: bool = pf.focus == WO.Focus.MILITARY and readied == 3 and board._plays_left == 1 \
+			and pf.armies_available == 2 and pf.resources["raw_materials"] == 3   # Focus gratis (Preparation)
 		print("[%s] Focus Military: ready 3 (2+1) + produce 2 Armate in riserva" % ["OK" if focus_ok else "FAIL"])
 		if not focus_ok: fails += 1
 		pf.growth_cards.clear()
@@ -579,6 +580,46 @@ func _init() -> void:
 				and ac.victory_points == vp_pre + int(gcard.get("victory_points", 0))
 			print("[%s] acquisto Growth: carta acquisita (+%d VP)" % ["OK" if g_ok else "FAIL", int(gcard.get("victory_points", 0))])
 			if not g_ok: fails += 1
+
+		# Return on Investments (1° passo Aftermath): +2 money per FDI × valore Paese.
+		var prr: PlayerState = board._active()
+		board.gs.round = 1                      # niente Scoring
+		prr.fdi_values = [3, 2]
+		prr.resources["consumer_goods"] = 0     # niente Prosperità (isola il money)
+		prr.money = 0
+		board._run_aftermath()
+		var roi_ok: bool = prr.money == 10       # 2*(3+2)
+		board._close_popup()
+		print("[%s] Return on Investments: +10 money (FDI 3+2 ×2)" % ["OK" if roi_ok else "FAIL"])
+		if not roi_ok: fails += 1
+
+		# Reveal Country Cards (Preparation): ruota una carta disponibile della Regione.
+		var rev_rid := ""
+		for r0 in board.region_countries:
+			if (board.region_countries[r0]["deck"] as Array).size() > 0 and (board.region_countries[r0]["available"] as Array).size() > 0:
+				rev_rid = r0; break
+		if rev_rid != "":
+			var old_first: Dictionary = board.region_countries[rev_rid]["available"][0]
+			board._reveal_country_cards()
+			var new_first: Dictionary = board.region_countries[rev_rid]["available"][0]
+			var rev_ok: bool = old_first != new_first
+			print("[%s] Reveal Country Cards: carta ruotata in %s" % ["OK" if rev_ok else "FAIL", rev_rid])
+			if not rev_ok: fails += 1
+
+		# Focus in Preparation: gratis e una sola volta per round (il 2° clic non ri-prepara).
+		var pf2: PlayerState = board._active()
+		pf2.production = {}                      # niente produce per isolare il ready
+		board.gs.round = 2
+		board._focus_round = {}
+		pf2.exhausted = {"x": true, "y": true, "z": true}
+		board._do_focus(WO.Focus.DOMESTIC)       # Domestic prepara 1
+		var r1: int = pf2.exhausted.values().count(false)
+		pf2.exhausted = {"x": true, "y": true}   # ri-esaurisci
+		board._do_focus(WO.Focus.MILITARY)       # già scelto stesso round → solo marker
+		var r2: int = pf2.exhausted.values().count(false)
+		var once_ok: bool = r1 == 1 and r2 == 0 and pf2.focus == WO.Focus.MILITARY
+		print("[%s] Focus 1×/round (gratis): 2° clic non ri-prepara" % ["OK" if once_ok else "FAIL"])
+		if not once_ok: fails += 1
 
 	# Partita completa attraverso la UI (Fine turno / Continua fino alla fine).
 	var b2: Node = load("res://scenes/board.tscn").instantiate()
