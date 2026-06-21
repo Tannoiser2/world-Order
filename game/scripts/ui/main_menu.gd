@@ -4,8 +4,16 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.2"
+const VERSION := "v0.7.8"
 const CHANGELOG := [
+	"v0.7.8 — Azioni diplomatiche: ora SERVE giocare la carta (tolto l'Engage/Improve rapido toccando mappa/nazione). Nuovo popup per esaurire le nazioni amiche della Regione e scontare il costo in Diplomazia (Engage e Improve Relations).",
+	"v0.7.7 — Carta Commercio (Trade Deals) mostrata accanto alle nazioni amiche (clic = apre il Trade). Le carte della stessa nazione ora si IMPILANO (badge ×N): più carte = più simboli Export/Import, quindi più capacità di commercio con quella nazione.",
+	"v0.7.6 — Denaro iniziale corretto per potenza: USA 30, UE 25, Cina 20, Russia 15 (nel setup).",
+	"v0.7.5 — Denaro con le MONETE vere del gioco (asset TTS): la cifra è resa come pila di monete nei tagli 20/10/5/1 (scomposizione automatica), con il totale a fianco.",
+	"v0.7.4 — Commercio tra giocatori: importando da un altro giocatore lui incassa il money e +1 Servizio, e la sua Commerce card si gira (1×/round). Abilità continuative completate: Focus action prepara le Country card (2 + bonus), e «extra_play_first_turn» dà +1 carta al primo turno. Ora il turno = 1 azione (giochi 1 carta o fai Focus).",
+	"v0.7.3 — Azione TRADE interattiva: scegli Export/Import per risorsa con i cap dalle nazioni amiche (simboli Export/Import) e dalla carta Trade Deals (limite 2/3 transazioni, una risorsa per transazione). Export incassa money, Import lo spende; +1 Diplomazia comprando dagli altri. Δ money in tempo reale.",
+	"v0.7.2 — Audit costi: ogni azione paga il suo costo; rifiutata con messaggio se non puoi. La produzione secondaria consuma le primarie. Trade muove davvero le risorse.",
+	"v0.7.0 — Move multi-regione e abilità continuative (ongoing): pesca extra a inizio round, pannello once-per-round.",
 	"v0.6.7 — Regole: ordine di turno corretto (più VP gioca per primo). Strategic Asset nel setup (pesca 3, tiene 2 → VP iniziali). Vedi TODO.md per lo stato regole↔meccanica.",
 	"v0.6.6 — Cubi produzione ricalibrati (3 colonne: erano sbagliati materie prime/grano/diplomazia). Linguette potenze con BANDIERE su barra dedicata in basso (non coprono la mappa). Mano collassabile (toggle) così non copre mai la plancia.",
 	"v0.6.5 — Setup iniziale esatto: produzioni di partenza corrette per ogni potenza, risorse iniziali = produzione, nazioni amiche iniziali complete (4-5 per potenza). Nazioni amiche a destra della plancia (griglia). Prosperità e risorse ricalibrate.",

@@ -21,6 +21,8 @@ const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "tra
 	"gain_money_per_fdi", "increase_production", "reset_influence", "convert_influence",
 	"ready_country", "trash", "sell_armies", "spend_for_gain", "spend_then", "repeat",
 	"discard", "increase_prosperity"]
+## Risorse commerciabili nella Trade action (no armi/diplomazia per ora).
+const TRADE_RES := ["energy", "raw_materials", "food", "consumer_goods", "services"]
 
 var gs: GameState
 var active_seat := 0
@@ -60,6 +62,9 @@ var region_countries: Dictionary = {}   # rid -> { available:[c,c], deck:[...] }
 var market_deck: Array = []             # mazzo Market mescolato
 var market_display: Array = []          # carte Market scoperte (acquistabili)
 var growth_pool: Array = []             # tutte le Growth card (per livello)
+var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per potenza
+var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
+var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -71,6 +76,8 @@ var awaiting := ""          # "" | "region" | "board_country" | "allied_country"
 var awaiting_op: Dictionary = {}
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
+var _commerce_flipped: Dictionary = {}  # venditore(power) -> [risorse] Commerce card già usate nel round
+var _plays_left := 1                  # carte ancora giocabili nel turno corrente (1 base)
 
 ## Abilità continuative (Growth): descrizione e se sono attivabili una volta/round.
 const ONGOING_DESC := {
@@ -93,14 +100,14 @@ func _ready() -> void:
 	var powers: Array = GameConfig.powers if GameConfig.powers.size() >= 2 else GameConfig.powers_for_count_n(2)
 	gs = GameSetup.new_game(powers)
 	for p in gs.players:
-		p.draw_cards(6)
-		p.money = 30   # denaro iniziale (valore esatto per potenza da rifinire)
+		p.draw_cards(6)   # denaro iniziale: impostato per potenza in GameSetup
 	layout = JSON.parse_string(FileAccess.get_file_as_string("res://data/board_layout.json"))
 	all_countries = DataLoader.load_countries()
 	_setup_country_decks()
 	market_deck = DataLoader.load_market().duplicate()
 	market_deck.shuffle()
 	growth_pool = DataLoader.load_growth()
+	trade_deals = DataLoader.load_trade_deals()
 	_refill_market()
 
 	# La mappa vive dentro un nodo pannabile/zoomabile (pinch + trascinamento).
@@ -155,6 +162,7 @@ func _ready() -> void:
 	GamePhases.determine_turn_order(gs)
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
+	_reset_plays()
 
 	resized.connect(_on_resized)
 	_layout_ui()
@@ -408,31 +416,43 @@ func _attach_preview(btn: Control, tex: Texture2D) -> void:
 	btn.mouse_exited.connect(func(): card_preview.visible = false)
 
 
-## Click su una Country disponibile sul board: target di Improve Relations
-## (durante una carta) oppure azione diretta.
+## Click su una Country disponibile sul board: target di Improve Relations.
+## Solo durante il gioco di una carta con effetto improve_relations: serve sempre
+## giocare la carta (niente azione diretta).
 func _on_country_pressed(country: Dictionary, region: String) -> void:
 	if awaiting == "board_country":
 		awaiting = ""
-		_do_improve_relations(country, region)
-		_advance_play()
-		return
-	if playing_card.is_empty():
+		# La risoluzione (con eventuale sconto) avanza la carta da sé.
 		_do_improve_relations(country, region)
 
 
 func _do_improve_relations(country: Dictionary, region: String) -> void:
+	# Prima offri di esaurire nazioni amiche della Regione per scontare il costo,
+	# poi risolvi.
+	_pick_exhaust_discount(region,
+		"Improve Relations con %s (valore %d)" % [country.get("display_name", ""), int(country.get("value", 0))],
+		func(chosen: Array): _resolve_improve(country, region, chosen))
+
+
+func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> void:
 	var p := _active()
 	var disc := Modifiers.improve_discount(active_mods)
-	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), [], disc)
+	var values := _values_of(chosen)
+	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), values, disc)
 	if p.resources.get("diplomacy", 0) < cost:
 		_status("Diplomazia insufficiente per Improve Relations con %s (serve %d)." % [country.get("display_name", ""), cost])
+		_advance_play()
 		return
-	if Actions.execute_improve_relations(gs, p.power, country, [], disc):
-		# rimuovi dalle disponibili e rifornisci
+	if Actions.execute_improve_relations(gs, p.power, country, values, disc):
+		for c in chosen:
+			p.exhausted[c.get("id", "")] = true   # gli alleati usati per lo sconto si esauriscono
 		region_countries.get(region, {}).get("available", []).erase(country)
 		_refill_available(region)
-		_status("%s: Improve Relations con %s (−%d Dip)." % [p.power.to_upper(), country.get("display_name", ""), cost])
+		_status("%s: Improve Relations con %s (−%d Dip%s)." % [
+			p.power.to_upper(), country.get("display_name", ""), cost,
+			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 		_after_change()
+	_advance_play()
 
 
 ## Click su una Country alleata (davanti al giocatore): target di Invest/Build a
@@ -486,22 +506,8 @@ func _on_region_pressed(region: String) -> void:
 	if awaiting == "region":
 		_resolve_region_op(region)
 		return
-	if awaiting != "":
-		return  # in attesa di una Country, non fare Engage rapido
-	# nessuna carta in gioco: Engage rapido (demo)
-	_do_engage(region)
-
-
-func _do_engage(region: String) -> void:
-	var p := _active()
-	var rd: Dictionary = gs.regions[region]
-	var cost := Actions.engage_cost(int(rd["engage_cost"]), [], p.focus == WO.Focus.DIPLOMATIC)
-	if p.resources.get("diplomacy", 0) < cost:
-		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
-		return
-	var vp := Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary")
-	_status("%s: Engage in %s (−%d Dip, +%d VP)." % [p.power.to_upper(), region.replace("_", " "), cost, vp])
-	_after_change()
+	# Senza una carta in gioco non si fa nulla: ogni azione richiede di giocare
+	# la carta corrispondente dalla mano.
 
 
 # --- Gioco di una carta ---
@@ -509,6 +515,9 @@ func _do_engage(region: String) -> void:
 func _play_card(card: Dictionary) -> void:
 	if not playing_card.is_empty():
 		return  # gia' in risoluzione
+	if _plays_left <= 0:
+		_status("Hai già giocato in questo turno. Premi «Fine turno».")
+		return
 	if not card.has("effect_ops"):
 		_status("Questa carta non ha effetto giocabile.")
 		return
@@ -580,6 +589,15 @@ func _advance_play() -> void:
 				_advance_play())
 		"get_growth":
 			_pick_growth()
+		"trade":
+			if op.has("exports") or op.has("imports"):
+				EffectExecutor.run(gs, _active().power, [op])   # trade predefinito dalla carta
+				_advance_play()
+			else:
+				_open_trade_ui()                                # trade generico: scelta interattiva
+		"play_another":
+			_plays_left += 1   # questa carta concede un gioco extra nel turno
+			_advance_play()
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
@@ -592,13 +610,13 @@ func _resolve_region_op(region: String) -> void:
 	awaiting_op = {}
 	var name := String(op.get("op", ""))
 	var p := _active()
+	if name == "engage":
+		# Offri lo sconto esaurendo alleati della Regione, poi risolvi.
+		_pick_exhaust_discount(region,
+			"Engage in %s (costo %d Dip)" % [region.replace("_", " "), int(gs.regions[region]["engage_cost"])],
+			func(chosen: Array): _resolve_engage(region, chosen))
+		return
 	match name:
-		"engage":
-			var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
-			var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), [], p.focus == WO.Focus.DIPLOMATIC, ed)
-			if Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary", ed) < 0:
-				_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
-				_layout_overlays(); _advance_play(); return
 		"add_influence", "place_armies":
 			var slot := "permanent" if bool(op.get("permanent", false)) else "temporary"
 			gs.regions[region]["track"].add(p.power, slot)
@@ -608,6 +626,119 @@ func _resolve_region_op(region: String) -> void:
 	_status("%s su %s." % [name, region.replace("_", " ")])
 	_layout_overlays()
 	_advance_play()
+
+
+func _resolve_engage(region: String, chosen: Array) -> void:
+	var p := _active()
+	var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
+	var values := _values_of(chosen)
+	var diplo := p.focus == WO.Focus.DIPLOMATIC
+	var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), values, diplo, ed)
+	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, "temporary", ed)
+	if vp < 0:
+		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
+	else:
+		for c in chosen:
+			p.exhausted[c.get("id", "")] = true   # alleati usati per lo sconto
+		_status("%s: Engage in %s (−%d Dip, +%d VP%s)." % [
+			p.power.to_upper(), region.replace("_", " "), cost, vp,
+			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
+	_layout_overlays()
+	_advance_play()
+
+
+# --- Sconto diplomatico: esaurisci nazioni amiche della Regione ---
+
+## Somma dei valori delle nazioni scelte (sconto in Diplomazia).
+func _values_of(countries: Array) -> Array:
+	var out := []
+	for c in countries:
+		out.append(int(c.get("value", 0)))
+	return out
+
+
+## Nazioni amiche della Regione non ancora esaurite (deduplicate per id): sono i
+## candidati per scontare Engage/Improve Relations esaurendole.
+func _exhaustable_allies(region: String) -> Array:
+	var p := _active()
+	var out := []
+	var seen := {}
+	for c in p.allied_countries:
+		var id := String(c.get("id", ""))
+		if id in seen or String(c.get("region", "")) != region:
+			continue
+		if bool(p.exhausted.get(id, false)):
+			continue
+		seen[id] = true
+		out.append(c)
+	return out
+
+
+## Apre un popup per scegliere quali nazioni amiche della Regione esaurire e
+## scontare il costo. cb riceve le nazioni scelte (le esaurisce chi risolve, solo
+## se l'azione va a buon fine). Senza candidati, chiama subito cb([]).
+func _pick_exhaust_discount(region: String, title: String, cb: Callable) -> void:
+	var elig := _exhaustable_allies(region)
+	if elig.is_empty():
+		cb.call([])
+		return
+	_exhaust_sel = {}
+	_render_exhaust_ui(region, elig, title, cb)
+
+
+func _render_exhaust_ui(region: String, elig: Array, title: String, cb: Callable) -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new(); dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", st)
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6); vb.custom_minimum_size = Vector2(340, 0)
+	panel.add_child(vb)
+	var discount := 0
+	for c in elig:
+		if bool(_exhaust_sel.get(c.get("id", ""), false)):
+			discount += int(c.get("value", 0))
+	var head := Label.new()
+	head.text = "%s\nEsaurisci alleati della Regione per scontare:  −%d Dip" % [title, discount]
+	head.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
+	vb.add_child(head)
+	for c in elig:
+		var id := String(c.get("id", ""))
+		var on := bool(_exhaust_sel.get(id, false))
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_pressed = on
+		b.text = "%s %s (valore %d)" % ["☑" if on else "☐", c.get("display_name", "?"), int(c.get("value", 0))]
+		b.pressed.connect(func():
+			_exhaust_sel[id] = not bool(_exhaust_sel.get(id, false))
+			_render_exhaust_ui(region, elig, title, cb))
+		vb.add_child(b)
+	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
+	vb.add_child(btns)
+	var ok := Button.new(); ok.text = "✓ Conferma"
+	ok.pressed.connect(func():
+		var chosen := []
+		for c in elig:
+			if bool(_exhaust_sel.get(c.get("id", ""), false)):
+				chosen.append(c)
+		_exhaust_sel = {}
+		_close_popup()
+		cb.call(chosen))
+	btns.add_child(ok)
+	var skip := Button.new(); skip.text = "Salta (nessuno sconto)"
+	skip.pressed.connect(func():
+		_exhaust_sel = {}
+		_close_popup()
+		cb.call([]))
+	btns.add_child(skip)
 
 
 # --- Move multi-Regione ---
@@ -738,6 +869,7 @@ func _finish_card() -> void:
 	playing_card = {}
 	active_mods = {}
 	awaiting = ""
+	_plays_left -= 1
 	_status("Carta risolta.")
 	_after_change()
 
@@ -775,6 +907,199 @@ func _pick_growth() -> void:
 				_status("Ottenuta Growth: %s (+%d VP)." % [card.get("display_name", "?"), int(card.get("victory_points", 0))])
 		_after_change()
 		_advance_play())
+
+
+# --- Trade action interattiva (Economic) ---
+
+func _trade_deal(power: String) -> Dictionary:
+	for c in trade_deals.get("cards", []):
+		if String(c.get("power", "")) == power:
+			return c
+	return {"exports": 2, "imports": 2, "import_from": {}}
+
+
+## Quante unità di R puoi esportare: simboli Export sulle nazioni amiche, limitato
+## da quanto ne possiedi.
+func _trade_export_cap(p: PlayerState, R: String) -> int:
+	var n := 0
+	for c in p.allied_countries:
+		n += (c.get("exports", []) as Array).count(R)
+	return mini(n, int(p.resources.get(R, 0)))
+
+
+## Simboli Import di R sulle nazioni amiche (import "dal mercato": paghi la banca).
+func _trade_allied_import(p: PlayerState, R: String) -> int:
+	var n := 0
+	for c in p.allied_countries:
+		n += (c.get("imports", []) as Array).count(R)
+	return n
+
+
+## Sorgenti d'importazione di R, in ordine: prima il mercato (nazioni amiche),
+## poi le Commerce card degli altri giocatori non ancora girate in questo round.
+## Ritorna [{src:"bank"|power, n:int}] per attribuire ogni unità importata.
+func _import_sources(p: PlayerState, R: String) -> Array:
+	var out := []
+	var bank := _trade_allied_import(p, R)
+	if bank > 0:
+		out.append({"src": "bank", "n": bank})
+	var td := _trade_deal(p.power)
+	for other in (td.get("import_from", {}) as Dictionary):
+		if R in (_commerce_flipped.get(other, []) as Array):
+			continue   # quella Commerce card è già stata usata questo round
+		if gs.player_by_power(other) == null:
+			continue   # quella potenza non è in partita: niente commercio reale
+		var n := (td["import_from"][other] as Array).count(R)
+		if n > 0:
+			out.append({"src": other, "n": n})
+	return out
+
+
+## Quante unità di R puoi importare: simboli Import sulle amiche + offerte dagli
+## altri giocatori (Commerce card non ancora girate).
+func _trade_import_cap(p: PlayerState, R: String) -> int:
+	var n := 0
+	for s in _import_sources(p, R):
+		n += int(s["n"])
+	return n
+
+
+func _trade_delta() -> int:
+	var d := 0
+	for R in (_trade_sel.get("export", {}) as Dictionary):
+		d += int(Actions.EXPORT_GAIN.get(R, 0)) * int(_trade_sel["export"][R])
+	for R in (_trade_sel.get("import", {}) as Dictionary):
+		d -= int(Actions.IMPORT_COST.get(R, 0)) * int(_trade_sel["import"][R])
+	return d
+
+
+func _open_trade_ui() -> void:
+	_trade_sel = {"export": {}, "import": {}}
+	_render_trade_ui()
+
+
+func _trade_adjust(R: String, kind: String, delta: int) -> void:
+	var p := _active()
+	var sel: Dictionary = _trade_sel[kind]
+	var other: Dictionary = _trade_sel["import" if kind == "export" else "export"]
+	var maxT := int(_trade_deal(p.power).get(kind + "s", 2))
+	var cap := _trade_export_cap(p, R) if kind == "export" else _trade_import_cap(p, R)
+	var newq := clampi(int(sel.get(R, 0)) + delta, 0, cap)
+	if newq > 0 and other.has(R):
+		return  # una risorsa in una sola transazione (export O import)
+	if newq > 0 and not sel.has(R) and sel.size() >= maxT:
+		return  # superato il numero di transazioni della Trade Deals card
+	if newq == 0:
+		sel.erase(R)
+	else:
+		sel[R] = newq
+	_render_trade_ui()
+
+
+func _trade_confirm() -> void:
+	var p := _active()
+	for R in (_trade_sel["export"] as Dictionary):
+		var q := int(_trade_sel["export"][R])
+		p.resources[R] = int(p.resources.get(R, 0)) - q
+		p.money += int(Actions.EXPORT_GAIN.get(R, 0)) * q
+	var imported := false
+	var from_players := 0
+	for R in (_trade_sel["import"] as Dictionary):
+		var q := int(_trade_sel["import"][R])
+		var cost := int(Actions.IMPORT_COST.get(R, 0))
+		# Attribuisci le unità alle sorgenti: prima la banca, poi gli altri giocatori.
+		var remaining := q
+		for s in _import_sources(p, R):
+			if remaining <= 0:
+				break
+			var take: int = mini(remaining, int(s["n"]))
+			p.money -= cost * take
+			if String(s["src"]) != "bank":
+				# Commercio reale: paghi il venditore, che incassa il money e prende
+				# +1 Servizio (bonus di vendita); la sua Commerce card si gira (1×/round).
+				var seller := gs.player_by_power(String(s["src"]))
+				if seller != null:
+					seller.money += cost * take
+					seller.gain_resource("services", 1, 0)
+					if not _commerce_flipped.has(s["src"]):
+						_commerce_flipped[s["src"]] = []
+					(_commerce_flipped[s["src"]] as Array).append(R)
+					from_players += take
+			remaining -= take
+		p.gain_resource(R, q, 0)
+		imported = true
+	if imported:
+		p.gain_resource("diplomacy", 1, 0)   # +1 Diplomazia comprando dagli altri
+	_close_popup()
+	_trade_sel = {}
+	if from_players > 0:
+		_status("Trade completato (%d unità comprate da altri giocatori)." % from_players)
+	else:
+		_status("Trade completato.")
+	_refresh()
+	_advance_play()
+
+
+## Costruisce/aggiorna il popup di Trade.
+func _render_trade_ui() -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var p := _active()
+	var td := _trade_deal(p.power)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", st)
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+	var head := Label.new()
+	head.text = "TRADE — Export max %d · Import max %d   ·   Δ money: %+d" % [int(td.get("exports", 2)), int(td.get("imports", 2)), _trade_delta()]
+	head.add_theme_font_size_override("font_size", _base_fs() + 2)
+	head.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
+	vb.add_child(head)
+	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation", 14); grid.add_theme_constant_override("v_separation", 4)
+	vb.add_child(grid)
+	for R in TRADE_RES:
+		var name := Label.new()
+		name.text = "%s (hai %d)" % [RES_LABEL.get(R, R), int(p.resources.get(R, 0))]
+		name.custom_minimum_size = Vector2(150, 0)
+		grid.add_child(name)
+		grid.add_child(_trade_stepper(R, "export", _trade_export_cap(p, R)))
+		grid.add_child(_trade_stepper(R, "import", _trade_import_cap(p, R)))
+	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
+	vb.add_child(btns)
+	var ok := Button.new(); ok.text = "✓ Conferma Trade"; ok.pressed.connect(_trade_confirm)
+	btns.add_child(ok)
+	var cancel := Button.new(); cancel.text = "Annulla"
+	cancel.pressed.connect(func(): _close_popup(); _trade_sel = {}; _advance_play())
+	btns.add_child(cancel)
+
+
+func _trade_stepper(R: String, kind: String, cap: int) -> Control:
+	var box := HBoxContainer.new(); box.add_theme_constant_override("separation", 4)
+	var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 0)
+	minus.disabled = cap == 0
+	minus.pressed.connect(_trade_adjust.bind(R, kind, -1))
+	box.add_child(minus)
+	var q := int((_trade_sel.get(kind, {}) as Dictionary).get(R, 0))
+	var lab := Label.new()
+	var unit := int(Actions.EXPORT_GAIN.get(R, 0)) if kind == "export" else int(Actions.IMPORT_COST.get(R, 0))
+	lab.text = "%s %d/%d (%s%d/u)" % ["Exp" if kind == "export" else "Imp", q, cap, "+" if kind == "export" else "−", unit]
+	lab.custom_minimum_size = Vector2(118, 0)
+	box.add_child(lab)
+	var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(30, 0)
+	plus.disabled = cap == 0 or q >= cap
+	plus.pressed.connect(_trade_adjust.bind(R, kind, 1))
+	box.add_child(plus)
+	return box
 
 
 func _pick_resource(prompt: String, cb: Callable) -> void:
@@ -1026,7 +1351,7 @@ func _refresh_hud(p: PlayerState) -> void:
 	who.text = "R%d · %s · t%d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
 	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	hud_box.add_child(who)
-	hud_box.add_child(_kv("$", p.money))
+	hud_box.add_child(_money_widget(p.money))
 	hud_box.add_child(_kv("VP", p.victory_points))
 	hud_box.add_child(_kv("Prosp", p.prosperity_level))
 	var spacer := Control.new()
@@ -1154,9 +1479,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			fb.add_theme_stylebox_override("normal", fst)
 			var fhv := StyleBoxFlat.new(); fhv.bg_color = Color(1, 1, 1, 0.08)
 			fb.add_theme_stylebox_override("hover", fhv)
-			fb.pressed.connect(func():
-				p.focus = f
-				_refresh())
+			fb.pressed.connect(_do_focus.bind(f))
 			view.add_child(fb)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
 	# Cubi di Produzione: uno sul livello attuale di ogni tracciato.
@@ -1254,29 +1577,96 @@ func _prosperity_strip(p: PlayerState) -> Control:
 
 
 ## Sezione alleati: le nazioni amiche come carte-immagine reali (cliccabili solo
-## per il giocatore di turno: Invest/Build a Base).
+## per il giocatore di turno: Invest/Build a Base). Le carte della STESSA nazione
+## si impilano (sovrapposte, con badge ×N): più carte = più simboli Export/Import,
+## quindi più capacità di commercio con quella nazione. Accanto, la carta Trade
+## Deals (Commercio) del giocatore.
 func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> void:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(col)
+
+	# Carta Trade Deals (Commercio) del giocatore: mostra quante transazioni può
+	# fare e da chi importare. Informativa (flyover per ingrandire), non cliccabile.
+	var td := _trade_deal(p.power)
+	if td.has("art"):
+		col.add_child(_section("Commercio"))
+		var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(118, 84), false)
+		tdcard.disabled = false   # cliccabile solo per aprire il Trade
+		tdcard.focus_mode = Control.FOCUS_NONE
+		if is_active:
+			tdcard.pressed.connect(_open_trade_ui)
+		col.add_child(tdcard)
+
 	if p.allied_countries.is_empty():
 		return
+	col.add_child(_section("Nazioni amiche"))
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
-	# Griglia 2 colonne a destra della plancia: le carte stanno in altezza accanto
-	# alla plancia (col flyover si ingrandiscono al passaggio).
-	var rows: int = int(ceil(p.allied_countries.size() / 2.0))
+	# Raggruppa le carte per nazione (id) preservando l'ordine: ogni gruppo è una pila.
+	var groups: Array = []
+	var index := {}
+	for cn in p.allied_countries:
+		var key := String(cn.get("id", cn.get("display_name", "")))
+		if index.has(key):
+			(groups[index[key]]["cards"] as Array).append(cn)
+		else:
+			index[key] = groups.size()
+			groups.append({"cards": [cn]})
+	var rows: int = int(ceil(groups.size() / 2.0))
 	var ch: float = clampf(_plancia_height() / maxf(rows, 1) - 8.0, 52.0, 130.0)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	parent.add_child(grid)
-	for cn in p.allied_countries:
+	col.add_child(grid)
+	for g in groups:
+		var cards: Array = g["cards"]
+		var cn: Dictionary = cards[0]
 		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
 		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		var card := _country_card_button(cn, Vector2(ch * 0.70, ch), highlight)
-		card.disabled = (not is_active) or dim
-		if is_active:
-			card.pressed.connect(_on_allied_pressed.bind(cn))
-		grid.add_child(card)
+		grid.add_child(_ally_stack(cn, cards.size(), Vector2(ch * 0.70, ch), highlight, is_active and not dim))
+
+
+## Pila di carte della stessa nazione: le copie in più stanno dietro, leggermente
+## sfalsate; un badge ×N indica quante sono (più simboli = più Export/Import).
+func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool) -> Control:
+	if count <= 1:
+		var single := _country_card_button(cn, sz, highlight)
+		single.disabled = not clickable
+		if clickable:
+			single.pressed.connect(_on_allied_pressed.bind(cn))
+		return single
+	var off := minf(10.0, sz.x * 0.18)
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(sz.x + off * (count - 1), sz.y + off * (count - 1))
+	# Copie dietro (semplici immagini sfalsate).
+	for i in range(count - 1):
+		var back := _country_card_button(cn, sz, false)
+		back.disabled = true
+		back.focus_mode = Control.FOCUS_NONE
+		back.position = Vector2(off * i, off * i)
+		holder.add_child(back)
+	# Carta in primo piano: cliccabile + flyover.
+	var front := _country_card_button(cn, sz, highlight)
+	front.position = Vector2(off * (count - 1), off * (count - 1))
+	front.disabled = not clickable
+	if clickable:
+		front.pressed.connect(_on_allied_pressed.bind(cn))
+	holder.add_child(front)
+	# Badge ×N.
+	var badge := Label.new()
+	badge.text = "×%d" % count
+	badge.add_theme_font_size_override("font_size", maxi(12, _base_fs()))
+	badge.add_theme_color_override("font_color", Color(1, 1, 1))
+	var bst := StyleBoxFlat.new()
+	bst.bg_color = Color(0.1, 0.5, 0.2, 0.92)
+	bst.set_corner_radius_all(6); bst.set_content_margin_all(3)
+	badge.add_theme_stylebox_override("normal", bst)
+	badge.position = Vector2(0, 0)
+	holder.add_child(badge)
+	return holder
 
 
 ## Tag delle abilità continuative (ongoing) possedute dal giocatore (dalle Growth).
@@ -1389,7 +1779,8 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# Barra con toggle per collassare la mano (così non copre mai la plancia).
 	var bar := Button.new()
 	bar.flat = true
-	bar.text = "%s  La tua mano (%d)" % ["▼" if hand_collapsed else "▲", p.hand.size()]
+	var plays_txt := "" if _plays_left == 1 else "  ·  %d giocate" % _plays_left if _plays_left > 0 else "  ·  turno esaurito"
+	bar.text = "%s  La tua mano (%d)%s" % ["▼" if hand_collapsed else "▲", p.hand.size(), plays_txt]
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
@@ -1421,6 +1812,55 @@ func _kv(k: String, v: int) -> Label:
 	var l := Label.new(); l.text = "%s %d" % [k, v]; return l
 
 
+## Tagli delle monete reali del gioco (asset TTS).
+const COIN_DENOMS := [20, 10, 5, 1]
+
+## Denaro come monete vere: scomposizione greedy del totale nei tagli 20/10/5/1,
+## rese come immagini sovrapposte, seguite dalla cifra totale. Se servono troppe
+## monete, mostra un taglio per denominazione con "×N".
+func _money_widget(amount: int) -> Control:
+	var fs := _base_fs()
+	var cs := fs + 6   # lato moneta ~ altezza del testo
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	# Conta quante monete per taglio (greedy).
+	var counts := {}
+	var rem := maxi(amount, 0)
+	for d in COIN_DENOMS:
+		counts[d] = rem / d
+		rem = rem % d
+	var total_coins := 0
+	for d in COIN_DENOMS:
+		total_coins += int(counts[d])
+	var compact := total_coins > 8   # troppe monete: una per taglio con ×N
+	var stack := HBoxContainer.new()
+	stack.add_theme_constant_override("separation", -int(cs * 0.45))  # leggera sovrapposizione
+	for d in COIN_DENOMS:
+		var n := int(counts[d])
+		if n == 0:
+			continue
+		var shown := 1 if compact else n
+		for _i in shown:
+			var ic := TextureRect.new()
+			ic.texture = load("res://assets/money/coin_%d.png" % d)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.custom_minimum_size = Vector2(cs, cs)
+			ic.tooltip_text = "Moneta da %d" % d
+			stack.add_child(ic)
+		if compact and n > 1:
+			var x := Label.new()
+			x.text = "×%d" % n
+			x.add_theme_font_size_override("font_size", maxi(10, fs - 3))
+			stack.add_child(x)
+	box.add_child(stack)
+	var tot := Label.new()
+	tot.text = "$%d" % maxi(amount, 0)
+	tot.add_theme_color_override("font_color", Color(0.95, 0.85, 0.35))
+	box.add_child(tot)
+	return box
+
+
 func _kv2(t: String) -> Label:
 	var l := Label.new(); l.text = t; return l
 
@@ -1435,7 +1875,44 @@ func _end_turn() -> void:
 		_begin_research()
 		return
 	active_seat = gs.turn_order[round_turn_count % gs.players.size()]
+	_reset_plays()
 	_status("Turno di %s." % _active().power.to_upper())
+	_after_change()
+
+
+## Carte giocabili nel turno: 1 di base, +1 al primo turno del round con
+## l'abilità "extra_play_first_turn".
+func _reset_plays() -> void:
+	_plays_left = 1
+	if round_turn_count < gs.players.size():
+		_plays_left += _ongoing_count(_active(), "extra_play_first_turn")
+
+
+## Azione Focus: sposta la pedina Focus sulla colonna scelta e prepara (ready) le
+## Country card esaurite — 2 di base, +1 per ogni "ready_extra_on_focus". Consuma
+## l'azione del turno (come giocare una carta).
+func _do_focus(f: int) -> void:
+	if not playing_card.is_empty():
+		return
+	var p := _active()
+	if _plays_left <= 0:
+		_status("Turno esaurito: la Focus action richiede un'azione. Premi «Fine turno».")
+		return
+	p.focus = f
+	var to_ready := 2 + _ongoing_count(p, "ready_extra_on_focus")
+	var readied := 0
+	for cid in p.exhausted:
+		if to_ready <= 0:
+			break
+		if bool(p.exhausted[cid]):
+			p.exhausted[cid] = false
+			readied += 1
+			to_ready -= 1
+	_plays_left -= 1
+	if readied > 0:
+		_status("Focus %s — preparate %d Country card." % [FOCUS_NAME[f], readied])
+	else:
+		_status("Focus %s." % FOCUS_NAME[f])
 	_after_change()
 
 
@@ -1611,8 +2088,10 @@ func _next_round() -> void:
 		p.hand.clear(); p.played.clear()
 		p.draw_cards(6 + _ongoing_count(p, "extra_draw_per_round"))
 	_used_ongoing = {}   # abilità once-per-round di nuovo disponibili
+	_commerce_flipped = {}  # Commerce card di nuovo disponibili
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
+	_reset_plays()
 	_status("Round %d — Preparazione completata. Turno di %s." % [gs.round, _active().power.to_upper()])
 	_after_change()
 
@@ -1686,7 +2165,7 @@ func _render_hand() -> void:
 		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), false)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		btn.disabled = not playing_card.is_empty()
+		btn.disabled = not playing_card.is_empty() or _plays_left <= 0
 		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
 		btn.pressed.connect(_play_card.bind(card))
 		hand_box.add_child(btn)
