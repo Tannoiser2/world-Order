@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.17"
+const VERSION := "v0.7.18"
 const CHANGELOG := [
+	"v0.7.18 — Segnalini sul tabellone: PUNTI VITTORIA (bandiere sulla traccia perimetrale 0–99), ORDINE DI TURNO (bandiere nelle 4 caselle 1°–4° sotto il titolo) e segnalino ROUND. Tolta la riga in alto con VP/Prosperità che copriva la mappa (la barra ora mostra solo round/turno + denaro + Fine turno; la Prosperità è sulla plancia).",
 	"v0.7.17 — Influenza: ora SCEGLI tu se mettere il cubetto in slot PERMANENTE (sopra, resta a fine partita) o TEMPORANEO (sotto, più VP ma spingibile), come da regolamento. Vale per Engage, Invest, Build a Base e gli effetti carta (quando un permanente è libero).",
 	"v0.7.16 — Mappa: ora puoi TRASCINARLA col mouse anche da zoomata (le Regioni catturano il click solo quando devi sceglierne una). Influenza iniziale resa come CUBETTI colorati (con conteggio) invece di pallini.",
 	"v0.7.15 — Chiusi 6 effetti carta che prima non facevano nulla: reset_influence (proteggi Influenza temporanea), increase_production (+N a una traccia), ready_country (prepara N nazioni), trash/discard (elimina/scarta carte), increase_prosperity. Ora 106/109 carte hanno tutti gli effetti eseguiti.",
