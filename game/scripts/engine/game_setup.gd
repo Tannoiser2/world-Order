@@ -5,10 +5,10 @@ extends RefCounted
 
 ## Nazioni amiche iniziali per potenza (estratte dal salvataggio TTS).
 const STARTING_ALLIES := {
-	"usa": ["Mexico", "Japan"],
-	"eu": ["Canada", "Nigeria"],
-	"russia": ["Syria", "India"],
-	"china": ["Laos", "Pakistan"],
+	"usa": ["Iceland", "Japan", "Iraq", "Mexico"],
+	"eu": ["Jordan", "EU Member States", "Nigeria", "Norway", "Canada"],
+	"russia": ["Belarus", "Syria", "Armenia", "India"],
+	"china": ["South Africa", "Pakistan", "Tajikistan", "Laos"],
 }
 
 ## Crea un GameState per le potenze indicate (es. ["usa","china"]).
@@ -46,11 +46,14 @@ static func new_game(powers: Array) -> GameState:
 		var ps := PlayerState.new()
 		ps.power = power
 		var entry: Dictionary = pdata.get(power, {})
-		# Produzione iniziale: i valori 'verify' (non numerici) partono a 1, così
-		# ogni tracciato ha comunque un cubo (alcuni esatti restano da rifinire).
+		# Produzione iniziale dalle plance.
 		for rtype in entry.get("starting_production", {}):
 			var v: Variant = entry["starting_production"][rtype]
 			ps.production[rtype] = int(v) if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT else 1
+		# Risorse iniziali = una produzione di setup (stessa quantità della
+		# produzione, escluse le Armate che sono un tracciato a parte).
+		for rtype in ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy"]:
+			ps.resources[rtype] = int(ps.production.get(rtype, 0))
 		# Nazioni amiche iniziali (carte Country davanti al giocatore).
 		for cname in STARTING_ALLIES.get(power, []):
 			if by_name.has(cname):
