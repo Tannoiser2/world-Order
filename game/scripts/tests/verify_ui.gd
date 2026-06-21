@@ -143,7 +143,8 @@ func _init() -> void:
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
 		if not auto_ok: fails += 1
 
-		# Move multi-Regione: "Move up to 2" → tocca 2 Regioni, 1 Armata ciascuna.
+		# Move: dispiega 2 Armate dalla Riserva in 2 Regioni (sorgente = Riserva,
+		# poi destinazione). "Move up to 2": paga 5 money/Armata.
 		var pm: PlayerState = board._active()
 		pm.armies_available = 3
 		pm.money = 30
@@ -153,13 +154,33 @@ func _init() -> void:
 		pm.hand.append(card_move)
 		board._plays_left = 9
 		board._play_card(card_move)
-		board._on_region_pressed("europe")
-		board._on_region_pressed("africa")   # raggiunge max 2 → applica
+		board._move_pick_reserve()             # sorgente = riserva
+		board._on_region_pressed("europe")     # destinazione 1
+		board._move_pick_reserve()
+		board._on_region_pressed("africa")     # destinazione 2 → raggiunge max 2
 		var eu1: int = board.gs.regions["europe"]["armies"].get(pm.power, 0)
 		var af1: int = board.gs.regions["africa"]["armies"].get(pm.power, 0)
-		var move_ok: bool = eu1 == eu0 + 1 and af1 == af0 + 1 and pm.armies_available == 1 and board.playing_card.is_empty()
-		print("[%s] Move multi-Regione: 2 Armate in 2 Regioni, riserva 3->1" % ["OK" if move_ok else "FAIL"])
+		var move_ok: bool = eu1 == eu0 + 1 and af1 == af0 + 1 and pm.armies_available == 1 \
+			and pm.money == 20 and board.playing_card.is_empty()
+		print("[%s] Move da Riserva: 2 Armate in 2 Regioni, riserva 3->1, −10 money" % ["OK" if move_ok else "FAIL"])
 		if not move_ok: fails += 1
+
+		# Move tra Regioni: sposta 1 Armata da una Regione all'altra (libero, paga 5).
+		var pmr: PlayerState = board._active()
+		pmr.money = 30
+		board.gs.regions["europe"]["armies"][pmr.power] = 2
+		board.gs.regions["africa"]["armies"][pmr.power] = 0
+		var card_relo := {"display_name": "Relo", "effect_ops": [{"op": "move", "max": 1}]}
+		pmr.hand.append(card_relo)
+		board._plays_left = 9
+		board._play_card(card_relo)
+		board._on_region_pressed("europe")     # sorgente = Regione con tue Armate
+		board._on_region_pressed("africa")     # destinazione → sposta 1
+		var relo_ok: bool = board.gs.regions["europe"]["armies"][pmr.power] == 1 \
+			and board.gs.regions["africa"]["armies"][pmr.power] == 1 \
+			and pmr.money == 25 and board.playing_card.is_empty()
+		print("[%s] Move tra Regioni: Europa 2->1, Africa 0->1, −5 money" % ["OK" if relo_ok else "FAIL"])
+		if not relo_ok: fails += 1
 
 		# Trade action interattiva: export di una risorsa (cap dai simboli amici) e
 		# import di un'altra; +1 Diplomazia comprando dagli altri.

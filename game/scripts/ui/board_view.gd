@@ -315,11 +315,16 @@ func _make_region_button(region: String) -> Button:
 	btn.flat = true
 	btn.pressed.connect(_on_region_pressed.bind(region))
 	# Zona Regione: invisibile di default (il tabellone mostra già nome ed Eng);
-	# si evidenzia solo quando devi SCEGLIERE una Regione.
+	# si evidenzia solo quando devi SCEGLIERE una Regione. Durante un Move il colore
+	# indica il ruolo: verde = sorgente possibile, giallo = sorgente scelta, blu = destinazione.
 	var st := StyleBoxFlat.new()
-	if awaiting_region:
-		st.bg_color = Color(0.2, 0.6, 0.95, 0.28)
-		st.border_color = Color(0.4, 0.9, 1, 0.95)
+	var role := _move_role(region) if awaiting == "move" else ("pick" if awaiting_region else "")
+	if role != "":
+		match role:
+			"source": st.bg_color = Color(0.3, 0.85, 0.4, 0.28); st.border_color = Color(0.4, 1, 0.5, 0.95)
+			"selected": st.bg_color = Color(0.95, 0.8, 0.2, 0.34); st.border_color = Color(1, 0.9, 0.3, 0.98)
+			"dest": st.bg_color = Color(0.2, 0.6, 0.95, 0.28); st.border_color = Color(0.4, 0.9, 1, 0.95)
+			_: st.bg_color = Color(0.2, 0.6, 0.95, 0.28); st.border_color = Color(0.4, 0.9, 1, 0.95)
 		st.set_border_width_all(4)
 		st.set_corner_radius_all(6)
 	else:
@@ -347,7 +352,47 @@ func _make_region_button(region: String) -> Button:
 			lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
 			lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.013))
 			hb.add_child(lbl)
+	# Pedine Armata (tank colorati per potenza) schierate nella Regione: impilate
+	# (leggermente sovrapposte) e centrate sul simbolo del carro della Regione.
+	var armies: Dictionary = rd.get("armies", {})
+	var ah := HBoxContainer.new()
+	ah.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ah.add_theme_constant_override("separation", -int(board_native.x * 0.006))  # sovrapposizione
+	for owner in armies:
+		var cnt := int(armies[owner])
+		if cnt <= 0:
+			continue
+		ah.add_child(_army_badge(owner, cnt))
+	if ah.get_child_count() > 0:
+		var cc := CenterContainer.new()
+		cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cc.add_child(ah)
+		btn.add_child(cc)
 	return btn
+
+
+## Pedina Armata: tank colorato della potenza + "×N".
+func _army_badge(power: String, count: int) -> Control:
+	var h := int(board_native.y * 0.022)
+	var box := HBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 1)
+	var tank := TextureRect.new()
+	tank.texture = load("res://assets/armies/%s.png" % power)
+	tank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tank.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tank.custom_minimum_size = Vector2(h * 2.0, h)
+	tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(tank)
+	if count > 1:
+		var lbl := Label.new()
+		lbl.text = "×%d" % count
+		lbl.add_theme_color_override("font_color", POWER_COLORS.get(power, Color.WHITE))
+		lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.014))
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(lbl)
+	return box
 
 
 ## Posa le carte nazione disponibili (immagini originali) nelle aree designate
@@ -456,38 +501,21 @@ func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> voi
 
 
 ## Click su una Country alleata (davanti al giocatore): target di Invest/Build a
-## Base (durante una carta) oppure menu d'azione diretto.
+## Base. Solo durante il gioco della carta corrispondente (niente azione diretta).
 func _on_allied_pressed(country: Dictionary) -> void:
 	var p := _active()
-	if awaiting == "allied_country":
-		var name := String(awaiting_op.get("op", ""))
-		awaiting = ""
-		if name == "invest":
-			if Actions.execute_invest(gs, p.power, country, "temporary") < 0:
-				_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
-		elif name == "build_base":
-			if Actions.execute_build_base(gs, p.power, country, 1, "temporary") < 0:
-				_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
-		_after_change()
-		_advance_play()
-		return
-	if playing_card.is_empty():
-		_allied_menu(country)
-
-
-func _allied_menu(country: Dictionary) -> void:
-	var p := _active()
-	var items := [
-		{"label": "Invest (%d money)" % int(country.get("invest_cost", 0)), "value": "invest"},
-	]
-	if country.get("has_base_symbol", false) and p.power in country.get("base_allowed_powers", []):
-		items.append({"label": "Build a Base", "value": "build_base"})
-	_show_popup("%s — azione:" % country.get("display_name", ""), items, func(act):
-		if act == "invest":
-			Actions.execute_invest(gs, p.power, country, "temporary")
-		elif act == "build_base":
-			Actions.execute_build_base(gs, p.power, country, 1, "temporary")
-		_after_change())
+	if awaiting != "allied_country":
+		return  # serve giocare la carta Invest/Build a Base
+	var name := String(awaiting_op.get("op", ""))
+	awaiting = ""
+	if name == "invest":
+		if Actions.execute_invest(gs, p.power, country, "temporary") < 0:
+			_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
+	elif name == "build_base":
+		if Actions.execute_build_base(gs, p.power, country, 1, "temporary") < 0:
+			_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
+	_after_change()
+	_advance_play()
 
 
 func _on_region_pressed(region: String) -> void:
@@ -741,21 +769,25 @@ func _render_exhaust_ui(region: String, elig: Array, title: String, cb: Callable
 	btns.add_child(skip)
 
 
-# --- Move multi-Regione ---
+# --- Move: spostamento libero delle Armate (riserva → Regione e tra Regioni) ---
 
-## Avvia un Move/Move free/Move-to-regions: il giocatore tocca più Regioni, 1 (o
-## per_region) Armata ciascuna, fino al massimo o finché preme "Fine".
+## Avvia un Move: il giocatore sceglie una SORGENTE (la Riserva o una Regione con
+## sue Armate), poi una Regione di DESTINAZIONE; ripete fino al massimo o "Fine".
+## Lo spostamento è libero su qualsiasi Regione (niente adiacenze). "move" paga 5
+## money per Armata; le varianti free non pagano.
 func _begin_move(op: Dictionary) -> void:
 	var name := String(op.get("op", ""))
 	var p := _active()
-	if p.armies_available <= 0:
-		_status("Nessuna Armata disponibile da spostare.")
+	var max_armies := int(op.get("max", 0))
+	if max_armies <= 0:
+		max_armies = int(op.get("count", 1)) * int(op.get("per_region", 1))
+	var on_board := 0
+	for rid in gs.regions:
+		on_board += int((gs.regions[rid]["armies"] as Dictionary).get(p.power, 0))
+	if p.armies_available <= 0 and on_board <= 0:
+		_status("Nessuna Armata da spostare (né in riserva né schierata).")
 		_advance_play()
 		return
-	var per_region := int(op.get("per_region", 1))
-	var distinct := name == "move_to_regions"
-	var max_armies: int = (int(op.get("per_region", 1)) * int(op.get("count", 1))) if distinct else int(op.get("max", 1))
-	max_armies = mini(max_armies, p.armies_available)
 	var allowed: Array = []
 	if op.has("region"):
 		allowed = [op["region"]]
@@ -763,72 +795,108 @@ func _begin_move(op: Dictionary) -> void:
 		allowed = (op["regions"] as Array).duplicate()
 	_move_ctx = {
 		"free": name != "move",
-		"per_region": per_region,
-		"distinct": distinct,
-		"max_regions": int(op.get("count", 0)),
+		"max": maxi(1, max_armies),
 		"allowed": allowed,
 		"exclude": (op.get("exclude", []) as Array),
 		"min": int(op.get("min", 0)),
-		"max": max_armies,
-		"moves": [],          # un elemento per Armata piazzata: {region}
-		"regions_used": {},
+		"moved": 0,
+		"source": null,        # null | "_reserve" | id Regione
 	}
 	awaiting = "move"
 	_after_change()   # mostra la mappa
-	_show_move_bar()
-	_update_move_status()
+	_refresh_move_ui()
+
+
+## Destinazione valida per lo spostamento corrente (rispetta allowed/exclude e
+## non coincide con la sorgente).
+func _move_valid_dest(region: String) -> bool:
+	var c := _move_ctx
+	if region in (c.get("exclude", []) as Array):
+		return false
+	var allowed: Array = c.get("allowed", [])
+	if not allowed.is_empty() and not (region in allowed):
+		return false
+	return region != c.get("source", null)
+
+
+## Ruolo di una Regione durante un Move (per evidenziarla): sorgente possibile,
+## destinazione valida, o sorgente già scelta.
+func _move_role(region: String) -> String:
+	var c := _move_ctx
+	if c.get("source", null) == null:
+		return "source" if int((gs.regions[region]["armies"] as Dictionary).get(_active().power, 0)) > 0 else ""
+	if region == c["source"]:
+		return "selected"
+	return "dest" if _move_valid_dest(region) else ""
+
+
+func _move_pick_reserve() -> void:
+	if _active().armies_available <= 0:
+		_status("Riserva vuota.")
+		return
+	_move_ctx["source"] = "_reserve"
+	_refresh_move_ui()
 
 
 func _on_move_region(region: String) -> void:
 	var c := _move_ctx
-	if region in (c["exclude"] as Array):
+	var p := _active()
+	if int(c.get("moved", 0)) >= int(c["max"]):
 		return
-	if not (c["allowed"] as Array).is_empty() and not (region in (c["allowed"] as Array)):
-		_status("Regione non valida per questo spostamento.")
+	if c.get("source", null) == null:
+		# scelta della sorgente: una Regione con tue Armate
+		if int((gs.regions[region]["armies"] as Dictionary).get(p.power, 0)) > 0:
+			c["source"] = region
+			_refresh_move_ui()
+		else:
+			_status("Nessuna tua Armata qui. Scegli una Regione con tue Armate o «Riserva».")
 		return
-	var per_region := int(c["per_region"])
-	if bool(c["distinct"]):
-		var used: Dictionary = c["regions_used"]
-		if not used.has(region) and used.size() >= int(c["max_regions"]):
-			return  # già scelto il numero massimo di Regioni
-		if not used.has(region):
-			used[region] = 0
-	# piazza per_region Armate (o quante ne restano).
-	for _i in per_region:
-		if (c["moves"] as Array).size() >= int(c["max"]):
-			break
-		(c["moves"] as Array).append(region)
-		if bool(c["distinct"]):
-			(c["regions_used"] as Dictionary)[region] += 1
-	_update_move_status()
-	if (c["moves"] as Array).size() >= int(c["max"]):
+	# scelta della destinazione
+	if region == c["source"]:
+		c["source"] = null     # ri-tocco la sorgente = deseleziona
+		_refresh_move_ui()
+		return
+	if not _move_valid_dest(region):
+		_status("Destinazione non valida per questo spostamento.")
+		return
+	_do_move_step(region)
+
+
+## Esegue lo spostamento di 1 Armata dalla sorgente alla destinazione, pagando il
+## costo (per "move"). Resetta la sorgente; chiude se raggiunto il massimo.
+func _do_move_step(dest: String) -> void:
+	var c := _move_ctx
+	var p := _active()
+	var src: Variant = c["source"]
+	if not bool(c["free"]):
+		if p.money < Actions.MOVE_COST:
+			_status("Money insufficiente: serve %d per spostare un'Armata." % Actions.MOVE_COST)
+			c["source"] = null
+			_refresh_move_ui()
+			return
+		p.money -= Actions.MOVE_COST
+	if String(src) == "_reserve":
+		p.armies_available -= 1
+	else:
+		var sa: Dictionary = gs.regions[src]["armies"]
+		sa[p.power] = int(sa.get(p.power, 0)) - 1
+	var da: Dictionary = gs.regions[dest]["armies"]
+	da[p.power] = int(da.get(p.power, 0)) + 1
+	c["moved"] = int(c["moved"]) + 1
+	c["source"] = null
+	var from_txt := "Riserva" if String(src) == "_reserve" else String(src).replace("_", " ")
+	_status("Armata: %s → %s%s." % [from_txt, dest.replace("_", " "), "" if bool(c["free"]) else "  (−%d money)" % Actions.MOVE_COST])
+	if int(c["moved"]) >= int(c["max"]):
 		_finish_move()
+	else:
+		_refresh_move_ui()
 
 
-## Applica lo spostamento allo stato di gioco (Armate nelle Regioni), paga il
-## costo (solo per "move"), poi prosegue la carta.
 func _finish_move() -> void:
 	var c := _move_ctx
-	var moves: Array = c["moves"]
-	if moves.size() < int(c["min"]):
+	if int(c.get("moved", 0)) < int(c.get("min", 0)):
 		_status("Devi spostare almeno %d Armate." % int(c["min"]))
 		return
-	var p := _active()
-	if not moves.is_empty():
-		if bool(c["free"]):
-			p.armies_available -= moves.size()
-			for region in moves:
-				var a: Dictionary = gs.regions[region]["armies"]
-				a[p.power] = int(a.get(p.power, 0)) + 1
-			_status("Spostate %d Armate." % moves.size())
-		else:
-			var arr := []
-			for region in moves:
-				arr.append({"region": region})
-			if Actions.execute_move(gs, p.power, arr):
-				_status("Spostate %d Armate (−%d money)." % [moves.size(), Actions.move_cost(moves.size())])
-			else:
-				_status("Money insufficiente per spostare %d Armate (serve %d)." % [moves.size(), Actions.move_cost(moves.size())])
 	_move_ctx = {}
 	awaiting = ""
 	_hide_move_bar()
@@ -836,29 +904,47 @@ func _finish_move() -> void:
 	_advance_play()
 
 
-func _update_move_status() -> void:
+## Ridisegna mappa, barra Move e messaggio di stato in base allo stato corrente.
+func _refresh_move_ui() -> void:
+	_layout_overlays()
+	_refresh_move_bar()
 	var c := _move_ctx
-	var placed: int = (c["moves"] as Array).size()
-	_status("Sposta Armate: tocca le Regioni (%d/%d). Premi Fine quando hai finito." % [placed, int(c["max"])])
+	if c.get("source", null) == null:
+		_status("Sposta Armate (%d/%d): scegli la SORGENTE — «Riserva» o una Regione con tue Armate." % [int(c["moved"]), int(c["max"])])
+	else:
+		var s: Variant = c["source"]
+		var sname := "Riserva" if String(s) == "_reserve" else String(s).replace("_", " ")
+		_status("Sorgente: %s. Tocca la Regione di DESTINAZIONE (o ri-tocca la sorgente per annullare)." % sname)
 
 
-## Pulsante flottante "Fine spostamento" mentre si muovono le Armate.
-func _show_move_bar() -> void:
+## Barra flottante del Move: pulsante Riserva (sorgente) + Fine spostamento.
+func _refresh_move_bar() -> void:
 	_hide_move_bar()
-	var b := Button.new()
-	b.name = "MoveDoneBtn"
-	b.text = "✓ Fine spostamento"
-	b.add_theme_font_size_override("font_size", _base_fs() + 2)
-	b.position = Vector2(size.x * 0.5 - 110, size.y * 0.16)
-	b.size = Vector2(220, 44)
-	b.pressed.connect(_finish_move)
+	var p := _active()
+	var c := _move_ctx
+	var bar := HBoxContainer.new()
+	bar.name = "MoveBar"
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_theme_constant_override("separation", 8)
+	bar.position = Vector2(size.x * 0.5 - 170, size.y * 0.15)
+	var res := Button.new()
+	res.text = "Riserva (%d)%s" % [p.armies_available, "  ✓" if c.get("source", null) == "_reserve" else ""]
+	res.disabled = p.armies_available <= 0
+	res.add_theme_font_size_override("font_size", _base_fs() + 1)
+	res.pressed.connect(_move_pick_reserve)
+	bar.add_child(res)
+	var done := Button.new()
+	done.text = "✓ Fine spostamento"
+	done.add_theme_font_size_override("font_size", _base_fs() + 1)
+	done.pressed.connect(_finish_move)
+	bar.add_child(done)
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup_layer.add_child(b)
+	popup_layer.add_child(bar)
 
 
 func _hide_move_bar() -> void:
 	for ch in popup_layer.get_children():
-		if ch.name == "MoveDoneBtn":
+		if ch.name == "MoveBar" or ch.name == "MoveDoneBtn":
 			ch.queue_free()
 
 
@@ -1502,7 +1588,45 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 		var n := int(stack.get(amt, 0))
 		stack[amt] = n + 1
 		_add_token(view, res, slot.x, slot.y, pw, ph, n)
+	# Riserva Armate (pedine tank) in alto sulla plancia.
+	_add_reserve_armies(view, p, ph)
 	return view
+
+
+## Posizione normalizzata dell'area Riserva Armate (in alto sulla plancia).
+## DA CALIBRARE sul simbolo del carro della plancia reale.
+const RESERVE_ARMY_POS := Vector2(0.40, 0.05)
+
+## Pedine Armata della riserva del giocatore, impilate (sovrapposte) in alto sulla
+## plancia, con "×N" del totale.
+func _add_reserve_armies(view: Control, p: PlayerState, ph: float) -> void:
+	var n := p.armies_available
+	if n <= 0:
+		return
+	var th := ph * 0.085
+	var tw := th * 2.0
+	var step := tw * 0.42
+	var shown: int = mini(n, 5)
+	for i in shown:
+		var tr := TextureRect.new()
+		tr.texture = load("res://assets/armies/%s.png" % p.power)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.anchor_left = RESERVE_ARMY_POS.x; tr.anchor_right = RESERVE_ARMY_POS.x
+		tr.anchor_top = RESERVE_ARMY_POS.y; tr.anchor_bottom = RESERVE_ARMY_POS.y
+		tr.offset_left = i * step; tr.offset_right = i * step + tw
+		tr.offset_top = -th * 0.5; tr.offset_bottom = th * 0.5
+		view.add_child(tr)
+	var lbl := Label.new()
+	lbl.text = "×%d" % n
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	lbl.add_theme_font_size_override("font_size", maxi(11, int(ph * 0.05)))
+	lbl.anchor_left = RESERVE_ARMY_POS.x; lbl.anchor_right = RESERVE_ARMY_POS.x
+	lbl.anchor_top = RESERVE_ARMY_POS.y; lbl.anchor_bottom = RESERVE_ARMY_POS.y
+	lbl.offset_left = shown * step + tw * 0.55; lbl.offset_top = -th * 0.5
+	view.add_child(lbl)
 
 
 ## Posizione normalizzata della casella Risorse (0..10): "0" a sinistra, 1-5 in
