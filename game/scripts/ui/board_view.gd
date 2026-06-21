@@ -1748,17 +1748,28 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	for g in groups:
 		var cards: Array = g["cards"]
 		var cn: Dictionary = cards[0]
+		var spent := bool(p.exhausted.get(String(cn.get("id", "")), false))
 		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
 		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		grid.add_child(_ally_stack(cn, cards.size(), Vector2(ch * 0.70, ch), highlight, is_active and not dim))
+		grid.add_child(_ally_stack(cn, cards.size(), Vector2(ch * 0.70, ch), highlight, is_active and not dim, spent))
+
+
+## Aspetto "esaurita" (tapped): carta grigia e leggermente ruotata.
+func _apply_exhausted(card: Control, sz: Vector2) -> void:
+	card.modulate = Color(0.55, 0.55, 0.6)
+	card.pivot_offset = sz * 0.5
+	card.rotation_degrees = 8.0
 
 
 ## Pila di carte della stessa nazione: le copie in più stanno dietro, leggermente
 ## sfalsate; un badge ×N indica quante sono (più simboli = più Export/Import).
-func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool) -> Control:
+## exhausted=true → la nazione è esaurita (grigia/ruotata).
+func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool, exhausted := false) -> Control:
 	if count <= 1:
 		var single := _country_card_button(cn, sz, highlight)
 		single.disabled = not clickable
+		if exhausted:
+			_apply_exhausted(single, sz)
 		if clickable:
 			single.pressed.connect(_on_allied_pressed.bind(cn))
 		return single
@@ -1771,11 +1782,15 @@ func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, click
 		back.disabled = true
 		back.focus_mode = Control.FOCUS_NONE
 		back.position = Vector2(off * i, off * i)
+		if exhausted:
+			back.modulate = Color(0.55, 0.55, 0.6)
 		holder.add_child(back)
 	# Carta in primo piano: cliccabile + flyover.
 	var front := _country_card_button(cn, sz, highlight)
 	front.position = Vector2(off * (count - 1), off * (count - 1))
 	front.disabled = not clickable
+	if exhausted:
+		_apply_exhausted(front, sz)
 	if clickable:
 		front.pressed.connect(_on_allied_pressed.bind(cn))
 	holder.add_child(front)

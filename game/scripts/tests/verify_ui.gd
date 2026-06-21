@@ -229,6 +229,12 @@ func _init() -> void:
 		print("[%s] Carte impilate: 3 copie → export cap 3 (era 1)" % ["OK" if stack_cap == 3 else "FAIL"])
 		if stack_cap != 3: fails += 1
 
+		# Stato "esaurita": la carta nazione appare grigia e ruotata (tapped).
+		var ex_card: Control = board._ally_stack({"id": "x", "art": ""}, 1, Vector2(40, 56), false, false, true)
+		var ex_ok: bool = ex_card.modulate != Color(1, 1, 1, 1) and not is_zero_approx(ex_card.rotation_degrees)
+		print("[%s] carta nazione esaurita: grigia e ruotata" % ["OK" if ex_ok else "FAIL"])
+		if not ex_ok: fails += 1
+
 		# Trade fra giocatori: importo Servizi dalla Commerce card di un altro
 		# giocatore → quel giocatore incassa il money e +1 Servizio, la sua Commerce
 		# card si gira (non riusabile nel round).
