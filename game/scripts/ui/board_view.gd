@@ -67,8 +67,9 @@ const MARKET_SLOTS := 5
 var playing_card: Dictionary = {}
 var play_queue: Array = []
 var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (parse)
-var awaiting := ""          # "" | "region" | "board_country" | "allied_country"
+var awaiting := ""          # "" | "region" | "board_country" | "allied_country" | "move"
 var awaiting_op: Dictionary = {}
+var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
 var game_over := false
@@ -289,7 +290,7 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
-	var awaiting_region := (awaiting == "region")
+	var awaiting_region := (awaiting == "region" or awaiting == "move")
 	var btn := Button.new()
 	btn.flat = true
 	btn.pressed.connect(_on_region_pressed.bind(region))
@@ -456,6 +457,9 @@ func _allied_menu(country: Dictionary) -> void:
 
 
 func _on_region_pressed(region: String) -> void:
+	if awaiting == "move":
+		_on_move_region(region)
+		return
 	if awaiting == "region":
 		_resolve_region_op(region)
 		return
@@ -513,11 +517,13 @@ func _advance_play() -> void:
 	var op: Dictionary = play_queue.pop_front()
 	var name := String(op.get("op", ""))
 	match name:
-		"engage", "move", "add_influence", "place_armies", "move_free", "move_to_regions":
+		"engage", "add_influence", "place_armies":
 			awaiting = "region"
 			awaiting_op = op
 			_status("Tocca una Regione sulla mappa per: %s" % name)
 			_after_change()   # chiude il cassetto: serve la mappa
+		"move", "move_free", "move_to_regions":
+			_begin_move(op)
 		"improve_relations":
 			# Seleziona una Country disponibile direttamente sul tabellone.
 			awaiting = "board_country"
@@ -567,9 +573,6 @@ func _resolve_region_op(region: String) -> void:
 		"engage":
 			var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
 			Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary", ed)
-		"move", "move_free", "move_to_regions":
-			if p.armies_available > 0:
-				Actions.execute_move(gs, p.power, [{"region": region}]) if name == "move" else _free_move(region)
 		"add_influence", "place_armies":
 			var slot := "permanent" if bool(op.get("permanent", false)) else "temporary"
 			gs.regions[region]["track"].add(p.power, slot)
@@ -581,12 +584,122 @@ func _resolve_region_op(region: String) -> void:
 	_advance_play()
 
 
-func _free_move(region: String) -> void:
+# --- Move multi-Regione ---
+
+## Avvia un Move/Move free/Move-to-regions: il giocatore tocca più Regioni, 1 (o
+## per_region) Armata ciascuna, fino al massimo o finché preme "Fine".
+func _begin_move(op: Dictionary) -> void:
+	var name := String(op.get("op", ""))
 	var p := _active()
-	if p.armies_available > 0:
-		p.armies_available -= 1
-		var a: Dictionary = gs.regions[region]["armies"]
-		a[p.power] = int(a.get(p.power, 0)) + 1
+	if p.armies_available <= 0:
+		_status("Nessuna Armata disponibile da spostare.")
+		_advance_play()
+		return
+	var per_region := int(op.get("per_region", 1))
+	var distinct := name == "move_to_regions"
+	var max_armies: int = (int(op.get("per_region", 1)) * int(op.get("count", 1))) if distinct else int(op.get("max", 1))
+	max_armies = mini(max_armies, p.armies_available)
+	var allowed: Array = []
+	if op.has("region"):
+		allowed = [op["region"]]
+	elif op.has("regions"):
+		allowed = (op["regions"] as Array).duplicate()
+	_move_ctx = {
+		"free": name != "move",
+		"per_region": per_region,
+		"distinct": distinct,
+		"max_regions": int(op.get("count", 0)),
+		"allowed": allowed,
+		"exclude": (op.get("exclude", []) as Array),
+		"min": int(op.get("min", 0)),
+		"max": max_armies,
+		"moves": [],          # un elemento per Armata piazzata: {region}
+		"regions_used": {},
+	}
+	awaiting = "move"
+	_after_change()   # mostra la mappa
+	_show_move_bar()
+	_update_move_status()
+
+
+func _on_move_region(region: String) -> void:
+	var c := _move_ctx
+	if region in (c["exclude"] as Array):
+		return
+	if not (c["allowed"] as Array).is_empty() and not (region in (c["allowed"] as Array)):
+		_status("Regione non valida per questo spostamento.")
+		return
+	var per_region := int(c["per_region"])
+	if bool(c["distinct"]):
+		var used: Dictionary = c["regions_used"]
+		if not used.has(region) and used.size() >= int(c["max_regions"]):
+			return  # già scelto il numero massimo di Regioni
+		if not used.has(region):
+			used[region] = 0
+	# piazza per_region Armate (o quante ne restano).
+	for _i in per_region:
+		if (c["moves"] as Array).size() >= int(c["max"]):
+			break
+		(c["moves"] as Array).append(region)
+		if bool(c["distinct"]):
+			(c["regions_used"] as Dictionary)[region] += 1
+	_update_move_status()
+	if (c["moves"] as Array).size() >= int(c["max"]):
+		_finish_move()
+
+
+## Applica lo spostamento allo stato di gioco (Armate nelle Regioni), paga il
+## costo (solo per "move"), poi prosegue la carta.
+func _finish_move() -> void:
+	var c := _move_ctx
+	var moves: Array = c["moves"]
+	if moves.size() < int(c["min"]):
+		_status("Devi spostare almeno %d Armate." % int(c["min"]))
+		return
+	var p := _active()
+	if not moves.is_empty():
+		if bool(c["free"]):
+			p.armies_available -= moves.size()
+			for region in moves:
+				var a: Dictionary = gs.regions[region]["armies"]
+				a[p.power] = int(a.get(p.power, 0)) + 1
+		else:
+			var arr := []
+			for region in moves:
+				arr.append({"region": region})
+			Actions.execute_move(gs, p.power, arr)
+		_status("Spostate %d Armate." % moves.size())
+	_move_ctx = {}
+	awaiting = ""
+	_hide_move_bar()
+	_layout_overlays()
+	_advance_play()
+
+
+func _update_move_status() -> void:
+	var c := _move_ctx
+	var placed: int = (c["moves"] as Array).size()
+	_status("Sposta Armate: tocca le Regioni (%d/%d). Premi Fine quando hai finito." % [placed, int(c["max"])])
+
+
+## Pulsante flottante "Fine spostamento" mentre si muovono le Armate.
+func _show_move_bar() -> void:
+	_hide_move_bar()
+	var b := Button.new()
+	b.name = "MoveDoneBtn"
+	b.text = "✓ Fine spostamento"
+	b.add_theme_font_size_override("font_size", _base_fs() + 2)
+	b.position = Vector2(size.x * 0.5 - 110, size.y * 0.16)
+	b.size = Vector2(220, 44)
+	b.pressed.connect(_finish_move)
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup_layer.add_child(b)
+
+
+func _hide_move_bar() -> void:
+	for ch in popup_layer.get_children():
+		if ch.name == "MoveDoneBtn":
+			ch.queue_free()
 
 
 func _finish_card() -> void:
@@ -704,6 +817,8 @@ func _cancel_card() -> void:
 	play_queue = []
 	active_mods = {}
 	awaiting = ""
+	_move_ctx = {}
+	_hide_move_bar()
 	_status("Giocata annullata.")
 	_after_change()
 
@@ -897,7 +1012,7 @@ func _refresh_hud(p: PlayerState) -> void:
 
 ## Maniglie: una per potenza, colorate; ▶ = a chi tocca, ▼ = cassetto aperto.
 func _refresh_tab_bar() -> void:
-	var map_lock: bool = awaiting in ["region", "board_country"]
+	var map_lock: bool = awaiting in ["region", "board_country", "move"]
 	for i in tab_bar.get_child_count():
 		var b: Button = tab_bar.get_child(i)
 		var pl: PlayerState = gs.players[i]

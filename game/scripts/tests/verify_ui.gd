@@ -114,6 +114,23 @@ func _init() -> void:
 		print("[%s] carta auto (gain_money) risolta subito (+7 money)" % ["OK" if auto_ok else "FAIL"])
 		if not auto_ok: fails += 1
 
+		# Move multi-Regione: "Move up to 2" → tocca 2 Regioni, 1 Armata ciascuna.
+		var pm: PlayerState = board._active()
+		pm.armies_available = 3
+		pm.money = 30
+		var eu0: int = board.gs.regions["europe"]["armies"].get(pm.power, 0)
+		var af0: int = board.gs.regions["africa"]["armies"].get(pm.power, 0)
+		var card_move := {"display_name": "Test Move", "effect_ops": [{"op": "move", "max": 2}]}
+		pm.hand.append(card_move)
+		board._play_card(card_move)
+		board._on_region_pressed("europe")
+		board._on_region_pressed("africa")   # raggiunge max 2 → applica
+		var eu1: int = board.gs.regions["europe"]["armies"].get(pm.power, 0)
+		var af1: int = board.gs.regions["africa"]["armies"].get(pm.power, 0)
+		var move_ok: bool = eu1 == eu0 + 1 and af1 == af0 + 1 and pm.armies_available == 1 and board.playing_card.is_empty()
+		print("[%s] Move multi-Regione: 2 Armate in 2 Regioni, riserva 3->1" % ["OK" if move_ok else "FAIL"])
+		if not move_ok: fails += 1
+
 		# Drawer plancia: la scheda della potenza la apre/chiude (toggle) e mostra
 		# la mano del giocatore di turno; l'interazione con la mappa la richiude.
 		board.drawer_open = false
