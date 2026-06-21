@@ -24,7 +24,7 @@ const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "tra
 ## Risorse commerciabili nella Trade action (no armi/diplomazia per ora).
 const TRADE_RES := ["energy", "raw_materials", "food", "consumer_goods", "services"]
 ## Caselle "1° 2° 3° 4°" dell'area TURN ORDER sotto il titolo (normalizzato sul tabellone).
-const TURN_ORDER_SLOTS := [Vector2(0.125, 0.262), Vector2(0.205, 0.262), Vector2(0.285, 0.262), Vector2(0.365, 0.262)]
+const TURN_ORDER_SLOTS := [Vector2(0.090, 0.258), Vector2(0.163, 0.258), Vector2(0.237, 0.258), Vector2(0.310, 0.258)]
 
 var gs: GameState
 var active_seat := 0
@@ -244,7 +244,7 @@ func _layout_overlays() -> void:
 ## Coordinate da board_layout.json -> influence_slots.
 func _layout_influence_cubes() -> void:
 	var slots: Dictionary = layout.get("influence_slots", {})
-	var s := board_native.y * 0.020
+	var s := board_native.y * 0.025
 	for region in gs.regions:
 		var conf: Dictionary = slots.get(region, {})
 		if conf.is_empty():
@@ -347,7 +347,7 @@ func _layout_turn_order_markers() -> void:
 			continue
 		var power: String = gs.players[seat].power
 		var slot: Vector2 = TURN_ORDER_SLOTS[i]
-		var s := board_native.y * 0.050
+		var s := board_native.y * 0.044
 		var fl := TextureRect.new()
 		fl.texture = load("res://assets/flags/%s.png" % power)
 		fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1992,6 +1992,7 @@ func _refresh_drawer_content() -> void:
 	_build_allies_section(p, is_active, top)
 	_build_commerce_section(p, is_active, top)
 	_build_strategic_section(p, is_active, top)
+	_build_growth_section(p, is_active, top)
 	_build_ongoing_section(p, is_active)
 	_build_hand_section(p, is_active)
 
@@ -2396,6 +2397,23 @@ func _build_strategic_section(p: PlayerState, is_active: bool, parent: Control) 
 		card.tooltip_text = "%s%s\n%s" % [a.get("display_name", ""), "  (usato)" if used else "", a.get("effect_text", "")]
 		if used:
 			card.modulate = Color(0.5, 0.5, 0.55)
+		col.add_child(card)
+
+
+## Colonna Growth: le Growth card acquisite dal giocatore, mostrate come carte
+## (stessa arte wide_aux del mazzo) impilate, accanto agli Strategic Asset.
+func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> void:
+	if p.growth_cards.is_empty():
+		return
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(col)
+	var cw: float = clampf(_plancia_height() * 0.78, 120.0, 200.0)
+	for g in p.growth_cards:
+		var card := _country_card_button(g, Vector2(cw, cw / 2.4), false)
+		card.disabled = true
+		card.tooltip_text = "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), g.get("ability_text", "")]
 		col.add_child(card)
 
 
