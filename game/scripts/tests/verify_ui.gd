@@ -665,6 +665,18 @@ func _init() -> void:
 	var move_ok: bool = bm.awaiting == "" and stray_bars == 0 and bm.active_seat != seat0
 	print("[%s] Move: nessuna barra residua e Fine turno avanza (no freeze)" % ["OK" if move_ok else "FAIL"])
 	if not move_ok: fails += 1
+
+	# Regressione clamp mappa: su un asse dove la mappa è più piccola della viewport
+	# _clamp_map deve CENTRARE in modo stabile (prima rimbalzava -> sfarfallio nel pan).
+	bm.map_viewport.size = Vector2(400, 800)
+	bm.map_content.scale = Vector2(0.3, 0.3)      # board 660x589: X>vp, Y<vp
+	bm.map_content.position = Vector2(-100, 9999)
+	bm._clamp_map(); var cp1: Vector2 = bm.map_content.position
+	bm._clamp_map(); var cp2: Vector2 = bm.map_content.position
+	bm._pan(Vector2(-50, 0)); var cp3: Vector2 = bm.map_content.position
+	var clamp_ok: bool = cp1.is_equal_approx(cp2) and not is_equal_approx(cp3.x, cp1.x) and is_equal_approx(cp3.y, cp1.y)
+	print("[%s] Mappa zoomata: clamp stabile (no sfarfallio), pan sull'asse libero" % ["OK" if clamp_ok else "FAIL"])
+	if not clamp_ok: fails += 1
 	bm.queue_free()
 
 	print("Verifica UI: %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))

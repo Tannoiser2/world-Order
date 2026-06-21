@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.29"
+const VERSION := "v0.7.30"
 const CHANGELOG := [
+	"v0.7.30 — Tolto il flyover (anteprima ingrandita) sulle carte nazione sul tabellone: si leggono zoomando la mappa. Corretto lo sfarfallio quando si trascina la mappa ingrandita: su un asse dove la mappa è più piccola della viewport ora viene centrata stabilmente invece di rimbalzare.",
 	"v0.7.29 — Bugfix: dopo aver spostato i carri, «Fine spostamento» (e quindi «Fine turno») non bloccano più la partita. Le barre di spostamento non si accumulano più nascoste sul tabellone.",
 	"v0.7.28 — Classifica maggioranza rifinita: bandiere più piccole, distanziate e posate sulla riga dei numeri (non coprono più i box temporanei); i PV accanto a ogni bandiera. Le Regioni che non segnano ancora (permanenti non tutti pieni) mostrano la classifica provvisoria in trasparenza.",
 	"v0.7.27 — Cubi Influenza iniziali ora sulle CASELLE COLORATE in alto (non più sulle caselle valore \u201c1\u201d). Nuovo: CLASSIFICA MAGGIORANZA in tempo reale — su ogni numero della traccia maggioranza compare la bandiera della potenza in quella posizione + i PV (regole del regolamento: Influenza, pareggi rotti dalle Armate, i local contano ma non segnano, conteggia solo a permanenti pieni). Segnalino ROUND ora sulla casella giusta della traccia round. Tutto calibrato a pixel dal template.",
