@@ -7,6 +7,13 @@
     "russia": ["energy", "raw_materials"],
     "china": ["consumer_goods"]
   },
+  "commerce_card_art": {
+    "usa": "ability/ability_019.jpg",
+    "eu": "ability/ability_018.jpg",
+    "russia": "ability/ability_020.jpg",
+    "china": "ability/ability_022.jpg"
+  },
+  "_commerce_card_note": "Carta 'prodotto' (Commerce) della potenza, versione 3-4 giocatori: mostra le risorse vendibili (USA=servizi, EU=beni di consumo+servizi, Russia=energia+materie prime, Cina=beni di consumo).",
   "cards": [
     { "id": "trade_deals_eu", "power": "eu", "art": "wide_aux/wide_aux_000.jpg",
       "exports": 2, "imports": 2,

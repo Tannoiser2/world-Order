@@ -234,6 +234,7 @@ func _layout_overlays() -> void:
 		overlay.add_child(btn)
 	_layout_card_slots()
 	_layout_influence_cubes()
+	_layout_army_badges()
 	_layout_score_markers()
 	_layout_turn_order_markers()
 	_layout_round_marker()
@@ -484,48 +485,54 @@ func _make_region_button(region: String) -> Button:
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vb.add_theme_constant_override("separation", int(board_native.y * 0.004))
 	btn.add_child(vb)
-	# Pedine Armata (tank colorati per potenza) schierate nella Regione: impilate
-	# (leggermente sovrapposte) e centrate sul simbolo del carro della Regione.
-	var rd: Dictionary = gs.regions.get(region, {})
-	var armies: Dictionary = rd.get("armies", {})
-	var ah := HBoxContainer.new()
-	ah.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ah.add_theme_constant_override("separation", -int(board_native.x * 0.006))  # sovrapposizione
-	for owner in armies:
-		var cnt := int(armies[owner])
-		if cnt <= 0:
-			continue
-		ah.add_child(_army_badge(owner, cnt))
-	if ah.get_child_count() > 0:
-		var cc := CenterContainer.new()
-		cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cc.add_child(ah)
-		btn.add_child(cc)
 	return btn
 
 
-## Pedina Armata: tank colorato della potenza + "×N".
-func _army_badge(power: String, count: int) -> Control:
-	var h := int(board_native.y * 0.022)
-	var box := HBoxContainer.new()
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 1)
-	var tank := TextureRect.new()
-	tank.texture = load("res://assets/armies/%s.png" % power)
-	tank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tank.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tank.custom_minimum_size = Vector2(h * 2.0, h)
-	tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(tank)
-	if count > 1:
-		var lbl := Label.new()
-		lbl.text = "×%d" % count
-		lbl.add_theme_color_override("font_color", POWER_COLORS.get(power, Color.WHITE))
-		lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.014))
-		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		box.add_child(lbl)
-	return box
+## Pedine Armata (tank colorati per potenza) schierate nelle Regioni: impilate
+## (leggermente sovrapposte) e centrate sull'ANCORA armate di ogni Regione (sopra
+## le sagome dei carri stampate), da board_layout.json -> army_anchors.
+func _layout_army_badges() -> void:
+	var anchors: Dictionary = layout.get("army_anchors", {})
+	var h := board_native.y * 0.026                 # altezza pedina
+	var bw := h * 2.0                               # larghezza pedina (tank ~2:1)
+	var step := bw - board_native.x * 0.008         # passo (pedine sovrapposte)
+	for region in gs.regions:
+		var anchor: Variant = anchors.get(region)
+		if anchor == null:
+			continue
+		var armies: Dictionary = gs.regions[region].get("armies", {})
+		var owners := []
+		for owner in armies:
+			if int(armies[owner]) > 0:
+				owners.append(owner)
+		if owners.is_empty():
+			continue
+		var total := step * (owners.size() - 1) + bw
+		var x0 := float(anchor[0]) * board_native.x - total * 0.5
+		var cy := float(anchor[1]) * board_native.y - h * 0.5
+		for i in owners.size():
+			var owner: String = owners[i]
+			var x := x0 + i * step
+			var tank := TextureRect.new()
+			tank.texture = load("res://assets/armies/%s.png" % owner)
+			tank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tank.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tank.position = Vector2(x, cy)
+			tank.size = Vector2(bw, h)
+			overlay.add_child(tank)
+			var cnt := int(armies[owner])
+			if cnt > 1:
+				var lbl := Label.new()
+				lbl.text = "×%d" % cnt
+				lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
+				lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+				lbl.add_theme_constant_override("outline_size", maxi(2, int(h * 0.12)))
+				lbl.add_theme_font_size_override("font_size", int(h * 0.62))
+				lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				lbl.position = Vector2(x + bw * 0.74, cy - h * 0.06)
+				overlay.add_child(lbl)
+
 
 
 ## Posa le carte nazione disponibili (immagini originali) nelle aree designate
@@ -2341,41 +2348,29 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 	if is_active:
 		tdcard.pressed.connect(_open_trade_ui)
 	col.add_child(tdcard)
-	# Carte prodotto (Commerce card) = risorse offerte da questa potenza.
+	# Carta prodotto (Commerce card) della potenza: arte ufficiale che mostra le
+	# risorse vendibili (es. USA = valigetta/Servizi, Russia = barile + roccia).
 	var offered: Array = trade_deals.get("commerce_offered", {}).get(p.power, [])
-	if offered.is_empty():
+	var art: String = trade_deals.get("commerce_card_art", {}).get(p.power, "")
+	if offered.is_empty() or art == "":
 		return
 	var flipped: Array = _commerce_flipped.get(p.power, [])
-	var prow := HBoxContainer.new()
-	prow.add_theme_constant_override("separation", 4)
-	col.add_child(prow)
-	var ps := int(clampf(cardw * 0.34, 30.0, 56.0))
+	var pcw: float = cardw * 0.66
+	var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, Vector2(pcw, pcw / 0.65), false)
+	pcard.focus_mode = Control.FOCUS_NONE
+	# Stato "usata": carta grigia se TUTTE le risorse offerte sono già state
+	# vendute nel round (la singola disponibilità è applicata dalla UI di Commercio).
+	var all_used := not offered.is_empty()
+	var names := []
 	for res in offered:
-		prow.add_child(_commerce_card(String(res), ps, String(res) in flipped))
-
-
-## Carta prodotto (Commerce card): immagine token risorsa su sfondo carta;
-## "girata" (grigia) quando già usata nel commercio del round.
-func _commerce_card(res: String, s: int, used: bool) -> Control:
-	var panel := Panel.new()
-	panel.custom_minimum_size = Vector2(s, int(s * 1.3))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.16, 0.17, 0.22) if not used else Color(0.10, 0.10, 0.12)
-	sb.border_color = Color(0.45, 0.5, 0.6, 0.9)
-	sb.set_border_width_all(1); sb.set_corner_radius_all(4)
-	panel.add_theme_stylebox_override("panel", sb)
-	var tex := TextureRect.new()
-	tex.texture = load("res://assets/tokens/%s.png" % res)
-	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	tex.offset_left = 3; tex.offset_top = 3; tex.offset_right = -3; tex.offset_bottom = -3
-	if used:
-		tex.modulate = Color(0.45, 0.45, 0.45)
-	panel.add_child(tex)
-	panel.tooltip_text = "%s%s" % [RES_LABEL.get(res, res), "  (già usata)" if used else ""]
-	return panel
+		var u: bool = String(res) in flipped
+		if not u:
+			all_used = false
+		names.append("%s%s" % [RES_LABEL.get(res, res), " (usata)" if u else ""])
+	if all_used:
+		pcard.modulate = Color(0.5, 0.5, 0.55)
+	pcard.tooltip_text = "Prodotti vendibili: " + ", ".join(names)
+	col.add_child(pcard)
 
 
 ## Strategic Asset del giocatore: colonna a DESTRA, carte impilate una sopra l'altra.
