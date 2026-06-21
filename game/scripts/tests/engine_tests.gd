@@ -126,6 +126,24 @@ static func run_all() -> Dictionary:
 		Actions.export_gain([{"type": "energy", "qty": 4}, {"type": "raw_materials", "qty": 2}]) == 30)
 	# Import 2 Services = 20.
 	check.call("Import 2 Services = 20", Actions.import_cost([{"type": "services", "qty": 2}]) == 20)
+	# Trade op: le risorse si MUOVONO davvero (export toglie, import aggiunge) oltre al money.
+	var gtr := GameSetup.new_game(["usa", "china"])
+	var ptr := gtr.player_by_power("usa")
+	ptr.resources = {"energy": 4, "raw_materials": 2}
+	ptr.money = 0
+	EffectExecutor.run(gtr, "usa", [{"op": "trade",
+		"exports": [{"type": "energy", "qty": 4}],
+		"imports": [{"type": "raw_materials", "qty": 2}]}])
+	check.call("Trade: export 4 Energia toglie l'Energia", int(ptr.resources.get("energy", -1)) == 0)
+	check.call("Trade: import 2 Materie aggiunge risorsa", int(ptr.resources.get("raw_materials", 0)) == 4)
+	check.call("Trade: money = +20 (4*5) - 6 (2*3) = 14", ptr.money == 14)
+	# Produzione secondaria CONSUMA le primarie: beni di consumo = energia + materie prime.
+	var gpc := GameSetup.new_game(["usa", "china"])
+	var ppc := gpc.player_by_power("usa")
+	ppc.production = {"consumer_goods": 2}
+	ppc.resources = {"energy": 3, "raw_materials": 3, "consumer_goods": 0}
+	var made := Actions.execute_produce(ppc, "consumer_goods")
+	check.call("Produce 2 Beni di consumo consuma 2 Energia + 2 Materie", made == 2 and int(ppc.resources["energy"]) == 1 and int(ppc.resources["raw_materials"]) == 1)
 	# Build a Base: 5 + 5*2 = 15 (esempio Turkey, 2 Armate).
 	check.call("Build Base 5 + 5*2 = 15", Actions.build_base_cost(2) == 15)
 	# Move: 2 Armate = 10.

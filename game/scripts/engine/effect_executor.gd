@@ -52,7 +52,22 @@ static func _exec_one(gs: GameState, p: PlayerState, op: Dictionary, summary: Di
 			else:
 				summary["deferred"] += 1
 		"trade":
-			p.money += Actions.export_gain(op.get("exports", [])) - Actions.import_cost(op.get("imports", []))
+			# Export: cedi la risorsa (solo quella che hai) e incassi money.
+			var gain := 0
+			for t in (op.get("exports", []) as Array):
+				var ty := String(t["type"])
+				var q: int = mini(int(t["qty"]), int(p.resources.get(ty, 0)))
+				p.resources[ty] = int(p.resources.get(ty, 0)) - q
+				gain += int(Actions.EXPORT_GAIN.get(ty, 0)) * q
+			p.money += gain
+			# Import: paghi money (se basta) e ricevi la risorsa.
+			for t in (op.get("imports", []) as Array):
+				var ty := String(t["type"])
+				var q := int(t["qty"])
+				var c: int = int(Actions.IMPORT_COST.get(ty, 0)) * q
+				if p.money >= c:
+					p.money -= c
+					p.gain_resource(ty, q, 0)
 		"move":
 			if op.has("moves"):
 				Actions.execute_move(gs, p.power, op["moves"])
