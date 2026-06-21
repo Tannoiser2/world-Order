@@ -35,7 +35,7 @@ var map_viewport: Control          # finestra che ritaglia la mappa
 var map_content: Control           # nodo pannato/zoomato (mappa + Regioni)
 var board_native: Vector2 = Vector2(2200, 1964)
 var _min_zoom := 0.1
-var _map_ready := false
+var _user_adjusted := false   # true quando l'utente ha pannato/zoomato a mano (stop auto-fit)
 var _mouse_dragging := false
 var _touches: Dictionary = {}
 var _pinch_dist := 0.0
@@ -233,9 +233,46 @@ func _layout_overlays() -> void:
 		btn.size = Vector2((r[2] - r[0]) * board_native.x, (r[3] - r[1]) * board_native.y)
 		overlay.add_child(btn)
 	_layout_card_slots()
+	_layout_influence_cubes()
 	_layout_score_markers()
 	_layout_turn_order_markers()
 	_layout_round_marker()
+
+
+## Posa i cubi Influenza sulle caselle stampate di ogni Regione: una casella per
+## slot del modello (permanenti sopra la linea, temporanei sotto), colore = potenza.
+## Coordinate da board_layout.json -> influence_slots.
+func _layout_influence_cubes() -> void:
+	var slots: Dictionary = layout.get("influence_slots", {})
+	var s := board_native.y * 0.020
+	for region in gs.regions:
+		var conf: Dictionary = slots.get(region, {})
+		if conf.is_empty():
+			continue
+		var track: InfluenceTrack = gs.regions[region].get("track")
+		if track == null:
+			continue
+		_place_slot_cubes(track.perm, conf.get("permanent", []), s)
+		_place_slot_cubes(track.temp, conf.get("temporary", []), s)
+
+
+func _place_slot_cubes(owners: Array, coords: Array, s: float) -> void:
+	for i in owners.size():
+		var owner: Variant = owners[i]
+		if owner == null or i >= coords.size():
+			continue
+		var pos: Array = coords[i]
+		var cube := Panel.new()
+		cube.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cube.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
+		cube.size = Vector2(s, s)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
+		sb.border_color = Color(0, 0, 0, 0.9)
+		sb.set_border_width_all(maxi(1, int(s * 0.14)))
+		sb.set_corner_radius_all(int(s * 0.18))
+		cube.add_theme_stylebox_override("panel", sb)
+		overlay.add_child(cube)
 
 
 ## --- Segnalini sul tabellone: VP (traccia perimetrale) e ordine di turno ---
@@ -368,6 +405,7 @@ func _touch_midpoint() -> Vector2:
 func _pan(delta: Vector2) -> void:
 	if map_content == null:
 		return
+	_user_adjusted = true
 	map_content.position += delta
 	_clamp_map()
 
@@ -381,6 +419,7 @@ func _zoom_at(factor: float, focal_screen: Vector2) -> void:
 	var s1: float = clampf(s0 * factor, _min_zoom, _min_zoom * 6.0)
 	if is_equal_approx(s0, s1):
 		return
+	_user_adjusted = true
 	var local := (focal - map_content.position) / s0
 	map_content.scale = Vector2(s1, s1)
 	map_content.position = focal - local * s1
@@ -445,18 +484,9 @@ func _make_region_button(region: String) -> Button:
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vb.add_theme_constant_override("separation", int(board_native.y * 0.004))
 	btn.add_child(vb)
-	# Influenza presente nella Regione (stato di gioco, non stampato sul tabellone).
-	var rd: Dictionary = gs.regions.get(region, {})
-	var track: InfluenceTrack = rd.get("track")
-	if track and track.owners().size() > 0:
-		var hb := HBoxContainer.new()
-		hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hb.add_theme_constant_override("separation", int(board_native.x * 0.006))
-		vb.add_child(hb)
-		for owner in track.owners():
-			hb.add_child(_influence_cube(owner, track.count(owner)))
 	# Pedine Armata (tank colorati per potenza) schierate nella Regione: impilate
 	# (leggermente sovrapposte) e centrate sul simbolo del carro della Regione.
+	var rd: Dictionary = gs.regions.get(region, {})
 	var armies: Dictionary = rd.get("armies", {})
 	var ah := HBoxContainer.new()
 	ah.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -476,33 +506,6 @@ func _make_region_button(region: String) -> Button:
 
 
 ## Pedina Armata: tank colorato della potenza + "×N".
-## Cubo Influenza: quadratino colorato della potenza + conteggio (per Regione).
-func _influence_cube(owner: String, count: int) -> Control:
-	var box := HBoxContainer.new()
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_theme_constant_override("separation", 1)
-	var s := int(board_native.y * 0.020)
-	var cube := Panel.new()
-	cube.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cube.custom_minimum_size = Vector2(s, s)
-	var col: Color = POWER_COLORS.get(owner, Color(0.8, 0.8, 0.8))
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = col
-	sb.border_color = Color(0, 0, 0, 0.85)
-	sb.set_border_width_all(maxi(1, int(s * 0.12)))
-	sb.set_corner_radius_all(int(s * 0.18))
-	cube.add_theme_stylebox_override("panel", sb)
-	box.add_child(cube)
-	if count > 1:
-		var lbl := Label.new()
-		lbl.text = "%d" % count
-		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		lbl.add_theme_color_override("font_color", Color.WHITE)
-		lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.016))
-		box.add_child(lbl)
-	return box
-
-
 func _army_badge(power: String, count: int) -> Control:
 	var h := int(board_native.y * 0.022)
 	var box := HBoxContainer.new()
@@ -1871,9 +1874,10 @@ func _layout_ui() -> void:
 	drawer.visible = drawer_open
 	drawer.position = Vector2(0, dy)
 	drawer.size = Vector2(w, maxf(80, h - tab_h - dy - 4))
-	if not _map_ready and size.x > 0 and size.y > 0:
+	# Finché l'utente non zooma/panna a mano, la mappa si ri-adatta (centrata) alla
+	# viewport corrente ad ogni layout: così riempie sempre lo spazio disponibile.
+	if not _user_adjusted and size.x > 0 and size.y > 0:
 		_fit_map()
-		_map_ready = true
 	else:
 		_clamp_map()
 
