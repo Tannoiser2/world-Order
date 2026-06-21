@@ -43,7 +43,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ## 🟡 Fatto ma da correggere / raffinare
 
 - 🟡 **Calibrazione fine segnalini**: produzione ora centrata; prosperità/risorse buone — restano ritocchi al pixel su feedback.
-- 🟡 **`effect_modifiers` e abilità `ongoing`**: codificate nei dati ma non tutte agganciate al flusso interattivo (es. *count Energy ×2*, pesca extra/round, once‑per‑round, money↔Servizi nel costo Growth).
+- 🟡 **Abilità `ongoing`**: agganciate — *extra_draw_per_round* (passiva, +1 pesca/round) e le 4 *once_per_round* (draw+trash, draw highest+discard, improve again +1, convert influence) attivabili dal pannello "Abilità continuative". Restano da rifinire *extra_play_first_turn* e *ready_extra_on_focus* (servono regole turno/Focus più strutturate) e alcuni `effect_modifiers` condizionali (es. *count Energy ×2*).
 - 🟡 **Focus (passi)**: *Ready N Country cards* e *Produce X* nei passi di Focus (i bonus chiave — Engage −2, +2 Research, +1 THREAT/Defense — sono attivi).
 - 🟡 **Turno guidato dalla UI**: le azioni si fanno, ma manca un flusso hot‑seat completo che guidi tutte le scelte di un turno.
 - 🟡 **Mano**: ora pesca 6 da un mazzo di 12; il regolamento divide 12 in 2 pile da 6 (esito equivalente).

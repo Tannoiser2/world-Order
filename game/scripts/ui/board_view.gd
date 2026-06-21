@@ -70,6 +70,18 @@ var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (pars
 var awaiting := ""          # "" | "region" | "board_country" | "allied_country" | "move"
 var awaiting_op: Dictionary = {}
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
+var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
+
+## Abilità continuative (Growth): descrizione e se sono attivabili una volta/round.
+const ONGOING_DESC := {
+	"extra_draw_per_round": "Pesca 1 carta in più ogni round.",
+	"extra_play_first_turn": "Primo turno del round: puoi giocare 1 carta in più.",
+	"ready_extra_on_focus": "Quando fai Focus, prepari 1 Country card in più.",
+	"once_per_round:draw_then_trash": "1×/round: pesca 1 carta, poi scartane 1.",
+	"once_per_round:draw_highest_value_then_discard": "1×/round: pesca la carta di valore più alto del mazzo, poi scartane 1.",
+	"once_per_round:improve_again_plus1": "1×/round: fai di nuovo Improve Relations (con +1).",
+	"once_per_round:convert_influence": "1×/round: converti 1 Influenza temporanea in permanente.",
+}
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
 var game_over := false
@@ -290,7 +302,7 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
-	var awaiting_region := (awaiting == "region" or awaiting == "move")
+	var awaiting_region := (awaiting in ["region", "move", "convert_influence"])
 	var btn := Button.new()
 	btn.flat = true
 	btn.pressed.connect(_on_region_pressed.bind(region))
@@ -459,6 +471,15 @@ func _allied_menu(country: Dictionary) -> void:
 func _on_region_pressed(region: String) -> void:
 	if awaiting == "move":
 		_on_move_region(region)
+		return
+	if awaiting == "convert_influence":
+		awaiting = ""
+		if gs.regions[region]["track"].convert_temp_to_permanent(_active().power):
+			_status("Influenza convertita in permanente in %s." % region.replace("_", " "))
+		else:
+			_status("Nessuna Influenza temporanea da convertire in %s." % region.replace("_", " "))
+		_layout_overlays()
+		_refresh()
 		return
 	if awaiting == "region":
 		_resolve_region_op(region)
@@ -1012,7 +1033,7 @@ func _refresh_hud(p: PlayerState) -> void:
 
 ## Maniglie: una per potenza, colorate; ▶ = a chi tocca, ▼ = cassetto aperto.
 func _refresh_tab_bar() -> void:
-	var map_lock: bool = awaiting in ["region", "board_country", "move"]
+	var map_lock: bool = awaiting in ["region", "board_country", "move", "convert_influence"]
 	for i in tab_bar.get_child_count():
 		var b: Button = tab_bar.get_child(i)
 		var pl: PlayerState = gs.players[i]
@@ -1054,6 +1075,7 @@ func _refresh_drawer_content() -> void:
 	drawer_content.add_child(top)
 	top.add_child(_build_plancia_view(p, is_active))
 	_build_allies_section(p, is_active, top)
+	_build_ongoing_section(p, is_active)
 	_build_hand_section(p, is_active)
 
 
@@ -1247,6 +1269,105 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		if is_active:
 			card.pressed.connect(_on_allied_pressed.bind(cn))
 		grid.add_child(card)
+
+
+## Tag delle abilità continuative (ongoing) possedute dal giocatore (dalle Growth).
+func _ongoing_tags(p: PlayerState) -> Array:
+	var out := []
+	for c in p.growth_cards:
+		for op in c.get("effect_ops", []):
+			if String(op.get("op", "")) == "ongoing":
+				out.append(String(op.get("tag", "")))
+	return out
+
+
+func _ongoing_count(p: PlayerState, tag: String) -> int:
+	return _ongoing_tags(p).count(tag)
+
+
+func _ongoing_used(power: String, tag: String) -> bool:
+	return tag in (_used_ongoing.get(power, []) as Array)
+
+
+## Pannello "Abilità continuative": elenca le ongoing possedute; quelle once-per-round
+## hanno un pulsante "Usa" (disabilitato se già usate nel round).
+func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
+	var tags := _ongoing_tags(p)
+	if tags.is_empty():
+		return
+	drawer_content.add_child(_section("Abilità continuative"))
+	for tag in tags:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var lbl := Label.new()
+		lbl.text = "• " + String(ONGOING_DESC.get(tag, tag))
+		lbl.add_theme_font_size_override("font_size", maxi(11, _base_fs() - 2))
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.custom_minimum_size = Vector2(260, 0)
+		row.add_child(lbl)
+		if is_active and tag.begins_with("once_per_round:"):
+			var b := Button.new()
+			b.text = "Usata" if _ongoing_used(p.power, tag) else "Usa"
+			b.disabled = _ongoing_used(p.power, tag) or not playing_card.is_empty()
+			b.pressed.connect(_use_ongoing.bind(tag))
+			row.add_child(b)
+		drawer_content.add_child(row)
+
+
+## Attiva un'abilità once-per-round e la marca usata per il round.
+func _use_ongoing(tag: String) -> void:
+	var p := _active()
+	if _ongoing_used(p.power, tag):
+		return
+	if not _used_ongoing.has(p.power):
+		_used_ongoing[p.power] = []
+	(_used_ongoing[p.power] as Array).append(tag)
+	match tag:
+		"once_per_round:convert_influence":
+			awaiting = "convert_influence"
+			_status("Tocca una Regione dove hai Influenza temporanea per convertirla.")
+			_after_change()
+		"once_per_round:draw_then_trash":
+			p.draw_cards(1)
+			_pick_hand_card("Scarta una carta (trash):", func(card):
+				p.hand.erase(card)
+				_status("Pescata 1, scartata %s." % card.get("display_name", "?"))
+				_refresh())
+		"once_per_round:draw_highest_value_then_discard":
+			_draw_highest_value(p)
+			_pick_hand_card("Scarta una carta:", func(card):
+				p.hand.erase(card); p.discard.append(card)
+				_status("Pescata la migliore, scartata %s." % card.get("display_name", "?"))
+				_refresh())
+		"once_per_round:improve_again_plus1":
+			_play_card({"display_name": "Diplomatic Opening", "effect_ops": [{"op": "improve_relations"}], "effect_modifiers": ["improve_discount:1"]})
+		_:
+			_refresh()
+
+
+## Pesca dal mazzo la carta col valore più alto (per "Knowledge Transfer").
+func _draw_highest_value(p: PlayerState) -> void:
+	if p.deck.is_empty():
+		p.draw_cards(1)
+		return
+	var best := 0
+	for i in p.deck.size():
+		if int(p.deck[i].get("value", 0)) > int(p.deck[best].get("value", 0)):
+			best = i
+	p.hand.append(p.deck[best])
+	p.deck.remove_at(best)
+
+
+## Popup per scegliere una carta della mano (trash/discard).
+func _pick_hand_card(prompt: String, cb: Callable) -> void:
+	var items := []
+	for c in _active().hand:
+		items.append({"label": String(c.get("display_name", "?")), "value": c})
+	if items.is_empty():
+		_refresh()
+		return
+	_show_popup(prompt, items, cb)
 
 
 ## Sezione mano: carte scoperte solo per il giocatore di turno; per gli altri
@@ -1476,11 +1597,12 @@ func _next_round() -> void:
 	gs.phase = WO.Phase.PREPARATION
 	GamePhases.determine_turn_order(gs)
 	GamePhases.produce_primary_resources(gs)
-	# nuova mano: scarti = mano+giocate, poi pesca 6.
+	# nuova mano: scarti = mano+giocate, poi pesca 6 (+1 per ogni "extra_draw_per_round").
 	for p in gs.players:
 		p.discard.append_array(p.hand); p.discard.append_array(p.played)
 		p.hand.clear(); p.played.clear()
-		p.draw_cards(6)
+		p.draw_cards(6 + _ongoing_count(p, "extra_draw_per_round"))
+	_used_ongoing = {}   # abilità once-per-round di nuovo disponibili
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
 	_status("Round %d — Preparazione completata. Turno di %s." % [gs.round, _active().power.to_upper()])
