@@ -8,6 +8,56 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 
 ---
 
+## 📌 Prossima sessione — audit regole↔meccanica (handoff 2026-06-21)
+
+Stato deploy: **v0.7.30** su `main`. Test: `verify_ui` OK, engine **101/0**.
+Branch di lavoro: `claude/world-order-digital-roadmap-0msb1a`.
+Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
+
+> Sezione popolata da un audit regolamento↔codice. Vedi sotto i discrepanze trovate.
+
+### 🔴 Discrepanze rispetto al regolamento (da correggere)
+
+Audit regolamento↔codice (3 aree). _Azioni: audit ancora in corso, da aggiungere._
+
+#### Aftermath / Scoring / Fine partita — CRITICHE
+1. **Abilità speciali potenze MAI applicate** (pag. 20). `global_superpower_status_penalty` / `secured_sphere_vp` / `global_fdi_network_vp` esistono in `aftermath.gd` ma sono chiamate **solo dai test**: nello scoring reale (`board_view._run_aftermath`, `_game_end`, `game_runner.score_majority_tokens`) non vengono mai invocate. → USA non paga mai la penalità (−12/−8/−5/−2 Regioni), Russia non prende +2/zona con più Armate, Cina non prende i VP per Regioni con FDI.
+2. **Executive Orders non implementati** (pag. 21). `executive_orders.json` ha `once_per_game` + `unused_bonus_vp:3`, ma nessun codice li gioca né assegna i **+3 VP se non usati** a fine partita.
+3. **+2 VP per ogni Strategic Asset NON usato** mai assegnati a fine partita (pag. 21 + FAQ pag. 22). `_game_end` somma solo i token Maggioranza.
+4. **Spareggio vincitore errato** (pag. 21). `game_runner.winner` rompe i pari per **ordine di inserimento**; dovrebbe essere: chi ha preso il **1° bonus Maggioranza** → poi **più cubi Influenza sul tabellone** → poi **vittoria condivisa**.
+5. **Resolve THREAT: scarto Engage token per +2 Difesa/Country alleata** non collegato (pag. 19). `board_view:3015` passa `{}` a `Threat.resolve_region`.
+6. **Return on Investments: scarto Engage token per 5 money/Country alleata** non collegato (pag. 19). `board_view:2997` passa `[]` a `Aftermath.return_on_investments`.
+7. **Increase Prosperity forzata** invece che a scelta (pag. 19): il codice la applica in automatico a tutti se possono permettersela; dovrebbe essere opzionale.
+8. **NATO** hardcoded `[["usa","eu"]]` (pag. 19): non validato contro le potenze effettivamente in gioco.
+
+#### Setup / Preparation / Round — CRITICHE/ALTE
+9. **Auto-Influence: applicata UNA carta invece di DUE** (pag. 18). `_apply_auto_influence` usa una sola carta; il regolamento ne tiene 2 rivelate e ne pesca 2 nuove. → circa metà di Influenza/Armate/money neutrali in meno (incide su scoring e maggioranze nei giochi 2–3 giocatori).
+10. **Auto-Influence: money commercio incondizionato** (pag. 18). `game_phases.add_auto_influence` dà +10 money senza controllare/girare una **Commerce card a faccia in su**.
+11. **Research: manca lo scarto/ricambio del Market** (pag. 17): dopo il Research va scartata la carta **più a destra** (1 a 3 giocatori, **2** a 2 giocatori); manca anche l'opzione "spendi 2 Research per scartare le 3 più a destra".
+12. **Research: le Country alleate non possono aggiungere Research** (pag. 17). `buy_market_card` ha il parametro `extra_from_countries` ma la UI non lo usa mai.
+13. _(Bassa)_ **Spareggio ordine di turno**: a setup usa la money *corrente* invece della *starting money* (pag. 9 punto 19). Per i round 2+ la money corrente è corretta (pag. 11).
+
+#### Le 8 Azioni — CRITICHE/ALTE
+14. **Trade: il bene di valore 20 è ARMATE, non Diplomazia** (pag. 13). `EXPORT_GAIN` mappa il 20 su `"diplomacy"` ed esclude le Armate; la Diplomazia **non** è commerciabile. Mancante anche la vendita di Armate (solo dalla plancia, 20 cad., non importabili). UI Trade (`TRADE_RES`) esclude le Armate.
+15. **Improve Relations: restrizione "potenza vietata" non applicata** (pag. 12). I Country hanno `no_relations_powers` ma non viene mai usato (es. USA non può allearsi con l'Iran).
+16. **Engage: manca il prerequisito** "almeno 1 Country alleata nella Regione" (pag. 13). `execute_engage` non lo controlla.
+17. **Invest / Build a Base: limite "una volta per Country" non applicato** (pag. 14/15). Bloccano solo su `exhausted`; con un `ready_country` si può investire/costruire di nuovo sullo stesso Paese. `fdi_countries`/`bases` non usati come guardia.
+18. **Move / Build a Base: nessun vincolo zona d'interesse / Base** sulle destinazioni del Move (pag. 14). `_move_valid_dest` non controlla `zone_of_interest` né le `bases`: per un Move generico ogni Regione è valida.
+19. **Build a Base: la UI sposta sempre 1 Armata** (pag. 15). `_on_allied_pressed` chiama `execute_build_base(..., 1, ...)` fisso; non si può muovere (né pagare) fino al valore del Country.
+20. **Produce: la Diplomazia in eccesso (>10) diventa money invece di andare persa** (pag. 15). `execute_produce` chiama `gain_resource("diplomacy", 1, 10)` (10 money/eccesso).
+21. **Trade: +1 Diplomazia dato per QUALSIASI import**, non solo comprando da altri giocatori (pag. 13). `_trade_confirm` dà +1 anche su import dalla banca/potenze neutrali. (Inoltre il path carta `effect_executor "trade"` non dà mai la Diplomazia.)
+
+> Nota: costi/sconti di Improve Relations, Engage (incl. Diplomatic Focus −2), Move (5/Armata), formula Build-a-Base, gating Growth e la logica Influenza temporanea (FIFO/convert/reset) risultano **corretti**. Le tabelle dati delle abilità speciali in `board.json` sono giuste: il problema è che non vengono chiamate.
+
+### 🟡 Aperti / da raffinare (UI, noti da questa sessione)
+- [ ] Verificare i dati `board.json` di TUTTE le Regioni vs tabellone stampato (MENA era errata).
+- [ ] Engage token: posa calibrata sul simbolo "handshake" stampato.
+- [ ] FDI/Base anche sulle Country sul tabellone (non solo nel cassetto).
+- [ ] Maggioranza a inizio partita (tutti pari) — valutare se nasconderla.
+- [ ] UX dopo Move: cassetto resta chiuso.
+
+---
+
 ## 🟢 Fatto (regole verificate dai test)
 
 - **Influenza**: slot permanenti/temporanei, push FIFO, Reset, Convert (`influence_track.gd`).
