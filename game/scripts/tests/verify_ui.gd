@@ -131,6 +131,15 @@ func _init() -> void:
 		print("[%s] Move multi-Regione: 2 Armate in 2 Regioni, riserva 3->1" % ["OK" if move_ok else "FAIL"])
 		if not move_ok: fails += 1
 
+		# Abilità ongoing: "extra_draw_per_round" → pesca 7 invece di 6 a inizio round.
+		var po: PlayerState = board.gs.players[0]
+		po.growth_cards.append({"display_name": "Tactical Flexibility", "effect_ops": [{"op": "ongoing", "tag": "extra_draw_per_round"}]})
+		board.gs.round = 1
+		board._next_round()
+		var draw_ok: bool = po.hand.size() == 7
+		print("[%s] ongoing extra_draw_per_round: pesca 7 (6+1)" % ["OK" if draw_ok else "FAIL"])
+		if not draw_ok: fails += 1
+
 		# Drawer plancia: la scheda della potenza la apre/chiude (toggle) e mostra
 		# la mano del giocatore di turno; l'interazione con la mappa la richiude.
 		board.drawer_open = false
