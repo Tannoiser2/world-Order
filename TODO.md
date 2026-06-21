@@ -25,7 +25,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ### Setup iniziale (regolamento pag. 8–9) — verificato sulle plance reali
 - 🟢 Produzione iniziale corretta per ogni potenza.
 - 🟢 **Risorse iniziali = Produzione** (pag. 13: "each one equal to its starting Production").
-- 🟡 **Armate iniziali = Produzione di Armate** (pag. 13): correzione pronta ma rompe 2 test che assumevano Armate=0 (engage discount, growth produce) → da applicare insieme all'aggiornamento dei test.
+- 🟢 **Armate iniziali = Produzione di Armate** (pag. 13): ogni potenza parte con Armate in riserva pari alla sua Produzione di Armate (test di setup incluso).
 - 🟢 **Focus iniziale = Domestic** (pag. 9).
 - 🟢 **Nazioni amiche iniziali** complete (4–5 per potenza, pag. 9 punto 14).
 - 🟢 Mazzo iniziale 12 carte (doppioni inclusi).
@@ -44,7 +44,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ## 🟡 Fatto ma da correggere / raffinare
 
 - 🟡 **Calibrazione fine segnalini**: produzione ora centrata; prosperità/risorse buone — restano ritocchi al pixel su feedback.
-- 🟢 **Abilità `ongoing`**: tutte agganciate — *extra_draw_per_round* (+1 pesca/round), *extra_play_first_turn* (+1 carta al 1° turno del round), *ready_extra_on_focus* (+1 Country preparata col Focus) e le 4 *once_per_round* (draw+trash, draw highest+discard, improve again +1, convert influence). Restano alcuni `effect_modifiers` condizionali (es. *count Energy ×2*).
+- 🟢 **Abilità `ongoing`**: tutte agganciate — *extra_draw_per_round* (+1 pesca/round), *extra_play_first_turn* (+1 carta al 1° turno del round), *ready_extra_on_focus* (+1 Country preparata col Focus) e le 4 *once_per_round* (draw+trash, draw highest+discard, improve again +1, convert influence). **Modificatori condizionali di Trade agganciati**: *count Energy ×2* / *count Energy or Raw ×2* (raddoppiano i simboli Export — es. Energy Titan) e *Influenza solo se hai esportato Beni/Servizi (o 4 Energia)*. Restano da rifinire alcuni modifier rari su Strategic Asset (repeat/optional spend).
 - 🟢 **Turno = 1 azione**: ogni turno giochi 1 carta **oppure** fai la **Focus action** (sposta il Focus e prepara 2 Country card, +1 con *ready_extra_on_focus*). 4 turni/round.
 - 🟢 **Focus (passi)**: la Focus action prepara le Country card (numero per‑Focus: Domestic 1, Diplomatic 4, Military 2, +1 con *ready_extra_on_focus*) **e produce** il tipo del Focus (Domestic→Beni/Servizi, Diplomatic→Diplomazia, Military→Armate in riserva). Bonus chiave già attivi (Engage −2, +2 Research, +1 THREAT/Defense). Resta opzionale lo step "spendi 8 money per +1 Produzione".
 - 🟡 **Turno guidato dalla UI**: le azioni si fanno, ma manca un flusso hot‑seat completo che guidi tutte le scelte di un turno.

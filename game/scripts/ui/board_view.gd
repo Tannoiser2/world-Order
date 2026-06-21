@@ -68,6 +68,7 @@ var _auto_inf_deck: Array = []          # mazzo Auto-Influence (potenze neutrali
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
+var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -584,6 +585,12 @@ func _advance_play() -> void:
 	var name := String(op.get("op", ""))
 	match name:
 		"engage", "add_influence", "place_armies":
+			# Bonus Influenza condizionale: salta l'add_influence se la condizione
+			# (aver esportato certe risorse nel Trade della carta) non è soddisfatta.
+			if name == "add_influence" and _has_cond_influence() and not _cond_influence_ok():
+				_status("Nessun bonus Influenza: condizione di Export non soddisfatta.")
+				_advance_play()
+				return
 			awaiting = "region"
 			awaiting_op = op
 			_status("Tocca una Regione sulla mappa per: %s" % name)
@@ -959,6 +966,7 @@ func _finish_card() -> void:
 	playing_card = {}
 	active_mods = {}
 	awaiting = ""
+	_trade_exported = {}
 	_plays_left -= 1
 	_status("Carta risolta.")
 	_after_change()
@@ -1055,10 +1063,31 @@ func _trade_deal(power: String) -> Dictionary:
 
 ## Quante unità di R puoi esportare: simboli Export sulle nazioni amiche, limitato
 ## da quanto ne possiedi.
+## La carta in gioco ha un modificatore di Influenza condizionale all'Export?
+func _has_cond_influence() -> bool:
+	return active_mods.has("cond_influence_export_cg_services") or active_mods.has("cond_influence_export_4_energy")
+
+
+## Condizione soddisfatta in base a quanto esportato nell'ultimo Trade della carta.
+func _cond_influence_ok() -> bool:
+	if active_mods.has("cond_influence_export_cg_services"):
+		if int(_trade_exported.get("consumer_goods", 0)) >= 1 or int(_trade_exported.get("services", 0)) >= 1:
+			return true
+	if active_mods.has("cond_influence_export_4_energy"):
+		if int(_trade_exported.get("energy", 0)) >= 4:
+			return true
+	return false
+
+
 func _trade_export_cap(p: PlayerState, R: String) -> int:
 	var n := 0
 	for c in p.allied_countries:
 		n += (c.get("exports", []) as Array).count(R)
+	# Modificatori carta: conta certi simboli due volte (Energy Titan, New Energy Markets).
+	if R == "energy" and (active_mods.has("count_energy_twice") or active_mods.has("count_energy_or_raw_twice")):
+		n *= 2
+	elif R == "raw_materials" and active_mods.has("count_energy_or_raw_twice"):
+		n *= 2
 	return mini(n, int(p.resources.get(R, 0)))
 
 
@@ -1133,6 +1162,7 @@ func _trade_adjust(R: String, kind: String, delta: int) -> void:
 
 func _trade_confirm() -> void:
 	var p := _active()
+	_trade_exported = (_trade_sel["export"] as Dictionary).duplicate()  # per i bonus condizionali post-Trade
 	for R in (_trade_sel["export"] as Dictionary):
 		var q := int(_trade_sel["export"][R])
 		p.resources[R] = int(p.resources.get(R, 0)) - q
