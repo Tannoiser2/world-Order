@@ -65,6 +65,8 @@ func _init() -> void:
 		if not aw_ok: fails += 1
 		var inf_b: int = board.gs.regions["central_asia"]["track"].count(ac.power)
 		board._on_region_pressed("central_asia")
+		var slot_b1: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot perm/temp
+		if slot_b1: slot_b1.pressed.emit()
 		var inf_a: int = board.gs.regions["central_asia"]["track"].count(ac.power)
 		var played_ok: bool = (card_region in ac.played) and not (card_region in ac.hand) and inf_a == inf_b + 1
 		print("[%s] risoluzione carta Engage (Influenza %d->%d, carta in scarti)" % ["OK" if played_ok else "FAIL", inf_b, inf_a])
@@ -109,6 +111,8 @@ func _init() -> void:
 		board._exhaust_sel = {"ally_disc": true}
 		var ok_btn: Button = _find_button(board.popup_layer, "Conferma")
 		if ok_btn: ok_btn.pressed.emit()
+		var slot_b2: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
+		if slot_b2: slot_b2.pressed.emit()
 		var spent2: int = dip_pre2 - pdsc.resources["diplomacy"]
 		var expected2: int = Actions.engage_cost(base_cost, [3], pdsc.focus == WO.Focus.DIPLOMATIC, 0)
 		var disc_ok: bool = ok_btn != null and spent2 == expected2 and bool(pdsc.exhausted.get("ally_disc", false)) \
@@ -129,9 +133,26 @@ func _init() -> void:
 		print("[%s] play carta Invest -> attende una Country alleata" % ["OK" if inv_await else "FAIL"])
 		if not inv_await: fails += 1
 		board._on_allied_pressed(ally)
+		var slot_b3: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
+		if slot_b3: slot_b3.pressed.emit()
 		var inv_ok: bool = ac.money < money_pre and (card_inv in ac.played) and board.awaiting == ""
 		print("[%s] Invest da Country alleata: spesa money, carta in scarti" % ["OK" if inv_ok else "FAIL"])
 		if not inv_ok: fails += 1
+
+		# Scelta slot Influenza: con permanente libero il giocatore sceglie; sennò temporaneo.
+		var trk2: InfluenceTrack = board.gs.regions["americas"]["track"]
+		for i in range(trk2.perm.size()): trk2.perm[i] = null     # libera i permanenti
+		var got := {"v": ""}
+		board._pick_slot("americas", func(s): got["v"] = s)
+		var pbtn: Button = _find_button(board.popup_layer, "Permanente")
+		if pbtn: pbtn.pressed.emit()
+		var perm_ok: bool = got["v"] == "permanent"
+		for i in range(trk2.perm.size()): trk2.perm[i] = "local"  # tutti permanenti pieni
+		got["v"] = ""
+		board._pick_slot("americas", func(s): got["v"] = s)        # nessun popup → temporaneo
+		var temp_ok: bool = got["v"] == "temporary"
+		print("[%s] Scelta slot Influenza: permanente se libero, altrimenti temporaneo" % ["OK" if perm_ok and temp_ok else "FAIL"])
+		if not (perm_ok and temp_ok): fails += 1
 
 		# Carta auto-risolta (gain_money), nessun target.
 		var money_b: int = ac.money
@@ -505,6 +526,8 @@ func _init() -> void:
 		print("[%s] interazione mappa: il cassetto si richiude da solo" % ["OK" if auto_closed else "FAIL"])
 		if not auto_closed: fails += 1
 		board._on_region_pressed("south_asia")  # risolve e chiude la carta
+		var slot_bc: Button = _find_button(board.popup_layer, "Temporanea")
+		if slot_bc: slot_bc.pressed.emit()
 
 		# Modifiers: carta Engage con sconto -1 Diplomacy per Armata schierata.
 		ac.resources["diplomacy"] = 20
@@ -520,6 +543,8 @@ func _init() -> void:
 		board._plays_left = 9
 		board._play_card(card_mod)
 		board._on_region_pressed(mreg)
+		var slot_bm: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
+		if slot_bm: slot_bm.pressed.emit()
 		var spent: int = dip_pre - ac.resources["diplomacy"]
 		var mod_ok: bool = spent == expected_cost and (card_mod in ac.played)
 		print("[%s] effect_modifier: Engage costa %d (sconto -3 per Armata)" % ["OK" if mod_ok else "FAIL", spent])
@@ -585,9 +610,11 @@ func gs_first_region(board: Node) -> String:
 
 
 func _find_button(node: Node, text: String) -> Button:
-	if node == null:
-		return null
+	if node == null or node.is_queued_for_deletion():
+		return null   # ignora i popup già chiusi (queue_free è differito)
 	for c in node.get_children():
+		if c.is_queued_for_deletion():
+			continue
 		if c is Button and text in (c as Button).text:
 			return c
 		var r := _find_button(c, text)
