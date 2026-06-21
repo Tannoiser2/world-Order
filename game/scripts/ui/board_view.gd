@@ -63,6 +63,8 @@ var market_deck: Array = []             # mazzo Market mescolato
 var market_display: Array = []          # carte Market scoperte (acquistabili)
 var growth_pool: Array = []             # tutte le Growth card (per livello)
 var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per potenza
+var focus_bonuses: Dictionary = {}      # ready/produce/ongoing per ogni Focus (domestic/diplomatic/military)
+var _auto_inf_deck: Array = []          # mazzo Auto-Influence (potenze neutrali, <4 giocatori)
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
@@ -109,6 +111,9 @@ func _ready() -> void:
 	market_deck.shuffle()
 	growth_pool = DataLoader.load_growth()
 	trade_deals = DataLoader.load_trade_deals()
+	focus_bonuses = DataLoader.load_player_boards().get("focus_bonuses", {})
+	_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
+	_auto_inf_deck.shuffle()
 	_refill_market()
 
 	# La mappa vive dentro un nodo pannabile/zoomabile (pinch + trascinamento).
@@ -2212,7 +2217,10 @@ func _do_focus(f: int) -> void:
 		_status("Turno esaurito: la Focus action richiede un'azione. Premi «Fine turno».")
 		return
 	p.focus = f
-	var to_ready := 2 + _ongoing_count(p, "ready_extra_on_focus")
+	var key: String = ["domestic", "diplomatic", "military"][f]
+	var fb: Dictionary = focus_bonuses.get(key, {})
+	# 1) Ready: quante Country card prepara questo Focus (+ abilità ongoing).
+	var to_ready := int(fb.get("ready_country_cards", 1)) + _ongoing_count(p, "ready_extra_on_focus")
 	var readied := 0
 	for cid in p.exhausted:
 		if to_ready <= 0:
@@ -2221,11 +2229,28 @@ func _do_focus(f: int) -> void:
 			p.exhausted[cid] = false
 			readied += 1
 			to_ready -= 1
+	# 2) Produce: i tipi specifici di questo Focus (secondarie consumano le primarie;
+	#    le Armate vanno nella riserva).
+	var produced := []
+	for rt in (fb.get("produce", []) as Array):
+		var made := 0
+		if String(rt) == "armies":
+			for _i in int(p.production.get("armies", 0)):
+				if int(p.resources.get("raw_materials", 0)) >= 1:
+					p.resources["raw_materials"] = int(p.resources.get("raw_materials", 0)) - 1
+					p.armies_available += 1
+					made += 1
+		else:
+			made = Actions.execute_produce(p, String(rt))
+		if made > 0:
+			produced.append("%s +%d" % [RES_LABEL.get(rt, rt), made])
 	_plays_left -= 1
+	var msg := "Focus %s" % FOCUS_NAME[f]
 	if readied > 0:
-		_status("Focus %s — preparate %d Country card." % [FOCUS_NAME[f], readied])
-	else:
-		_status("Focus %s." % FOCUS_NAME[f])
+		msg += " — preparate %d Country card" % readied
+	if produced.size() > 0:
+		msg += " · Prodotto: %s" % ", ".join(produced)
+	_status(msg + ".")
 	_after_change()
 
 
@@ -2354,9 +2379,44 @@ func _cost_text(cost: Dictionary) -> String:
 
 ## Aftermath del round: Increase Prosperity (auto se possibile), Resolve THREAT,
 ## Scoring delle Regioni (round 3 e 6). Mostra un riepilogo.
+## Add Auto-Influence: con meno di 4 giocatori, le potenze NEUTRALI piazzano
+## Influenza/Armate da una carta Auto-Influence (così contano per scoring e
+## maggioranze). Aggiunge le righe al riepilogo e ritorna l'art della carta.
+func _apply_auto_influence(lines: Array) -> String:
+	var player_powers := []
+	for p in gs.players:
+		player_powers.append(p.power)
+	if player_powers.size() >= 4:
+		return ""   # tutte le potenze sono controllate da giocatori
+	if _auto_inf_deck.is_empty():
+		_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
+		_auto_inf_deck.shuffle()
+	if _auto_inf_deck.is_empty():
+		return ""
+	var card: Dictionary = _auto_inf_deck.pop_back()
+	GamePhases.add_auto_influence(gs, card, player_powers)
+	lines.append("— Auto-Influence (potenze neutrali) —")
+	var rows: Dictionary = card.get("rows", {})
+	for power in rows:
+		if power in player_powers:
+			continue
+		var row: Dictionary = rows[power]
+		var txt := "%s: +Influenza in %s" % [power.to_upper(), String(row.get("region", "")).replace("_", " ")]
+		if bool(row.get("army", false)):
+			txt += " · +1 Armata"
+		lines.append(txt)
+	for power in rows:
+		var tw: Variant = rows[power].get("trade_with", null)
+		if tw != null and String(tw) in player_powers:
+			lines.append("%s: +10 money (commercio con %s)" % [String(tw).to_upper(), String(power).to_upper()])
+	return String(card.get("art", ""))
+
+
 func _run_aftermath() -> void:
 	gs.phase = WO.Phase.AFTERMATH
 	var lines: Array[String] = ["— Aftermath round %d —" % gs.round]
+	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
+	var ai_art := _apply_auto_influence(lines)
 
 	# Increase Prosperity (auto, se il giocatore ha abbastanza Consumer Goods).
 	var pb: Dictionary = DataLoader.load_player_boards()
@@ -2384,7 +2444,7 @@ func _run_aftermath() -> void:
 			gs.add_vp(power, int(rs[power]))
 		lines.append("Scoring Regioni: " + _vp_summary(rs))
 
-	_show_summary(lines, func(): _next_round())
+	_show_summary(lines, func(): _next_round(), ai_art)
 
 
 func _next_round() -> void:
@@ -2434,7 +2494,7 @@ func _vp_summary(d: Dictionary) -> String:
 
 
 ## Popup di riepilogo con un pulsante Continua.
-func _show_summary(lines: Array, cb: Callable) -> void:
+func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 	for c in popup_layer.get_children():
 		c.queue_free()
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2450,6 +2510,19 @@ func _show_summary(lines: Array, cb: Callable) -> void:
 	var vb := VBoxContainer.new()
 	vb.custom_minimum_size = Vector2(420, 0)
 	panel.add_child(vb)
+	# Carta (es. Auto-Influence) mostrata in cima al riepilogo, con flyover.
+	if art != "":
+		var tex: Texture2D = load("res://assets/cards/%s" % art)
+		if tex:
+			var cc := CenterContainer.new()
+			var img := TextureRect.new()
+			img.texture = tex
+			img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			var iw := minf(size.x * 0.5, 360.0)
+			img.custom_minimum_size = Vector2(iw, iw * 0.42)
+			cc.add_child(img)
+			vb.add_child(cc)
 	for line in lines:
 		var l := Label.new()
 		l.text = String(line)

@@ -61,3 +61,8 @@ static func load_player_boards() -> Dictionary:
 static func load_trade_deals() -> Dictionary:
 	var doc: Variant = _read(BASE + "trade_deals.json")
 	return doc if doc else {}
+
+
+static func load_auto_influence() -> Array:
+	var doc: Variant = _read(BASE + "auto_influence.json")
+	return doc.get("cards", []) if doc else []
