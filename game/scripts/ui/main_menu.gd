@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.24"
+const VERSION := "v0.7.25"
 const CHANGELOG := [
+	"v0.7.25 — Quando bisogna toccare la mappa (spostare Armate, piazzare/convertire Influenza, ecc.) il cassetto plancia ora si CHIUDE da solo così la mappa è cliccabile (prima restava aperto e la bloccava). MENA allineato al tabellone reale (3 permanenti / 5 temporanee) con i cubi iniziali eu+usa+local.",
 	"v0.7.24 — Posizioni RICALIBRATE A PIXEL dal template: segnalini Ordine di Turno ora esattamente nelle caselle 1°-4°; cubi Influenza sulle caselle reali di ogni Regione (incluse le tracce più lunghe di MENA); ogni superpotenza ha la sua casella per i carri armati (4 per Regione, 2x2: EU alto-sx, Russia alto-dx, USA basso-sx, Cina basso-dx).",
 	"v0.7.23 — Le carte 'prodotto' delle superpotenze nel Commercio ora usano l'arte ufficiale (es. Russia: barile/energia + roccia/materie prime) invece delle icone generiche. I carri armati (Armate) nelle Regioni sono ora centrati sull'area armate calibrata di ogni Regione (sopra le sagome stampate), non più nel centro generico del riquadro.",
 	"v0.7.22 — Segnalini Ordine di Turno ricalibrati nelle caselle 1°-4° (erano spostati nella mappa). Cubi Influenza un po' più grandi. Le Growth card acquisite ora compaiono come carte vicino alla plancia (colonna accanto agli Strategic Asset), non più solo come testo.",

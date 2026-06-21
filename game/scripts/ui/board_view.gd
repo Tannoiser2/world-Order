@@ -82,6 +82,11 @@ var play_queue: Array = []
 var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (parse)
 var awaiting := ""          # "" | "region" | "board_country" | "allied_country" | "move"
 var awaiting_op: Dictionary = {}
+## Stati che richiedono di toccare la MAPPA (Regioni): i bottoni-Regione diventano
+## cliccabili e il cassetto plancia va CHIUSO per non coprire/bloccare la mappa.
+const AWAITING_REGION := ["region", "move", "convert_influence", "reset_influence"]
+## Tutti gli stati di interazione con la mappa (Regioni + Country sul tabellone).
+const AWAITING_MAP := ["region", "move", "convert_influence", "reset_influence", "board_country"]
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
 var _commerce_flipped: Dictionary = {}  # venditore(power) -> [risorse] Commerce card già usate nel round
@@ -454,7 +459,7 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
-	var awaiting_region := (awaiting in ["region", "move", "convert_influence", "reset_influence"])
+	var awaiting_region := (awaiting in AWAITING_REGION)
 	var btn := Button.new()
 	btn.flat = true
 	# Le Regioni catturano il mouse SOLO quando devi sceglierne una; altrimenti
@@ -1887,7 +1892,7 @@ func _base_fs() -> int:
 
 
 func _on_power_tab(power: String) -> void:
-	if awaiting in ["region", "board_country"]:
+	if awaiting in AWAITING_MAP:
 		return   # interazione con la mappa: il cassetto resta chiuso
 	if drawer_open and drawer_power == power:
 		drawer_open = false
@@ -1902,8 +1907,8 @@ func _on_power_tab(power: String) -> void:
 func _update_drawer_state() -> void:
 	if not drawer_open:
 		drawer_power = _active().power
-	if awaiting in ["region", "board_country"]:
-		drawer_open = false
+	if awaiting in AWAITING_MAP:
+		drawer_open = false   # serve toccare la mappa: chiudi la plancia
 	elif awaiting == "allied_country":
 		drawer_open = true
 		drawer_power = _active().power
@@ -1915,10 +1920,8 @@ func _refresh() -> void:
 	_update_drawer_state()
 	_refresh_hud(p)
 	_refresh_tab_bar()
-	if board_bg:
-		var tex := load("res://assets/player_boards/%s.jpg" % drawer_power)
-		if tex:
-			board_bg.texture = tex
+	# La plancia (board_bg) viene ricreata con la texture giusta in _build_plancia_view
+	# quando il cassetto è aperto; da chiuso non serve toccarla (il nodo è già liberato).
 	_refresh_drawer_content()
 	_layout_ui()
 
