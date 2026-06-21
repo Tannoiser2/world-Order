@@ -65,6 +65,8 @@ static func new_game(powers: Array) -> GameState:
 		# produzione, escluse le Armate che sono un tracciato a parte).
 		for rtype in ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy"]:
 			ps.resources[rtype] = int(ps.production.get(rtype, 0))
+		# Armate iniziali = Produzione di Armate (pag. 13): vanno nella riserva.
+		ps.armies_available = int(ps.production.get("armies", 0))
 		# Nazioni amiche iniziali (carte Country davanti al giocatore).
 		for cname in STARTING_ALLIES.get(power, []):
 			if by_name.has(cname):

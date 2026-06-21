@@ -88,6 +88,8 @@ static func run_all() -> Dictionary:
 	check.call("setup: mazzo iniziale USA non vuoto", gs.players[0].deck.size() > 0)
 	check.call("setup: denaro iniziale USA 30 / Cina 20",
 		gs.player_by_power("usa").money == 30 and gs.player_by_power("china").money == 20)
+	check.call("setup: Armate iniziali = Produzione Armate (USA)",
+		gs.player_by_power("usa").armies_available == int(gs.player_by_power("usa").production.get("armies", 0)))
 
 	# --- 4. Produzione e cap risorse ---
 	var ps := PlayerState.new()

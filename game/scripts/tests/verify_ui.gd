@@ -289,6 +289,27 @@ func _init() -> void:
 		print("[%s] Carte impilate: 3 copie → export cap 3 (era 1)" % ["OK" if stack_cap == 3 else "FAIL"])
 		if stack_cap != 3: fails += 1
 
+		# Modificatore condizionale: count_energy_or_raw_twice raddoppia i simboli Export.
+		var pmod: PlayerState = board._active()
+		pmod.allied_countries = [{"id": "e", "exports": ["energy", "energy"], "imports": []}]
+		pmod.resources["energy"] = 10
+		board.active_mods = Modifiers.parse(["count_energy_or_raw_twice"])
+		var dbl_cap: int = board._trade_export_cap(pmod, "energy")   # 2 simboli ×2 = 4
+		board.active_mods = {}
+		var base_cap: int = board._trade_export_cap(pmod, "energy")  # 2
+		print("[%s] Modificatore «conta Energia ×2»: cap %d (base %d)" % ["OK" if dbl_cap == 4 and base_cap == 2 else "FAIL", dbl_cap, base_cap])
+		if not (dbl_cap == 4 and base_cap == 2): fails += 1
+
+		# Modificatore: Influenza solo se hai esportato Beni/Servizi nel Trade.
+		board.active_mods = Modifiers.parse(["cond_influence_export_cg_services"])
+		board._trade_exported = {"consumer_goods": 1}
+		var cond_met: bool = board._has_cond_influence() and board._cond_influence_ok()
+		board._trade_exported = {"energy": 1}
+		var cond_unmet: bool = board._has_cond_influence() and not board._cond_influence_ok()
+		board.active_mods = {}; board._trade_exported = {}
+		print("[%s] Influenza condizionale all'Export: concessa se hai esportato Beni/Servizi" % ["OK" if cond_met and cond_unmet else "FAIL"])
+		if not (cond_met and cond_unmet): fails += 1
+
 		# Stato "esaurita": la carta nazione appare grigia e ruotata (tapped).
 		var ex_card: Control = board._ally_stack({"id": "x", "art": ""}, 1, Vector2(40, 56), false, false, true)
 		var ex_ok: bool = ex_card.modulate != Color(1, 1, 1, 1) and not is_zero_approx(ex_card.rotation_degrees)

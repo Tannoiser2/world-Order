@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.12"
+const VERSION := "v0.7.13"
 const CHANGELOG := [
+	"v0.7.13 — Setup: Armate iniziali = Produzione di Armate (in riserva). Modificatori di carta condizionali sul Trade: «conta Energia ×2» (e Energia/Materie Prime, es. Energy Titan) raddoppiano i simboli Export; bonus Influenza concesso solo se hai esportato Beni/Servizi (o 4 Energia).",
 	"v0.7.12 — Focus completo: la Focus action ora PRODUCE il tipo del Focus (Domestic→Beni/Servizi, Diplomatic→Diplomazia, Military→Armate in riserva) e prepara il giusto numero di Country card (Domestic 1, Diplomatic 4, Military 2). AUTO-INFLUENCE: con meno di 4 giocatori, ogni fine round le potenze neutrali piazzano Influenza/Armate da una carta Auto-Influence (mostrata nel riepilogo), così contano per scoring e maggioranze.",
 	"v0.7.11 — Azioni domestiche. PRODUCE rifatto: scegli quante risorse generare da PIÙ tracce nella stessa azione (primarie gratis, secondarie consumano le primarie; le Armate vanno nella riserva). GET A GROWTH CARD: le carte Sviluppo si scelgono come immagini (con flyover), non più da lista testuale; le non acquistabili sono in grigio.",
 	"v0.7.10 — Azioni economiche (Invest): le nazioni amiche ESAURITE ora si vedono (grigie e ruotate, come una carta tapped), così distingui a colpo d'occhio quali puoi ancora usare per Invest/Build a Base.",
