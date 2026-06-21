@@ -255,6 +255,7 @@ static func run_all() -> Dictionary:
 	# "Growth Strategy": choice -> Produce (il giocatore ha scelto Produce).
 	var cprod := ge.player_by_power("china")
 	cprod.production = {"energy": 2}
+	cprod.resources["energy"] = 0   # azzera le risorse iniziali (= produzione) per testare il delta
 	EffectExecutor.run(ge, "china", [
 		{"op": "choice", "chosen": [{"op": "produce", "types": ["energy"]}]}])
 	check.call("DSL Growth Strategy (choice=Produce): +2 Energia", cprod.resources["energy"] == 2)
@@ -337,6 +338,7 @@ static func run_all() -> Dictionary:
 	var gmod := GameSetup.new_game(["usa", "china"])
 	gmod.regions["europe"]["armies"]["usa"] = 2
 	var pu := gmod.player_by_power("usa")
+	pu.allied_countries.clear()   # ignora gli alleati iniziali per isolare il test
 	pu.allied_countries.append({"region": "europe", "value": 3})
 	# Engage in Europe: 2 (per armata) + 1 (per alleato) + 1 (sconto fisso Europe) = 4
 	check.call("engage_discount Europe (army+allied+region) = 4",
