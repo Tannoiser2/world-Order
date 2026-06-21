@@ -82,6 +82,11 @@ var play_queue: Array = []
 var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (parse)
 var awaiting := ""          # "" | "region" | "board_country" | "allied_country" | "move"
 var awaiting_op: Dictionary = {}
+## Stati che richiedono di toccare la MAPPA (Regioni): i bottoni-Regione diventano
+## cliccabili e il cassetto plancia va CHIUSO per non coprire/bloccare la mappa.
+const AWAITING_REGION := ["region", "move", "convert_influence", "reset_influence"]
+## Tutti gli stati di interazione con la mappa (Regioni + Country sul tabellone).
+const AWAITING_MAP := ["region", "move", "convert_influence", "reset_influence", "board_country"]
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
 var _commerce_flipped: Dictionary = {}  # venditore(power) -> [risorse] Commerce card già usate nel round
@@ -235,6 +240,8 @@ func _layout_overlays() -> void:
 	_layout_card_slots()
 	_layout_influence_cubes()
 	_layout_army_badges()
+	_layout_engage_tokens()
+	_layout_majority()
 	_layout_score_markers()
 	_layout_turn_order_markers()
 	_layout_round_marker()
@@ -315,26 +322,25 @@ func _layout_score_markers() -> void:
 		overlay.add_child(holder)
 
 
-## Segnalino Round: token "ROUND n/6" sul tabellone (il tabellone non ha una
-## traccia round stampata). Posizione DA CALIBRARE.
-const ROUND_MARKER_POS := Vector2(0.165, 0.305)
-
+## Segnalino Round: un riquadro evidenziato sulla casella del round corrente nella
+## traccia ROUND stampata (coordinate round_slots, indice 0 = round 1).
 func _layout_round_marker() -> void:
+	var rs: Array = layout.get("round_slots", {}).get("slots", [])
+	var idx := gs.round - 1
+	if idx < 0 or idx >= rs.size():
+		return
+	var pos: Array = rs[idx]
+	var s := board_native.y * 0.052
 	var panel := Panel.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.06, 0.09, 0.92)
-	sb.border_color = Color(0.9, 0.8, 0.3, 0.9); sb.set_border_width_all(maxi(1, int(board_native.y * 0.002)))
-	sb.set_corner_radius_all(int(board_native.y * 0.012)); sb.set_content_margin_all(int(board_native.y * 0.008))
+	sb.bg_color = Color(0.95, 0.8, 0.2, 0.30)
+	sb.border_color = Color(1.0, 0.85, 0.25, 0.95)
+	sb.set_border_width_all(maxi(2, int(board_native.y * 0.004)))
+	sb.set_corner_radius_all(int(board_native.y * 0.006))
 	panel.add_theme_stylebox_override("panel", sb)
-	var lbl := Label.new()
-	lbl.text = "ROUND %d/6" % gs.round
-	lbl.add_theme_color_override("font_color", Color(0.95, 0.88, 0.5))
-	lbl.add_theme_font_size_override("font_size", int(board_native.y * 0.024))
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(lbl)
-	var pw := board_native.x * 0.12
-	panel.position = Vector2(ROUND_MARKER_POS.x * board_native.x - pw * 0.5, ROUND_MARKER_POS.y * board_native.y)
+	panel.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
+	panel.size = Vector2(s, s)
 	overlay.add_child(panel)
 
 
@@ -454,7 +460,7 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
-	var awaiting_region := (awaiting in ["region", "move", "convert_influence", "reset_influence"])
+	var awaiting_region := (awaiting in AWAITING_REGION)
 	var btn := Button.new()
 	btn.flat = true
 	# Le Regioni catturano il mouse SOLO quando devi sceglierne una; altrimenti
@@ -525,6 +531,91 @@ func _layout_army_badges() -> void:
 				lbl.position = Vector2(x + bw * 0.72, y - h * 0.04)
 				overlay.add_child(lbl)
 
+
+
+## Classifica di maggioranza in tempo reale: su ogni numero della traccia maggioranza
+## (PV per posizione) mostra la BANDIERA della potenza in quella posizione + i PV.
+## Dal più alto a sinistra. Calcolata con le regole del regolamento (Scoring).
+func _layout_majority() -> void:
+	var mslots: Dictionary = layout.get("majority_slots", {})
+	var fw := board_native.y * 0.034
+	var fh := fw * 0.66
+	for region in gs.regions:
+		var positions: Array = mslots.get(region, [])
+		if positions.is_empty():
+			continue
+		var rd: Dictionary = gs.regions[region]
+		var track: InfluenceTrack = rd.get("track")
+		if track == null:
+			continue
+		var ranking: Array = Scoring.region_ranking(track, rd.get("majority_bonus", []), rd.get("armies", {}))
+		for i in ranking.size():
+			if i >= positions.size():
+				break
+			var owner: String = ranking[i]["owner"]
+			var bonus: int = ranking[i]["bonus"]
+			var cx := float(positions[i][0]) * board_native.x
+			var cy := float(positions[i][1]) * board_native.y
+			# Bandiera (o disco neutro per 'local') sopra il numero stampato.
+			if owner == "local":
+				var disc := Panel.new()
+				disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				var ds := StyleBoxFlat.new()
+				ds.bg_color = Color(0.55, 0.55, 0.58, 0.95)
+				ds.set_corner_radius_all(int(fh))
+				disc.add_theme_stylebox_override("panel", ds)
+				disc.position = Vector2(cx - fh * 0.5, cy - fh - fh * 0.55)
+				disc.size = Vector2(fh, fh)
+				overlay.add_child(disc)
+			else:
+				var fl := TextureRect.new()
+				fl.texture = load("res://assets/flags/%s.png" % owner)
+				fl.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				fl.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				fl.position = Vector2(cx - fw * 0.5, cy - fh - fh * 0.55)
+				fl.size = Vector2(fw, fh)
+				overlay.add_child(fl)
+			# PV (bonus effettivo) come piccola etichetta sul numero stampato.
+			var lbl := Label.new()
+			lbl.text = str(bonus)
+			lbl.add_theme_color_override("font_color", Color(1, 1, 1))
+			lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+			lbl.add_theme_constant_override("outline_size", maxi(2, int(fh * 0.18)))
+			lbl.add_theme_font_size_override("font_size", int(fh * 0.95))
+			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			lbl.position = Vector2(cx - fw * 0.5, cy - fh * 0.35)
+			overlay.add_child(lbl)
+
+
+## Engage token (stretta di mano colorata per potenza) sulle Regioni dove il
+## giocatore ha "engaged": posati in fila vicino alla traccia Influenza.
+func _layout_engage_tokens() -> void:
+	var slots: Dictionary = layout.get("influence_slots", {})
+	var h := board_native.y * 0.030
+	var w := h * 1.47
+	for region in gs.regions:
+		var conf: Dictionary = slots.get(region, {})
+		if conf.is_empty():
+			continue
+		var temp: Array = conf.get("temporary", [])
+		if temp.is_empty():
+			continue
+		# Punto di posa: sotto-sinistra della traccia temporanea (zona "handshake").
+		var bx := float(temp[0][0]) * board_native.x - w * 0.5
+		var by := (float(temp[0][1]) + 0.052) * board_native.y
+		var n := 0
+		for p in gs.players:
+			if region in p.engage_tokens:
+				var tok := TextureRect.new()
+				tok.texture = load("res://assets/markers/engage_%s.png" % p.power)
+				tok.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tok.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				tok.position = Vector2(bx + n * w * 0.62, by)
+				tok.size = Vector2(w, h)
+				overlay.add_child(tok)
+				n += 1
 
 
 ## Posa le carte nazione disponibili (immagini originali) nelle aree designate
@@ -1887,7 +1978,7 @@ func _base_fs() -> int:
 
 
 func _on_power_tab(power: String) -> void:
-	if awaiting in ["region", "board_country"]:
+	if awaiting in AWAITING_MAP:
 		return   # interazione con la mappa: il cassetto resta chiuso
 	if drawer_open and drawer_power == power:
 		drawer_open = false
@@ -1902,8 +1993,8 @@ func _on_power_tab(power: String) -> void:
 func _update_drawer_state() -> void:
 	if not drawer_open:
 		drawer_power = _active().power
-	if awaiting in ["region", "board_country"]:
-		drawer_open = false
+	if awaiting in AWAITING_MAP:
+		drawer_open = false   # serve toccare la mappa: chiudi la plancia
 	elif awaiting == "allied_country":
 		drawer_open = true
 		drawer_power = _active().power
@@ -1915,10 +2006,8 @@ func _refresh() -> void:
 	_update_drawer_state()
 	_refresh_hud(p)
 	_refresh_tab_bar()
-	if board_bg:
-		var tex := load("res://assets/player_boards/%s.jpg" % drawer_power)
-		if tex:
-			board_bg.texture = tex
+	# La plancia (board_bg) viene ricreata con la texture giusta in _build_plancia_view
+	# quando il cassetto è aperto; da chiuso non serve toccarla (il nodo è già liberato).
 	_refresh_drawer_content()
 	_layout_ui()
 
@@ -2243,7 +2332,35 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		var spent := bool(p.exhausted.get(String(cn.get("id", "")), false))
 		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
 		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		grid.add_child(_ally_stack(cn, cards.size(), Vector2(ch * 0.70, ch), highlight, is_active and not dim, spent))
+		var sz := Vector2(ch * 0.70, ch)
+		var stack := _ally_stack(cn, cards.size(), sz, highlight, is_active and not dim, spent)
+		var cid := String(cn.get("id", ""))
+		_overlay_country_markers(stack, sz, cid in p.fdi_countries, cid in p.bases)
+		grid.add_child(stack)
+
+
+## Sovrappone i segnalini Base (in alto a sinistra) e FDI (in alto a destra) su una
+## carta nazione alleata, se il giocatore li ha piazzati su quel Paese.
+func _overlay_country_markers(card: Control, sz: Vector2, has_fdi: bool, has_base: bool) -> void:
+	var s := minf(sz.x, sz.y) * 0.5
+	if has_base:
+		var b := TextureRect.new()
+		b.texture = load("res://assets/markers/base.png")
+		b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		b.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.position = Vector2(1, 1)
+		b.size = Vector2(s, s)
+		card.add_child(b)
+	if has_fdi:
+		var f := TextureRect.new()
+		f.texture = load("res://assets/markers/fdi.png")
+		f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		f.position = Vector2(sz.x - s - 1, 1)
+		f.size = Vector2(s, s)
+		card.add_child(f)
 
 
 ## Aspetto "esaurita" (tapped): carta grigia e leggermente ruotata.

@@ -35,6 +35,12 @@ func _initialize() -> void:
 		R["east_asia_pacific"]["track"].add("usa", "temporary")
 		R["africa"]["track"].add("eu", "temporary")
 		R["africa"]["track"].add("russia", "temporary")
+		# Engage token (max 3) per alcune potenze, su varie Regioni.
+		for pl in board.gs.players:
+			if pl.power == "usa": pl.engage_tokens = ["europe", "americas", "east_asia_pacific"]
+			elif pl.power == "china": pl.engage_tokens = ["east_asia_pacific", "south_asia"]
+			elif pl.power == "russia": pl.engage_tokens = ["central_asia", "europe"]
+			elif pl.power == "eu": pl.engage_tokens = ["africa", "middle_east_north_africa"]
 		board._layout_overlays()
 	for _i in range(8):
 		await process_frame

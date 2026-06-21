@@ -49,3 +49,35 @@ static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: D
 		i = j + 1
 
 	return result
+
+
+## Classifica di maggioranza per la UI: ritorna, IN ORDINE di posizione (1°, 2°, …),
+## un Dictionary {owner, count, bonus} per ogni partecipante (inclusi i 'local').
+## Riflette le stesse regole di score_region (ordina per Influenza desc, poi Armate;
+## i pari condividono la posizione più bassa). Ritorna [] se la Regione non segna
+## (permanenti non tutti pieni). Il chiamante mostra bandiera+bonus sulle posizioni.
+static func region_ranking(track: InfluenceTrack, majority_bonus: Array, armies: Dictionary) -> Array:
+	if not track.all_permanent_filled():
+		return []
+	var entries := []
+	for owner in track.owners():
+		var c: int = track.count(owner)
+		if c > 0:
+			entries.append({"owner": owner, "count": c, "armies": int(armies.get(owner, 0))})
+	entries.sort_custom(func(a, b):
+		if a["count"] != b["count"]:
+			return a["count"] > b["count"]
+		return a["armies"] > b["armies"])
+	var out := []
+	var i := 0
+	while i < entries.size():
+		var j := i
+		while j + 1 < entries.size() \
+				and entries[j + 1]["count"] == entries[i]["count"] \
+				and entries[j + 1]["armies"] == entries[i]["armies"]:
+			j += 1
+		var b: int = majority_bonus[j] if j < majority_bonus.size() else 0
+		for k in range(i, j + 1):
+			out.append({"owner": entries[k]["owner"], "count": entries[k]["count"], "bonus": b})
+		i = j + 1
+	return out
