@@ -14,6 +14,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 - **Scoring Regione**: VP/cubo + maggioranze + spareggi + cubi locali (`scoring.gd`), esempio MENA del manuale.
 - **THREAT / Defense**: Armate, Military Focus, Engage, NATO (`threat.gd`), esempi 1–2.
 - **Le 8 azioni** (costi + effetti), **tutte giocabili e risolte sul tabellone** dal flusso UI: Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce (`actions.gd` + `board_view._advance_play`).
+- 🟢 **Trade interattivo**: popup per scegliere Export/Import per risorsa, **cap dai simboli Export/Import delle nazioni amiche** + import dagli altri giocatori (Trade Deals `import_from`), **limite 2/3 transazioni**, una risorsa per transazione. Export → money, Import → spende money, **+1 Diplomazia** comprando dagli altri. Δ money in tempo reale (`board_view._open_trade_ui`).
 - **Produzione** primaria/secondaria + cap 10 → money; **Prosperità** (CG → VP+money) (`game_phases.gd`).
 - **Macchina fasi/round** (3 fasi × 6 round), **Research/Market** (bonus, +2 Domestic, acquisto), **Add Auto-Influence** (2–3 giocatori).
 - **Aftermath**: Return on Investments, 3 token Maggioranza + spareggi + regola 2 giocatori (esempi pag. 19/21 riprodotti).
@@ -52,7 +53,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 
 ## 🔴 Mancante
 
-- 🔴 **Trade tra giocatori** con Commerce cards (export/import inter‑player + 1 Services di bonus): tabelle e Trade Deals in `data/`, manca l'orchestrazione.
+- 🟡 **Trade tra giocatori**: i cap di import dagli altri giocatori (Trade Deals `import_from`) sono attivi nella UI di Trade e danno +1 Diplomazia. Resta da implementare il **trasferimento effettivo di money/risorse all'altro giocatore** e il flip della Commerce card offerta.
 - 🔴 **Auto‑Influence** completo per le potenze non giocate (parziale).
 - 🔴 **Modalità Online** (placeholder nel menu).
 - 🔴 **Avversari / bot (AI)**: ora è hot‑seat manuale.

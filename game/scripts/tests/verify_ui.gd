@@ -131,6 +131,44 @@ func _init() -> void:
 		print("[%s] Move multi-Regione: 2 Armate in 2 Regioni, riserva 3->1" % ["OK" if move_ok else "FAIL"])
 		if not move_ok: fails += 1
 
+		# Trade action interattiva: export di una risorsa (cap dai simboli amici) e
+		# import di un'altra; +1 Diplomazia comprando dagli altri.
+		var pt: PlayerState = board._active()
+		pt.allied_countries = [
+			{"id": "ally_exp", "exports": ["energy", "energy"], "imports": []},
+			{"id": "ally_imp", "exports": [], "imports": ["food"]},
+		]
+		pt.resources["energy"] = 5
+		pt.resources["food"] = 0
+		pt.resources["diplomacy"] = 0
+		pt.money = 0
+		var exp_cap: int = board._trade_export_cap(pt, "energy")  # min(2 simboli, 5 possedute) = 2
+		var imp_cap: int = board._trade_import_cap(pt, "food")    # 1 simbolo Import
+		board._open_trade_ui()
+		board._trade_adjust("energy", "export", 1)
+		board._trade_adjust("energy", "export", 1)   # esporto 2 Energia
+		board._trade_adjust("food", "import", 1)     # importo 1 Cibo
+		var en_pre: int = pt.resources["energy"]
+		var money_t0: int = pt.money
+		board._trade_confirm()
+		var trade_ok: bool = exp_cap == 2 and imp_cap == 1 \
+			and pt.resources["energy"] == en_pre - 2 \
+			and pt.resources["food"] == 1 \
+			and pt.resources["diplomacy"] == 1 \
+			and pt.money == money_t0 + Actions.EXPORT_GAIN["energy"] * 2 - Actions.IMPORT_COST["food"]
+		print("[%s] Trade UI: export 2 Energia, import 1 Cibo, +1 Diplomazia" % ["OK" if trade_ok else "FAIL"])
+		if not trade_ok: fails += 1
+
+		# Cap Trade: non puoi esportare oltre i simboli delle nazioni amiche.
+		board._open_trade_ui()
+		for _i in 5:
+			board._trade_adjust("energy", "export", 1)
+		var cap_ok: bool = int((board._trade_sel["export"] as Dictionary).get("energy", 0)) == exp_cap
+		print("[%s] Trade UI: export limitato dal cap (%d)" % ["OK" if cap_ok else "FAIL", exp_cap])
+		if not cap_ok: fails += 1
+		board._trade_sel = {}
+		board._close_popup()
+
 		# Abilità ongoing: "extra_draw_per_round" → pesca 7 invece di 6 a inizio round.
 		var po: PlayerState = board.gs.players[0]
 		po.growth_cards.append({"display_name": "Tactical Flexibility", "effect_ops": [{"op": "ongoing", "tag": "extra_draw_per_round"}]})

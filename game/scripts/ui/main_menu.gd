@@ -4,8 +4,11 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.2"
+const VERSION := "v0.7.3"
 const CHANGELOG := [
+	"v0.7.3 — Azione TRADE interattiva: scegli Export/Import per risorsa con i cap dalle nazioni amiche (simboli Export/Import) e dalla carta Trade Deals (limite 2/3 transazioni, una risorsa per transazione). Export incassa money, Import lo spende; +1 Diplomazia comprando dagli altri. Δ money in tempo reale.",
+	"v0.7.2 — Audit costi: ogni azione paga il suo costo; rifiutata con messaggio se non puoi. La produzione secondaria consuma le primarie. Trade muove davvero le risorse.",
+	"v0.7.0 — Move multi-regione e abilità continuative (ongoing): pesca extra a inizio round, pannello once-per-round.",
 	"v0.6.7 — Regole: ordine di turno corretto (più VP gioca per primo). Strategic Asset nel setup (pesca 3, tiene 2 → VP iniziali). Vedi TODO.md per lo stato regole↔meccanica.",
 	"v0.6.6 — Cubi produzione ricalibrati (3 colonne: erano sbagliati materie prime/grano/diplomazia). Linguette potenze con BANDIERE su barra dedicata in basso (non coprono la mappa). Mano collassabile (toggle) così non copre mai la plancia.",
 	"v0.6.5 — Setup iniziale esatto: produzioni di partenza corrette per ogni potenza, risorse iniziali = produzione, nazioni amiche iniziali complete (4-5 per potenza). Nazioni amiche a destra della plancia (griglia). Prosperità e risorse ricalibrate.",

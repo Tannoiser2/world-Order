@@ -21,6 +21,8 @@ const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "tra
 	"gain_money_per_fdi", "increase_production", "reset_influence", "convert_influence",
 	"ready_country", "trash", "sell_armies", "spend_for_gain", "spend_then", "repeat",
 	"discard", "increase_prosperity"]
+## Risorse commerciabili nella Trade action (no armi/diplomazia per ora).
+const TRADE_RES := ["energy", "raw_materials", "food", "consumer_goods", "services"]
 
 var gs: GameState
 var active_seat := 0
@@ -60,6 +62,8 @@ var region_countries: Dictionary = {}   # rid -> { available:[c,c], deck:[...] }
 var market_deck: Array = []             # mazzo Market mescolato
 var market_display: Array = []          # carte Market scoperte (acquistabili)
 var growth_pool: Array = []             # tutte le Growth card (per livello)
+var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per potenza
+var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -101,6 +105,7 @@ func _ready() -> void:
 	market_deck = DataLoader.load_market().duplicate()
 	market_deck.shuffle()
 	growth_pool = DataLoader.load_growth()
+	trade_deals = DataLoader.load_trade_deals()
 	_refill_market()
 
 	# La mappa vive dentro un nodo pannabile/zoomabile (pinch + trascinamento).
@@ -580,6 +585,12 @@ func _advance_play() -> void:
 				_advance_play())
 		"get_growth":
 			_pick_growth()
+		"trade":
+			if op.has("exports") or op.has("imports"):
+				EffectExecutor.run(gs, _active().power, [op])   # trade predefinito dalla carta
+				_advance_play()
+			else:
+				_open_trade_ui()                                # trade generico: scelta interattiva
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
@@ -775,6 +786,151 @@ func _pick_growth() -> void:
 				_status("Ottenuta Growth: %s (+%d VP)." % [card.get("display_name", "?"), int(card.get("victory_points", 0))])
 		_after_change()
 		_advance_play())
+
+
+# --- Trade action interattiva (Economic) ---
+
+func _trade_deal(power: String) -> Dictionary:
+	for c in trade_deals.get("cards", []):
+		if String(c.get("power", "")) == power:
+			return c
+	return {"exports": 2, "imports": 2, "import_from": {}}
+
+
+## Quante unità di R puoi esportare: simboli Export sulle nazioni amiche, limitato
+## da quanto ne possiedi.
+func _trade_export_cap(p: PlayerState, R: String) -> int:
+	var n := 0
+	for c in p.allied_countries:
+		n += (c.get("exports", []) as Array).count(R)
+	return mini(n, int(p.resources.get(R, 0)))
+
+
+## Quante unità di R puoi importare: simboli Import sulle amiche + offerte dagli
+## altri giocatori (import_from della Trade Deals card).
+func _trade_import_cap(p: PlayerState, R: String) -> int:
+	var n := 0
+	for c in p.allied_countries:
+		n += (c.get("imports", []) as Array).count(R)
+	var td := _trade_deal(p.power)
+	for other in (td.get("import_from", {}) as Dictionary):
+		n += (td["import_from"][other] as Array).count(R)
+	return n
+
+
+func _trade_delta() -> int:
+	var d := 0
+	for R in (_trade_sel.get("export", {}) as Dictionary):
+		d += int(Actions.EXPORT_GAIN.get(R, 0)) * int(_trade_sel["export"][R])
+	for R in (_trade_sel.get("import", {}) as Dictionary):
+		d -= int(Actions.IMPORT_COST.get(R, 0)) * int(_trade_sel["import"][R])
+	return d
+
+
+func _open_trade_ui() -> void:
+	_trade_sel = {"export": {}, "import": {}}
+	_render_trade_ui()
+
+
+func _trade_adjust(R: String, kind: String, delta: int) -> void:
+	var p := _active()
+	var sel: Dictionary = _trade_sel[kind]
+	var other: Dictionary = _trade_sel["import" if kind == "export" else "export"]
+	var maxT := int(_trade_deal(p.power).get(kind + "s", 2))
+	var cap := _trade_export_cap(p, R) if kind == "export" else _trade_import_cap(p, R)
+	var newq := clampi(int(sel.get(R, 0)) + delta, 0, cap)
+	if newq > 0 and other.has(R):
+		return  # una risorsa in una sola transazione (export O import)
+	if newq > 0 and not sel.has(R) and sel.size() >= maxT:
+		return  # superato il numero di transazioni della Trade Deals card
+	if newq == 0:
+		sel.erase(R)
+	else:
+		sel[R] = newq
+	_render_trade_ui()
+
+
+func _trade_confirm() -> void:
+	var p := _active()
+	for R in (_trade_sel["export"] as Dictionary):
+		var q := int(_trade_sel["export"][R])
+		p.resources[R] = int(p.resources.get(R, 0)) - q
+		p.money += int(Actions.EXPORT_GAIN.get(R, 0)) * q
+	var imported := false
+	for R in (_trade_sel["import"] as Dictionary):
+		var q := int(_trade_sel["import"][R])
+		p.money -= int(Actions.IMPORT_COST.get(R, 0)) * q
+		p.gain_resource(R, q, 0)
+		imported = true
+	if imported:
+		p.gain_resource("diplomacy", 1, 0)   # +1 Diplomazia comprando dagli altri
+	_close_popup()
+	_trade_sel = {}
+	_status("Trade completato.")
+	_refresh()
+	_advance_play()
+
+
+## Costruisce/aggiorna il popup di Trade.
+func _render_trade_ui() -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var p := _active()
+	var td := _trade_deal(p.power)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", st)
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6)
+	panel.add_child(vb)
+	var head := Label.new()
+	head.text = "TRADE — Export max %d · Import max %d   ·   Δ money: %+d" % [int(td.get("exports", 2)), int(td.get("imports", 2)), _trade_delta()]
+	head.add_theme_font_size_override("font_size", _base_fs() + 2)
+	head.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
+	vb.add_child(head)
+	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation", 14); grid.add_theme_constant_override("v_separation", 4)
+	vb.add_child(grid)
+	for R in TRADE_RES:
+		var name := Label.new()
+		name.text = "%s (hai %d)" % [RES_LABEL.get(R, R), int(p.resources.get(R, 0))]
+		name.custom_minimum_size = Vector2(150, 0)
+		grid.add_child(name)
+		grid.add_child(_trade_stepper(R, "export", _trade_export_cap(p, R)))
+		grid.add_child(_trade_stepper(R, "import", _trade_import_cap(p, R)))
+	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
+	vb.add_child(btns)
+	var ok := Button.new(); ok.text = "✓ Conferma Trade"; ok.pressed.connect(_trade_confirm)
+	btns.add_child(ok)
+	var cancel := Button.new(); cancel.text = "Annulla"
+	cancel.pressed.connect(func(): _close_popup(); _trade_sel = {}; _advance_play())
+	btns.add_child(cancel)
+
+
+func _trade_stepper(R: String, kind: String, cap: int) -> Control:
+	var box := HBoxContainer.new(); box.add_theme_constant_override("separation", 4)
+	var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 0)
+	minus.disabled = cap == 0
+	minus.pressed.connect(_trade_adjust.bind(R, kind, -1))
+	box.add_child(minus)
+	var q := int((_trade_sel.get(kind, {}) as Dictionary).get(R, 0))
+	var lab := Label.new()
+	var unit := int(Actions.EXPORT_GAIN.get(R, 0)) if kind == "export" else int(Actions.IMPORT_COST.get(R, 0))
+	lab.text = "%s %d/%d (%s%d/u)" % ["Exp" if kind == "export" else "Imp", q, cap, "+" if kind == "export" else "−", unit]
+	lab.custom_minimum_size = Vector2(118, 0)
+	box.add_child(lab)
+	var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(30, 0)
+	plus.disabled = cap == 0 or q >= cap
+	plus.pressed.connect(_trade_adjust.bind(R, kind, 1))
+	box.add_child(plus)
+	return box
 
 
 func _pick_resource(prompt: String, cb: Callable) -> void:
