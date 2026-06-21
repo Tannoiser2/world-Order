@@ -13,7 +13,7 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 - **Influenza**: slot permanenti/temporanei, push FIFO, Reset, Convert (`influence_track.gd`).
 - **Scoring Regione**: VP/cubo + maggioranze + spareggi + cubi locali (`scoring.gd`), esempio MENA del manuale.
 - **THREAT / Defense**: Armate, Military Focus, Engage, NATO (`threat.gd`), esempi 1–2.
-- **Le 8 azioni** (costi + effetti): Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce (`actions.gd`).
+- **Le 8 azioni** (costi + effetti), **tutte giocabili e risolte sul tabellone** dal flusso UI: Improve Relations, Engage, Trade, Invest, Move, Build a Base, Get a Growth Card, Produce (`actions.gd` + `board_view._advance_play`).
 - **Produzione** primaria/secondaria + cap 10 → money; **Prosperità** (CG → VP+money) (`game_phases.gd`).
 - **Macchina fasi/round** (3 fasi × 6 round), **Research/Market** (bonus, +2 Domestic, acquisto), **Add Auto-Influence** (2–3 giocatori).
 - **Aftermath**: Return on Investments, 3 token Maggioranza + spareggi + regola 2 giocatori (esempi pag. 19/21 riprodotti).

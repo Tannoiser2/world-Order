@@ -4,7 +4,7 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.6.8"
+const VERSION := "v0.6.9"
 const CHANGELOG := [
 	"v0.6.7 — Regole: ordine di turno corretto (più VP gioca per primo). Strategic Asset nel setup (pesca 3, tiene 2 → VP iniziali). Vedi TODO.md per lo stato regole↔meccanica.",
 	"v0.6.6 — Cubi produzione ricalibrati (3 colonne: erano sbagliati materie prime/grano/diplomazia). Linguette potenze con BANDIERE su barra dedicata in basso (non coprono la mappa). Mano collassabile (toggle) così non copre mai la plancia.",
