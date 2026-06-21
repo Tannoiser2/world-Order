@@ -114,6 +114,7 @@ static func execute_invest(gs: GameState, owner: String, country: Dictionary,
 	p.exhausted[cid] = true
 	if gs.supply.get("fdi", 0) > 0:
 		gs.supply["fdi"] -= 1
+	p.fdi_values.append(int(country.get("value", 0)))   # token FDI per Return on Investments
 	var region: String = country.get("region", "")
 	var vp := 0
 	if gs.regions.has(region):

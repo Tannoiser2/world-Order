@@ -72,6 +72,7 @@ var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
+var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1×/round)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -2567,9 +2568,13 @@ func _do_focus(f: int) -> void:
 	if not playing_card.is_empty():
 		return
 	var p := _active()
-	if _plays_left <= 0:
-		_status("Turno esaurito: la Focus action richiede un'azione. Premi «Fine turno».")
+	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
+	# si fa una volta per round. Dopo, ri-cliccare sposta solo il marker.
+	if int(_focus_round.get(p.power, -1)) == gs.round:
+		p.focus = f
+		_after_change()
 		return
+	_focus_round[p.power] = gs.round
 	p.focus = f
 	var key: String = ["domestic", "diplomatic", "military"][f]
 	var fb: Dictionary = focus_bonuses.get(key, {})
@@ -2598,7 +2603,6 @@ func _do_focus(f: int) -> void:
 			made = Actions.execute_produce(p, String(rt))
 		if made > 0:
 			produced.append("%s +%d" % [RES_LABEL.get(rt, rt), made])
-	_plays_left -= 1
 	var msg := "Focus %s" % FOCUS_NAME[f]
 	if readied > 0:
 		msg += " — preparate %d Country card" % readied
@@ -2772,6 +2776,12 @@ func _run_aftermath() -> void:
 	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
 	var ai_art := _apply_auto_influence(lines)
 
+	# Return on Investments: 2 money per ogni FDI × valore del Paese (1° passo Aftermath).
+	for p in gs.players:
+		var roi := Aftermath.return_on_investments(p, p.fdi_values, [])
+		if roi > 0:
+			lines.append("%s: +%d money (Return on Investments)" % [p.power.to_upper(), roi])
+
 	# Increase Prosperity (auto, se il giocatore ha abbastanza Consumer Goods).
 	var pb: Dictionary = DataLoader.load_player_boards()
 	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
@@ -2801,12 +2811,26 @@ func _run_aftermath() -> void:
 	_show_summary(lines, func(): _next_round(), ai_art)
 
 
+## Reveal Country Cards (Preparation): in ogni Regione ruota una carta — la più
+## vecchia disponibile torna in fondo al mazzo e ne compare una nuova.
+func _reveal_country_cards() -> void:
+	for rid in region_countries:
+		var rc: Dictionary = region_countries[rid]
+		var avail: Array = rc.get("available", [])
+		var deck: Array = rc.get("deck", [])
+		if deck.is_empty() or avail.is_empty():
+			continue
+		deck.push_front(avail.pop_front())   # la più vecchia in fondo al mazzo (left deck)
+		avail.append(deck.pop_back())        # rivela la nuova (top del right deck)
+
+
 func _next_round() -> void:
 	if gs.round >= GameState.TOTAL_ROUNDS:
 		_game_end()
 		return
 	gs.round += 1
 	gs.phase = WO.Phase.PREPARATION
+	_reveal_country_cards()                    # Preparation: ruota le carte Country delle Regioni
 	GamePhases.determine_turn_order(gs)
 	GamePhases.produce_primary_resources(gs)
 	# nuova mano: scarti = mano+giocate, poi pesca 6 (+1 per ogni "extra_draw_per_round").

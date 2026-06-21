@@ -31,6 +31,7 @@ var armies_available: int = 0     # Army token sulla plancia (non sul Resource T
 var strategic_assets: Array = []
 var growth_cards: Array = []
 var used_strategic_assets: Array = []
+var fdi_values: Array = []         # valori dei Paesi con un tuo token FDI (per Return on Investments)
 
 const RESOURCE_CAP := 10
 
