@@ -18,7 +18,7 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 
 ### 🔴 Discrepanze rispetto al regolamento (da correggere)
 
-Audit regolamento↔codice (3 aree). _Azioni: audit ancora in corso, da aggiungere._
+Audit regolamento↔codice completo (3 aree: azioni, setup/fasi, aftermath/scoring).
 
 #### Aftermath / Scoring / Fine partita — CRITICHE
 1. **Abilità speciali potenze MAI applicate** (pag. 20). `global_superpower_status_penalty` / `secured_sphere_vp` / `global_fdi_network_vp` esistono in `aftermath.gd` ma sono chiamate **solo dai test**: nello scoring reale (`board_view._run_aftermath`, `_game_end`, `game_runner.score_majority_tokens`) non vengono mai invocate. → USA non paga mai la penalità (−12/−8/−5/−2 Regioni), Russia non prende +2/zona con più Armate, Cina non prende i VP per Regioni con FDI.
@@ -55,6 +55,14 @@ Audit regolamento↔codice (3 aree). _Azioni: audit ancora in corso, da aggiunge
 - [ ] FDI/Base anche sulle Country sul tabellone (non solo nel cassetto).
 - [ ] Maggioranza a inizio partita (tutti pari) — valutare se nasconderla.
 - [ ] UX dopo Move: cassetto resta chiuso.
+
+### 🔵 Da playtest utente (2026-06-21)
+- [ ] **Market/Research: carte ENORMI e sovrapposte, illeggibili.** Nel popup Research il Market e le Growth hanno immagini troppo grandi che coprono il testo e si accavallano. Ridimensionare/impaginare a griglia leggibile (vedi screenshot).
+- [ ] **Fase di PREPARATION: manca la scelta del FOCUS e le sue azioni.** Durante la preparazione non c'è la scelta del Focus (Domestic/Diplomatic/Military) né le azioni conseguenti (ready Country + produzione del tipo del Focus). Il changelog la dava come fatta (v0.7.12/0.7.19): verificare se è regredita o non è esposta nel flusso UI.
+- [ ] **Fase di AFTERMATH troppo automatizzata + manca l'Increase Prosperity.** La fase conseguenze è tutta automatica; va resa interattiva dove il regolamento prevede scelte, e in particolare **manca l'incremento di Prosperità** (collegare ↔ audit punto 7: Increase Prosperity deve essere una scelta del giocatore, non forzata).
+- [ ] **Mancano le carte Auto-Influence delle potenze NON giocanti** (a video). Le potenze neutrali non mostrano/applicano l'Auto-Influence (collegare ↔ audit punti 9–10: vanno 2 carte per round, money commercio condizionato).
+- [ ] **Carte "prodotto" delle potenze: sono PIÙ DI UNA.** Russia = **3**, EU / USA / Cina = **2** ciascuna. La UI Commercio ne mostra una sola per potenza: mostrarle tutte (ognuna coi suoi simboli Export/Import).
+- [ ] **Commercio (Trade) da rifare: spostando i PRODOTTI sulla board, non con una tabella di testo.** Sostituire il popup tabellare con un'interazione drag/posa dei prodotti sul tabellone.
 
 ---
 
