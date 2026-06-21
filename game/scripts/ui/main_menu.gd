@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.22"
+const VERSION := "v0.7.23"
 const CHANGELOG := [
+	"v0.7.23 — Le carte 'prodotto' delle superpotenze nel Commercio ora usano l'arte ufficiale (es. Russia: barile/energia + roccia/materie prime) invece delle icone generiche. I carri armati (Armate) nelle Regioni sono ora centrati sull'area armate calibrata di ogni Regione (sopra le sagome stampate), non più nel centro generico del riquadro.",
 	"v0.7.22 — Segnalini Ordine di Turno ricalibrati nelle caselle 1°-4° (erano spostati nella mappa). Cubi Influenza un po' più grandi. Le Growth card acquisite ora compaiono come carte vicino alla plancia (colonna accanto agli Strategic Asset), non più solo come testo.",
 	"v0.7.21 — Cubi Influenza ora posati sulle CASELLE stampate di ogni Regione (slot permanenti sopra la linea, temporanei sotto) invece che ammucchiati nell'angolo: coordinate calibrate per tutte e 7 le Regioni. La mappa inoltre si ri-centra/adatta sempre alla viewport finché non la sposti a mano.",
 	"v0.7.20 — UI tabellone e plancia: la plancia NON si deforma più (rapporto bloccato); la barra in alto è ora FUORI dalla mappa (mappa incastonata tra barra e linguette) e la mappa si trascina di nuovo col mouse. Ricalibrate le carte Country sulle Regioni, i cubi di Produzione e i token Risorse sulla plancia, e i segnalini Ordine di Turno (più grandi e centrati). Il cassetto è ora a colonne (plancia · nazioni amiche · Commercio con carte prodotto · Strategic Asset in verticale a destra), senza etichette e senza icone illeggibili.",
