@@ -28,6 +28,8 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 - 🟢 **Focus iniziale = Domestic** (pag. 9).
 - 🟢 **Nazioni amiche iniziali** complete (4–5 per potenza, pag. 9 punto 14).
 - 🟢 Mazzo iniziale 12 carte (doppioni inclusi).
+- 🟢 **Ordine di turno** = più VP per primo (spareggio: meno money), regolamento pag. 9.
+- 🟢 **Strategic Asset**: pesca 3 dei 5, ne tiene 2, **VP iniziali = somma** (pag. 9 punto 17). *(Auto: tiene i 2 con più VP; la scelta manuale arriverà col flusso interattivo.)*
 
 ### UI / presentazione
 - 🟢 Mappa con **zoom + trascinamento**; carte nazione (immagini originali) negli **slot designati** (coordinate dal salvataggio TTS).
@@ -40,7 +42,6 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 
 ## 🟡 Fatto ma da correggere / raffinare
 
-- 🟡 **Ordine di turno**: il codice mette **meno VP per primo** (`determine_turn_order`), ma il regolamento (pag. 9 punto 19) dice **più VP = 1° posto** (spareggio: meno money gioca prima). *Da confermare e, se è un bug, invertire.*
 - 🟡 **Calibrazione fine segnalini**: produzione ora centrata; prosperità/risorse buone — restano ritocchi al pixel su feedback.
 - 🟡 **`effect_modifiers` e abilità `ongoing`**: codificate nei dati ma non tutte agganciate al flusso interattivo (es. *count Energy ×2*, pesca extra/round, once‑per‑round, money↔Servizi nel costo Growth).
 - 🟡 **Focus (passi)**: *Ready N Country cards* e *Produce X* nei passi di Focus (i bonus chiave — Engage −2, +2 Research, +1 THREAT/Defense — sono attivi).
@@ -51,7 +52,6 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 
 ## 🔴 Mancante
 
-- 🔴 **Strategic Asset cards** (setup pag. 9 punto 17): pescare 3, tenerne 2, **VP iniziali = somma dei 2**. Non implementato (i dati esistono in `data/strategic_assets.json`).
 - 🔴 **Trade tra giocatori** con Commerce cards (export/import inter‑player + 1 Services di bonus): tabelle e Trade Deals in `data/`, manca l'orchestrazione.
 - 🔴 **Auto‑Influence** completo per le potenze non giocate (parziale).
 - 🔴 **Modalità Online** (placeholder nel menu).
@@ -61,8 +61,8 @@ che riproducono molti esempi numerici del manuale (vedi `game/RULES_COVERAGE.md`
 ---
 
 ## Prossimi passi suggeriti (priorità)
-1. Confermare/sistemare l'**ordine di turno** (più VP per primo).
-2. **Strategic Asset** in setup (scelta 2 → VP iniziali).
-3. Agganciare `effect_modifiers` / abilità `ongoing` al flusso del round.
-4. **Trade inter‑giocatore** (Commerce cards).
-5. Flusso turno guidato dalla UI (hot‑seat completo) + eventuale bot.
+1. ~~Ordine di turno~~ ✓ · ~~Strategic Asset in setup~~ ✓
+2. Agganciare `effect_modifiers` / abilità `ongoing` al flusso del round.
+3. **Trade inter‑giocatore** (Commerce cards).
+4. Flusso turno guidato dalla UI (hot‑seat completo) + eventuale bot.
+5. Armate iniziali = produzione (con aggiornamento dei 2 test).

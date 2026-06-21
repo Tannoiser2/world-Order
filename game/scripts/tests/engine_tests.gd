@@ -107,13 +107,13 @@ static func run_all() -> Dictionary:
 		pp.resources["consumer_goods"] == 3 and pp.victory_points == 2 and pp.money == 10)
 	check.call("prosperity: max 1 step/round", not GamePhases.increase_prosperity(pp, steps))
 
-	# --- 6. Ordine di turno (meno VP per primo) ---
+	# --- 6. Ordine di turno (PIÙ VP per primo, regolamento pag. 9) ---
 	var gt := GameSetup.new_game(["usa", "china", "russia"])
 	gt.players[0].victory_points = 10
 	gt.players[1].victory_points = 5
 	gt.players[2].victory_points = 20
 	GamePhases.determine_turn_order(gt)
-	check.call("turn order: chi ha meno VP per primo", gt.turn_order[0] == 1)
+	check.call("turn order: chi ha più VP per primo", gt.turn_order[0] == 2)
 
 	# --- 7. Azioni: calcoli di costo (aritmetica degli esempi del regolamento) ---
 	# Improve Relations: Australia(3), exhaust Singapore(2) -> 1.
