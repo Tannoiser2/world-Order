@@ -64,6 +64,7 @@ var market_display: Array = []          # carte Market scoperte (acquistabili)
 var growth_pool: Array = []             # tutte le Growth card (per livello)
 var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per potenza
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
+var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -415,31 +416,43 @@ func _attach_preview(btn: Control, tex: Texture2D) -> void:
 	btn.mouse_exited.connect(func(): card_preview.visible = false)
 
 
-## Click su una Country disponibile sul board: target di Improve Relations
-## (durante una carta) oppure azione diretta.
+## Click su una Country disponibile sul board: target di Improve Relations.
+## Solo durante il gioco di una carta con effetto improve_relations: serve sempre
+## giocare la carta (niente azione diretta).
 func _on_country_pressed(country: Dictionary, region: String) -> void:
 	if awaiting == "board_country":
 		awaiting = ""
-		_do_improve_relations(country, region)
-		_advance_play()
-		return
-	if playing_card.is_empty():
+		# La risoluzione (con eventuale sconto) avanza la carta da sé.
 		_do_improve_relations(country, region)
 
 
 func _do_improve_relations(country: Dictionary, region: String) -> void:
+	# Prima offri di esaurire nazioni amiche della Regione per scontare il costo,
+	# poi risolvi.
+	_pick_exhaust_discount(region,
+		"Improve Relations con %s (valore %d)" % [country.get("display_name", ""), int(country.get("value", 0))],
+		func(chosen: Array): _resolve_improve(country, region, chosen))
+
+
+func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> void:
 	var p := _active()
 	var disc := Modifiers.improve_discount(active_mods)
-	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), [], disc)
+	var values := _values_of(chosen)
+	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), values, disc)
 	if p.resources.get("diplomacy", 0) < cost:
 		_status("Diplomazia insufficiente per Improve Relations con %s (serve %d)." % [country.get("display_name", ""), cost])
+		_advance_play()
 		return
-	if Actions.execute_improve_relations(gs, p.power, country, [], disc):
-		# rimuovi dalle disponibili e rifornisci
+	if Actions.execute_improve_relations(gs, p.power, country, values, disc):
+		for c in chosen:
+			p.exhausted[c.get("id", "")] = true   # gli alleati usati per lo sconto si esauriscono
 		region_countries.get(region, {}).get("available", []).erase(country)
 		_refill_available(region)
-		_status("%s: Improve Relations con %s (−%d Dip)." % [p.power.to_upper(), country.get("display_name", ""), cost])
+		_status("%s: Improve Relations con %s (−%d Dip%s)." % [
+			p.power.to_upper(), country.get("display_name", ""), cost,
+			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 		_after_change()
+	_advance_play()
 
 
 ## Click su una Country alleata (davanti al giocatore): target di Invest/Build a
@@ -493,22 +506,8 @@ func _on_region_pressed(region: String) -> void:
 	if awaiting == "region":
 		_resolve_region_op(region)
 		return
-	if awaiting != "":
-		return  # in attesa di una Country, non fare Engage rapido
-	# nessuna carta in gioco: Engage rapido (demo)
-	_do_engage(region)
-
-
-func _do_engage(region: String) -> void:
-	var p := _active()
-	var rd: Dictionary = gs.regions[region]
-	var cost := Actions.engage_cost(int(rd["engage_cost"]), [], p.focus == WO.Focus.DIPLOMATIC)
-	if p.resources.get("diplomacy", 0) < cost:
-		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
-		return
-	var vp := Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary")
-	_status("%s: Engage in %s (−%d Dip, +%d VP)." % [p.power.to_upper(), region.replace("_", " "), cost, vp])
-	_after_change()
+	# Senza una carta in gioco non si fa nulla: ogni azione richiede di giocare
+	# la carta corrispondente dalla mano.
 
 
 # --- Gioco di una carta ---
@@ -611,13 +610,13 @@ func _resolve_region_op(region: String) -> void:
 	awaiting_op = {}
 	var name := String(op.get("op", ""))
 	var p := _active()
+	if name == "engage":
+		# Offri lo sconto esaurendo alleati della Regione, poi risolvi.
+		_pick_exhaust_discount(region,
+			"Engage in %s (costo %d Dip)" % [region.replace("_", " "), int(gs.regions[region]["engage_cost"])],
+			func(chosen: Array): _resolve_engage(region, chosen))
+		return
 	match name:
-		"engage":
-			var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
-			var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), [], p.focus == WO.Focus.DIPLOMATIC, ed)
-			if Actions.execute_engage(gs, p.power, region, [], p.focus == WO.Focus.DIPLOMATIC, "temporary", ed) < 0:
-				_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
-				_layout_overlays(); _advance_play(); return
 		"add_influence", "place_armies":
 			var slot := "permanent" if bool(op.get("permanent", false)) else "temporary"
 			gs.regions[region]["track"].add(p.power, slot)
@@ -627,6 +626,119 @@ func _resolve_region_op(region: String) -> void:
 	_status("%s su %s." % [name, region.replace("_", " ")])
 	_layout_overlays()
 	_advance_play()
+
+
+func _resolve_engage(region: String, chosen: Array) -> void:
+	var p := _active()
+	var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
+	var values := _values_of(chosen)
+	var diplo := p.focus == WO.Focus.DIPLOMATIC
+	var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), values, diplo, ed)
+	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, "temporary", ed)
+	if vp < 0:
+		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
+	else:
+		for c in chosen:
+			p.exhausted[c.get("id", "")] = true   # alleati usati per lo sconto
+		_status("%s: Engage in %s (−%d Dip, +%d VP%s)." % [
+			p.power.to_upper(), region.replace("_", " "), cost, vp,
+			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
+	_layout_overlays()
+	_advance_play()
+
+
+# --- Sconto diplomatico: esaurisci nazioni amiche della Regione ---
+
+## Somma dei valori delle nazioni scelte (sconto in Diplomazia).
+func _values_of(countries: Array) -> Array:
+	var out := []
+	for c in countries:
+		out.append(int(c.get("value", 0)))
+	return out
+
+
+## Nazioni amiche della Regione non ancora esaurite (deduplicate per id): sono i
+## candidati per scontare Engage/Improve Relations esaurendole.
+func _exhaustable_allies(region: String) -> Array:
+	var p := _active()
+	var out := []
+	var seen := {}
+	for c in p.allied_countries:
+		var id := String(c.get("id", ""))
+		if id in seen or String(c.get("region", "")) != region:
+			continue
+		if bool(p.exhausted.get(id, false)):
+			continue
+		seen[id] = true
+		out.append(c)
+	return out
+
+
+## Apre un popup per scegliere quali nazioni amiche della Regione esaurire e
+## scontare il costo. cb riceve le nazioni scelte (le esaurisce chi risolve, solo
+## se l'azione va a buon fine). Senza candidati, chiama subito cb([]).
+func _pick_exhaust_discount(region: String, title: String, cb: Callable) -> void:
+	var elig := _exhaustable_allies(region)
+	if elig.is_empty():
+		cb.call([])
+		return
+	_exhaust_sel = {}
+	_render_exhaust_ui(region, elig, title, cb)
+
+
+func _render_exhaust_ui(region: String, elig: Array, title: String, cb: Callable) -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new(); dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", st)
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6); vb.custom_minimum_size = Vector2(340, 0)
+	panel.add_child(vb)
+	var discount := 0
+	for c in elig:
+		if bool(_exhaust_sel.get(c.get("id", ""), false)):
+			discount += int(c.get("value", 0))
+	var head := Label.new()
+	head.text = "%s\nEsaurisci alleati della Regione per scontare:  −%d Dip" % [title, discount]
+	head.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
+	vb.add_child(head)
+	for c in elig:
+		var id := String(c.get("id", ""))
+		var on := bool(_exhaust_sel.get(id, false))
+		var b := Button.new()
+		b.toggle_mode = true
+		b.button_pressed = on
+		b.text = "%s %s (valore %d)" % ["☑" if on else "☐", c.get("display_name", "?"), int(c.get("value", 0))]
+		b.pressed.connect(func():
+			_exhaust_sel[id] = not bool(_exhaust_sel.get(id, false))
+			_render_exhaust_ui(region, elig, title, cb))
+		vb.add_child(b)
+	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
+	vb.add_child(btns)
+	var ok := Button.new(); ok.text = "✓ Conferma"
+	ok.pressed.connect(func():
+		var chosen := []
+		for c in elig:
+			if bool(_exhaust_sel.get(c.get("id", ""), false)):
+				chosen.append(c)
+		_exhaust_sel = {}
+		_close_popup()
+		cb.call(chosen))
+	btns.add_child(ok)
+	var skip := Button.new(); skip.text = "Salta (nessuno sconto)"
+	skip.pressed.connect(func():
+		_exhaust_sel = {}
+		_close_popup()
+		cb.call([]))
+	btns.add_child(skip)
 
 
 # --- Move multi-Regione ---

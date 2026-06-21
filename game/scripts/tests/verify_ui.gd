@@ -39,14 +39,14 @@ func _init() -> void:
 		board.drawer_open = false
 		board._refresh()
 
-		# flusso di click: Engage in Europe (le risorse iniziali sono 0: la Diplomacy
-		# si produce in gioco, qui la forniamo per testare il flusso).
+		# Senza una carta in gioco, toccare una Regione NON fa Engage: ogni azione
+		# richiede di giocare la carta corrispondente.
 		board._active().resources["diplomacy"] = 8
 		var before: int = board.gs.regions["europe"]["track"].count(board._active().power)
 		board._on_region_pressed("europe")
 		var after: int = board.gs.regions["europe"]["track"].count(board._active().power)
-		var ok2 := after == before + 1
-		print("[%s] click Regione -> Engage aggiunge Influenza (%d->%d)" % ["OK" if ok2 else "FAIL", before, after])
+		var ok2 := after == before   # nessun cambiamento
+		print("[%s] niente Engage rapido senza carta (serve giocare la carta)" % ["OK" if ok2 else "FAIL"])
 		if not ok2: fails += 1
 		var hand_n: int = board._active().hand.size()
 		print("[%s] mano del giocatore popolata (%d carte)" % ["OK" if hand_n > 0 else "FAIL", hand_n])
@@ -57,6 +57,7 @@ func _init() -> void:
 		ac.resources["diplomacy"] = 20  # isola il test dal consumo precedente
 		var card_region := {"display_name": "Test Engage", "effect_ops": [{"op": "engage"}]}
 		ac.hand.append(card_region)
+		for c0 in ac.allied_countries: ac.exhausted[String(c0.get("id", ""))] = true  # niente popup sconto
 		board._plays_left = 9
 		board._play_card(card_region)
 		var aw_ok: bool = board.awaiting == "region"
@@ -78,6 +79,7 @@ func _init() -> void:
 		var allied_b: int = ac.allied_countries.size()
 		var card_ir := {"display_name": "Test IR", "effect_ops": [{"op": "improve_relations"}]}
 		ac.hand.append(card_ir)
+		for c1 in ac.allied_countries: ac.exhausted[String(c1.get("id", ""))] = true  # niente popup sconto
 		board._plays_left = 9
 		board._play_card(card_ir)
 		var ir_await: bool = board.awaiting == "board_country"
@@ -90,6 +92,29 @@ func _init() -> void:
 			and (card_ir in ac.played)
 		print("[%s] Improve Relations da board: alleato +1, Country rifornita, carta in scarti" % ["OK" if ir_ok else "FAIL"])
 		if not ir_ok: fails += 1
+
+		# Sconto diplomatico: esaurendo un alleato della Regione, l'Engage costa meno
+		# Diplomazia (e l'alleato resta esaurito).
+		var pdsc: PlayerState = board._active()
+		pdsc.allied_countries.append({"id": "ally_disc", "display_name": "Disc Ally", "region": "europe", "value": 3, "exports": [], "imports": []})
+		pdsc.exhausted["ally_disc"] = false
+		pdsc.resources["diplomacy"] = 100
+		var base_cost: int = int(board.gs.regions["europe"]["engage_cost"])
+		var card_eng := {"display_name": "Eng disc", "effect_ops": [{"op": "engage"}]}
+		pdsc.hand.append(card_eng)
+		board._plays_left = 9
+		board._play_card(card_eng)
+		var dip_pre2: int = pdsc.resources["diplomacy"]
+		board._on_region_pressed("europe")   # apre il popup sconto (1 alleato in europe)
+		board._exhaust_sel = {"ally_disc": true}
+		var ok_btn: Button = _find_button(board.popup_layer, "Conferma")
+		if ok_btn: ok_btn.pressed.emit()
+		var spent2: int = dip_pre2 - pdsc.resources["diplomacy"]
+		var expected2: int = Actions.engage_cost(base_cost, [3], pdsc.focus == WO.Focus.DIPLOMATIC, 0)
+		var disc_ok: bool = ok_btn != null and spent2 == expected2 and bool(pdsc.exhausted.get("ally_disc", false)) \
+			and (card_eng in pdsc.played)
+		print("[%s] Engage scontato esaurendo un alleato (−3 valore: speso %d, atteso %d)" % ["OK" if disc_ok else "FAIL", spent2, expected2])
+		if not disc_ok: fails += 1
 
 		# Invest via Country alleata davanti al giocatore (awaiting allied_country).
 		ac.money = 50
