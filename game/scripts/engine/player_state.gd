@@ -32,6 +32,9 @@ var strategic_assets: Array = []
 var growth_cards: Array = []
 var used_strategic_assets: Array = []
 var fdi_values: Array = []         # valori dei Paesi con un tuo token FDI (per Return on Investments)
+var fdi_countries: Array = []      # id dei Paesi su cui hai un token FDI (per il rendering)
+var bases: Array = []              # id dei Paesi su cui hai una Base militare
+var engage_tokens: Array = []      # Regioni su cui hai un Engage token (max 3)
 
 const RESOURCE_CAP := 10
 

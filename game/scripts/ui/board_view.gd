@@ -240,6 +240,7 @@ func _layout_overlays() -> void:
 	_layout_card_slots()
 	_layout_influence_cubes()
 	_layout_army_badges()
+	_layout_engage_tokens()
 	_layout_score_markers()
 	_layout_turn_order_markers()
 	_layout_round_marker()
@@ -530,6 +531,36 @@ func _layout_army_badges() -> void:
 				lbl.position = Vector2(x + bw * 0.72, y - h * 0.04)
 				overlay.add_child(lbl)
 
+
+
+## Engage token (stretta di mano colorata per potenza) sulle Regioni dove il
+## giocatore ha "engaged": posati in fila vicino alla traccia Influenza.
+func _layout_engage_tokens() -> void:
+	var slots: Dictionary = layout.get("influence_slots", {})
+	var h := board_native.y * 0.030
+	var w := h * 1.47
+	for region in gs.regions:
+		var conf: Dictionary = slots.get(region, {})
+		if conf.is_empty():
+			continue
+		var temp: Array = conf.get("temporary", [])
+		if temp.is_empty():
+			continue
+		# Punto di posa: sotto-sinistra della traccia temporanea (zona "handshake").
+		var bx := float(temp[0][0]) * board_native.x - w * 0.5
+		var by := (float(temp[0][1]) + 0.052) * board_native.y
+		var n := 0
+		for p in gs.players:
+			if region in p.engage_tokens:
+				var tok := TextureRect.new()
+				tok.texture = load("res://assets/markers/engage_%s.png" % p.power)
+				tok.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tok.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				tok.position = Vector2(bx + n * w * 0.62, by)
+				tok.size = Vector2(w, h)
+				overlay.add_child(tok)
+				n += 1
 
 
 ## Posa le carte nazione disponibili (immagini originali) nelle aree designate
@@ -2246,7 +2277,35 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		var spent := bool(p.exhausted.get(String(cn.get("id", "")), false))
 		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
 		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		grid.add_child(_ally_stack(cn, cards.size(), Vector2(ch * 0.70, ch), highlight, is_active and not dim, spent))
+		var sz := Vector2(ch * 0.70, ch)
+		var stack := _ally_stack(cn, cards.size(), sz, highlight, is_active and not dim, spent)
+		var cid := String(cn.get("id", ""))
+		_overlay_country_markers(stack, sz, cid in p.fdi_countries, cid in p.bases)
+		grid.add_child(stack)
+
+
+## Sovrappone i segnalini Base (in alto a sinistra) e FDI (in alto a destra) su una
+## carta nazione alleata, se il giocatore li ha piazzati su quel Paese.
+func _overlay_country_markers(card: Control, sz: Vector2, has_fdi: bool, has_base: bool) -> void:
+	var s := minf(sz.x, sz.y) * 0.5
+	if has_base:
+		var b := TextureRect.new()
+		b.texture = load("res://assets/markers/base.png")
+		b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		b.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.position = Vector2(1, 1)
+		b.size = Vector2(s, s)
+		card.add_child(b)
+	if has_fdi:
+		var f := TextureRect.new()
+		f.texture = load("res://assets/markers/fdi.png")
+		f.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		f.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		f.position = Vector2(sz.x - s - 1, 1)
+		f.size = Vector2(s, s)
+		card.add_child(f)
 
 
 ## Aspetto "esaurita" (tapped): carta grigia e leggermente ruotata.

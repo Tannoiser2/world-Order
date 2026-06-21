@@ -76,6 +76,12 @@ static func execute_engage(gs: GameState, owner: String, region: String,
 		return -1
 	var vp: int = gs.regions[region]["track"].add(owner, slot_type)
 	p.victory_points += vp
+	# Piazza un Engage token sulla Regione (max 3 disponibili: se pieni, ne sposti
+	# uno già sul tabellone -> rimuovi il più vecchio).
+	if region not in p.engage_tokens:
+		if p.engage_tokens.size() >= 3:
+			p.engage_tokens.pop_front()
+		p.engage_tokens.append(region)
 	return vp
 
 # ---------------------------------------------------------------------------
@@ -115,6 +121,8 @@ static func execute_invest(gs: GameState, owner: String, country: Dictionary,
 	if gs.supply.get("fdi", 0) > 0:
 		gs.supply["fdi"] -= 1
 	p.fdi_values.append(int(country.get("value", 0)))   # token FDI per Return on Investments
+	if cid != "" and cid not in p.fdi_countries:
+		p.fdi_countries.append(cid)                     # token FDI sul Paese (rendering)
 	var region: String = country.get("region", "")
 	var vp := 0
 	if gs.regions.has(region):
@@ -175,6 +183,8 @@ static func execute_build_base(gs: GameState, owner: String, country: Dictionary
 	p.exhausted[cid] = true
 	if gs.supply.get("bases", 0) > 0:
 		gs.supply["bases"] -= 1
+	if cid != "" and cid not in p.bases:
+		p.bases.append(cid)                             # Base sul Paese (rendering + Move)
 	var region: String = country.get("region", "")
 	p.armies_available -= armies_to_move
 	var vp := 0
