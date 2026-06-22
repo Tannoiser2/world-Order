@@ -522,7 +522,9 @@ func _fit_map() -> void:
 	var fit := minf(mv.x / board_native.x, mv.y / board_native.y)
 	_min_zoom = fit
 	map_content.scale = Vector2(fit, fit)
-	map_content.position = (mv - board_native * fit) * 0.5
+	# Mappa allineata a DESTRA (l'eventuale grigio resta a sinistra, accanto alla board);
+	# verticalmente centrata.
+	map_content.position = Vector2(mv.x - board_native.x * fit, (mv.y - board_native.y * fit) * 0.5)
 
 
 ## Tiene almeno una parte della mappa visibile dopo pan/zoom. Su un asse dove la
@@ -539,7 +541,9 @@ func _clamp_map() -> void:
 	var pos := map_content.position
 	var min_x := mv.x - bw - margin
 	var min_y := mv.y - bh - margin
-	pos.x = (mv.x - bw) * 0.5 if min_x > margin else clampf(pos.x, min_x, margin)
+	# Se la mappa è più piccola della viewport la teniamo a DESTRA (grigio a sinistra,
+	# verso la board); sull'asse Y resta centrata.
+	pos.x = mv.x - bw if min_x > margin else clampf(pos.x, min_x, margin)
 	pos.y = (mv.y - bh) * 0.5 if min_y > margin else clampf(pos.y, min_y, margin)
 	map_content.position = pos
 
@@ -2612,7 +2616,7 @@ func _layout_ui() -> void:
 	var content_top := hud_h + choice_h
 	var bar_h := _base_fs() * 2.4
 	var content_h := maxf(1.0, h - content_top - tab_h - bar_h)
-	var board_w := clampf(w * 0.40, 300.0, w * 0.52)
+	var board_w := _board_w()
 	drawer.visible = true
 	drawer.position = Vector2(0, content_top)
 	drawer.size = Vector2(board_w, content_h)
@@ -2651,6 +2655,26 @@ func _base_fs() -> int:
 ## senza traboccare su più righe.
 func _choice_fs() -> int:
 	return clampi(int(size.y * 0.020), 10, 17)
+
+
+## Larghezza della colonna BOARD (a sinistra). La mappa è "letterboxed": a parità d'altezza
+## occupa solo board_native.x/board_native.y dello spazio orizzontale e lascia del "grigio"
+## ai lati. Quel grigio lo RECUPERIAMO per la board (e le sue carte, che si adattano),
+## tenendo la mappa grande e allineata a destra. Funzione PURA di `size`, così _layout_ui,
+## _plancia_height e _build_allies_section restano sincronizzati.
+func _board_w() -> float:
+	var w := size.x
+	var h := size.y
+	if w <= 0.0 or h <= 0.0 or board_native.y <= 0.0:
+		return clampf(w * 0.42, 300.0, w * 0.56)
+	# Altezza STABILE riservata alla mappa (ignora la barra scelte, che va e viene: così la
+	# larghezza della board non "salta" quando la barra appare o sparisce).
+	var hud_h := clampf((_base_fs() + 14.0) + (_base_fs() + 6.0), 34.0, 92.0)
+	var tab_h := clampf(h * 0.08, 34.0, 64.0)
+	var bar_h := _base_fs() * 2.4
+	var map_h := maxf(1.0, h - hud_h - tab_h - bar_h)
+	var map_natural_w := board_native.x * (map_h / board_native.y)
+	return clampf(w - map_natural_w, w * 0.42, w * 0.56)
 
 
 func _on_power_tab(power: String) -> void:
@@ -2829,7 +2853,7 @@ const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 ## Altezza della plancia: condivide la riga in alto con la carta Commercio (a destra),
 ## quindi occupa ~64% della larghezza del pannello board; tetto proporzionale e assoluto.
 func _plancia_height() -> float:
-	var board_w := clampf(size.x * 0.40, 300.0, size.x * 0.52)
+	var board_w := _board_w()
 	return minf(minf((board_w * 0.64 - 16.0) * PLANCIA_RATIO, size.y * 0.40), 420.0)
 
 
@@ -3330,10 +3354,10 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		else:
 			index[key] = groups.size()
 			groups.append({"cards": [cn]})
-	# Carte alleate in FILA a tutta larghezza del pannello: ne entrano almeno 6 per riga,
-	# le altre vanno a capo (HFlowContainer). Dimensionate di conseguenza.
-	var board_w := clampf(size.x * 0.40, 300.0, size.x * 0.52)
-	var cw: float = clampf((board_w - 28.0) / 6.0 - 6.0, 52.0, 104.0)
+	# Carte alleate in FILA a tutta larghezza del pannello: ne entrano almeno 7 per riga
+	# (un po' più piccole di prima), le altre vanno a capo (HFlowContainer).
+	var board_w := _board_w()
+	var cw: float = clampf((board_w - 32.0) / 7.0 - 6.0, 46.0, 92.0)
 	var ch: float = cw / 0.70
 	var grid := HFlowContainer.new()
 	grid.add_theme_constant_override("h_separation", 6)
@@ -3402,21 +3426,26 @@ func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, click
 		if clickable:
 			single.pressed.connect(handler)
 		return single
-	var off := minf(10.0, sz.x * 0.18)
+	# La pila scende verso il BASSO: la carta in primo piano sta in ALTO (intera), le copie
+	# dietro spuntano sotto mostrando la loro riga PRODUZIONE (in fondo alla carta). 'off_y'
+	# ~ altezza di quella riga; un piccolo scostamento laterale dà profondità.
+	var off_y := clampf(sz.y * 0.22, 14.0, 30.0)
+	var off_x := minf(6.0, sz.x * 0.10)
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(sz.x + off * (count - 1), sz.y + off * (count - 1))
-	# Copie dietro (semplici immagini sfalsate).
-	for i in range(count - 1):
+	holder.custom_minimum_size = Vector2(sz.x + off_x * (count - 1), sz.y + off_y * (count - 1))
+	# Copie dietro: la più PROFONDA (più in basso) per prima, così le successive la coprono
+	# in alto e ne lasciano visibile solo la produzione in fondo.
+	for j in range(count - 1, 0, -1):
 		var back := _country_card_button(cn, sz, false)
 		back.disabled = true
 		back.focus_mode = Control.FOCUS_NONE
-		back.position = Vector2(off * i, off * i)
+		back.position = Vector2(off_x * j, off_y * j)
 		if exhausted:
 			back.modulate = Color(0.55, 0.55, 0.6)
 		holder.add_child(back)
-	# Carta in primo piano: cliccabile + flyover.
+	# Carta in primo piano (in alto): cliccabile + flyover.
 	var front := _country_card_button(cn, sz, highlight)
-	front.position = Vector2(off * (count - 1), off * (count - 1))
+	front.position = Vector2(0, 0)
 	front.disabled = not clickable
 	if exhausted:
 		_apply_exhausted(front, sz)
