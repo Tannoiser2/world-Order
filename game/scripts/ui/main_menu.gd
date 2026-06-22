@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.41"
+const VERSION := "v0.7.42"
 const CHANGELOG := [
+	"v0.7.42 — Plancia del giocatore più ALTA (usa lo spazio verticale del cassetto: si legge meglio). Le carte prodotto (Commerce) ora stanno tutte in una riga larga esattamente quanto la carta Trade Deals sopra: con più carte (Russia 3) diventano più piccole, restando allineate.",
 	"v0.7.41 — Fix Influenza permanente: i cubi AGGIUNTI in gioco ora vanno sulle vere caselle permanenti (la riga «1 1 1 1» sotto), non più ammucchiati sulle caselle colorate del setup. Le Influenze INIZIALI restano correttamente sulle caselle colorate in alto. Coordinate prese dalla guida (box celesti) per tutte e 7 le Regioni.",
 	"v0.7.40 — COMMERCIO ORA SULLA TUA PLANCIA (niente più finestra separata): si lavora direttamente sulla resource track della plancia. Tocchi un prodotto (anello evidenziato sul token) e compaiono le caselle valide 0-10: verso 0 VENDI, verso 10 COMPRI, col denaro su ogni casella; il token si sposta dove tocchi. In cima al cassetto una barra mostra il Δ money, le bandierine per scegliere da quale potenza comprare, e Conferma/Annulla.",
 	"v0.7.39 — CARTE PRODOTTO MULTIPLE: ogni potenza ha 2 carte prodotto (Commerce), 3 per la Russia, ora mostrate tutte nel cassetto; quelle usate nel round appaiono girate/grigie. Comprando un prodotto da una potenza si gira la CARTA SPECIFICA che lo mostra, quindi può venderlo una volta per ogni carta scoperta (prima si poteva comprare quel prodotto da lei una sola volta a round). Il limite d'acquisto da una potenza dipende dalle sue carte ancora scoperte.",
