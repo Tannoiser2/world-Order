@@ -76,13 +76,14 @@ static func run_game_logged(powers: Array, seed: int = 1) -> Dictionary:
 				gs.add_vp(power, int(rs[power]))
 			# Abilità speciali applicate ad ogni Scoring step (USA penalità, Russia sfera).
 			var sp := apply_power_special_scoring(gs)
+			# I 3 token Maggioranza si segnano ad OGNI round di punteggio (3 e 6).
+			var mt := score_majority_tokens(gs)
+			for power in mt:
+				gs.add_vp(power, int(mt[power]))
 			log.append("— Scoring round %d — " % round_no + _vp_line(gs)
-				+ ("  [speciali: %s]" % _fmt(sp) if not sp.is_empty() else ""))
+				+ ("  [speciali: %s]" % _fmt(sp) if not sp.is_empty() else "")
+				+ "  [Maggioranza: %s]" % _fmt(mt))
 
-	var mt := score_majority_tokens(gs)
-	for power in mt:
-		gs.add_vp(power, int(mt[power]))
-	log.append("— Token Maggioranza — " + _fmt(mt))
 	# Bonus di fine partita: China FDI, Strategic Asset/Executive Order non usati.
 	var eb := apply_game_end_bonuses(gs)
 	log.append("— Bonus fine partita — " + _fmt(eb))

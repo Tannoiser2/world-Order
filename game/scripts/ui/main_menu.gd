@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.87"
+const VERSION := "v0.7.88"
 const CHANGELOG := [
+	"v0.7.88 - FIX IMPORTANTE sullo SCORING: per un bug (i numeri da JSON sono float e 'int in [float]' e' sempre falso in Godot) il controllo del round di punteggio era SEMPRE falso, quindi lo Scoring delle REGIONI non avveniva MAI, ne' al round 3 ne' al 6! Ora i round 3 e 6 segnano correttamente le maggioranze d'area delle Regioni. Inoltre, come da regolamento, ad OGNI round di punteggio (3 e 6) si segnano anche i 3 token Maggioranza (piu' money / armate sul board / Country alleate), prima conteggiati solo a fine partita.",
 	"v0.7.87 - CARTE AUTO-INFLUENZA visibili: nelle partite a 2-3 giocatori le 2 carte Auto-Influence delle potenze NEUTRALI ora si vedono sulla mappa, in alto vicino al titolo, e restano visibili per tutto il round (vengono rivelate a inizio round; l'effetto si applica in Aftermath come prima).",
 	"v0.7.86 - MULTIPLAYER: gli snapshot dell'host ora includono lo STATO DI INTERAZIONE (cosa attende il turno: scegli Regione, casella d'Influenza, ecc.), cosi' un client puo' essere pilotato dall'host e renderizzare gli highlight giusti durante il proprio turno. Base per il turno interattivo in rete. Ancora nulla di visibile in partita (manca la lobby).",
 	"v0.7.85 - MULTIPLAYER (nucleo di rete): aggiunto il modulo NetSession host-authoritative con trasporto WebSocket (per la LAN ora, Internet poi con un relay) e un trasporto 'loopback' per i test. Il protocollo gestisce lobby, avvio e l'inoltro comando -> host -> snapshot REDATTO al client (ogni giocatore vede solo la propria mano). Nulla di visibile in partita ancora: manca la lobby nel menu e la sincronizzazione del turno interattivo (prossimi passi). +7 test di rete.",

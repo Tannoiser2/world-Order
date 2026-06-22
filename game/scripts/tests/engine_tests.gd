@@ -550,6 +550,18 @@ static func run_all() -> Dictionary:
 			op_unknown.append(op_k)
 	check.call("nessun op dei dati sconosciuto a EffectExecutor", op_unknown.is_empty())
 
+	# --- 15. Token Maggioranza segnati ad OGNI round di punteggio (3 e 6) ---
+	var glog := GameRunner.run_game_logged(["usa", "china", "russia", "eu"], 7)
+	var r3_maj := false
+	var r6_maj := false
+	for line in glog["log"]:
+		if "Scoring round 3" in line and "Maggioranza" in line:
+			r3_maj = true
+		if "Scoring round 6" in line and "Maggioranza" in line:
+			r6_maj = true
+	check.call("Token Maggioranza segnati al round 3", r3_maj)
+	check.call("Token Maggioranza segnati al round 6", r6_maj)
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}
 
 

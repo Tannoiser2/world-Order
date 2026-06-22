@@ -4886,7 +4886,7 @@ func _aftermath_resolve() -> void:
 			gs.add_vp(power, -int(loss[power]))
 			_aftermath_lines.append("%s: -%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
 
-	# Scoring delle Regioni nei round 3 e 6.
+	# Scoring nei round 3 e 6: Regioni + 3 token Maggioranza (entrambi a OGNI round di punteggio).
 	if gs.is_scoring_round():
 		var rs := GameRunner.score_all_regions(gs)
 		for power in rs:
@@ -4896,6 +4896,11 @@ func _aftermath_resolve() -> void:
 		var sp := GameRunner.apply_power_special_scoring(gs)
 		if not sp.is_empty():
 			_aftermath_lines.append("Abilità speciali: " + _vp_summary(sp))
+		# 3 token Maggioranza (più money / più armate sul board / più Country alleate).
+		var mt := GameRunner.score_majority_tokens(gs)
+		for power in mt:
+			gs.add_vp(power, int(mt[power]))
+		_aftermath_lines.append("Token Maggioranza: " + _vp_summary(mt))
 
 	_show_summary(_aftermath_lines, func(): _next_round(), _aftermath_ai_art)
 
@@ -4935,14 +4940,12 @@ func _next_round() -> void:
 
 func _game_end() -> void:
 	game_over = true
-	var mt := GameRunner.score_majority_tokens(gs)
-	for power in mt:
-		gs.add_vp(power, int(mt[power]))
-	# Bonus di fine partita: China FDI, +2/Strategic Asset e +3/Executive Order non usati.
+	# NB: i 3 token Maggioranza sono già stati segnati nell'Aftermath del round 6 (e del 3),
+	# qui restano solo i bonus di fine partita: China FDI, +2/Strategic Asset, +3/Executive Order.
 	var eb := GameRunner.apply_game_end_bonuses(gs)
 	var ranking := gs.players.duplicate()
 	ranking.sort_custom(func(a, b): return a.victory_points > b.victory_points)
-	var lines: Array[String] = ["- FINE PARTITA -", "Token Maggioranza: " + _vp_summary(mt)]
+	var lines: Array[String] = ["- FINE PARTITA -"]
 	if not eb.is_empty():
 		lines.append("Bonus fine partita: " + _vp_summary(eb))
 	lines.append("")
