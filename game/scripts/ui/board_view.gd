@@ -83,7 +83,7 @@ var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione
 var _produce_mode := false              # Produce attivo: si imposta sulla resource track della plancia
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
-var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1×/round)
+var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
 var _prep_idx := 0                       # giocatore corrente nella PREPARATION guidata (scelta Focus)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
@@ -116,15 +116,15 @@ const ONGOING_DESC := {
 	"extra_draw_per_round": "Pesca 1 carta in più ogni round.",
 	"extra_play_first_turn": "Primo turno del round: puoi giocare 1 carta in più.",
 	"ready_extra_on_focus": "Quando fai Focus, prepari 1 Country card in più.",
-	"once_per_round:draw_then_trash": "1×/round: pesca 1 carta, poi scartane 1.",
-	"once_per_round:draw_highest_value_then_discard": "1×/round: pesca la carta di valore più alto del mazzo, poi scartane 1.",
-	"once_per_round:improve_again_plus1": "1×/round: fai di nuovo Improve Relations (con +1).",
-	"once_per_round:convert_influence": "1×/round: converti 1 Influenza temporanea in permanente.",
+	"once_per_round:draw_then_trash": "1x/round: pesca 1 carta, poi scartane 1.",
+	"once_per_round:draw_highest_value_then_discard": "1x/round: pesca la carta di valore più alto del mazzo, poi scartane 1.",
+	"once_per_round:improve_again_plus1": "1x/round: fai di nuovo Improve Relations (con +1).",
+	"once_per_round:convert_influence": "1x/round: converti 1 Influenza temporanea in permanente.",
 }
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
 var game_over := false
-var _ui_phase := "Azione"   # fase mostrata nell'HUD: Azione · Research · Aftermath
+var _ui_phase := "Azione"   # fase mostrata nell'HUD: Azione - Research - Aftermath
 
 
 func _ready() -> void:
@@ -221,7 +221,7 @@ func _active() -> PlayerState:
 
 ## Stile globale dei Button "normali" (non flat, senza override): sfondo, bordo e
 ## padding così OGNI scelta cliccabile si vede chiaramente come un pulsante.
-## I bottoni flat (carte, zone Focus…) e quelli con stylebox propria restano invariati.
+## I bottoni flat (carte, zone Focus...) e quelli con stylebox propria restano invariati.
 func _apply_button_theme() -> void:
 	var normal := StyleBoxFlat.new()
 	normal.bg_color = Color(0.18, 0.22, 0.30)
@@ -359,18 +359,18 @@ func _draw_cube(pos: Array, owner: Variant, s: float) -> void:
 ## --- Segnalini sul tabellone: VP (traccia perimetrale) e ordine di turno ---
 
 ## Posizione normalizzata (0..1 sul tabellone) di un valore VP sulla traccia
-## perimetrale: 0 in alto-sinistra, oraria. Top 0→30, destra 30→50, basso 50→80,
-## sinistra 80→100. DA CALIBRARE al pixel se serve.
+## perimetrale: 0 in alto-sinistra, oraria. Top 0->30, destra 30->50, basso 50->80,
+## sinistra 80->100. DA CALIBRARE al pixel se serve.
 func _vp_to_pos(vp: int) -> Vector2:
 	var v := ((vp % 100) + 100) % 100
 	if v <= 30:
-		return Vector2(0.022 + (v / 30.0) * 0.955, 0.022)        # top L→R
+		return Vector2(0.022 + (v / 30.0) * 0.955, 0.022)        # top L->R
 	elif v <= 50:
-		return Vector2(0.978, 0.022 + ((v - 30) / 20.0) * 0.953) # destra T→B
+		return Vector2(0.978, 0.022 + ((v - 30) / 20.0) * 0.953) # destra T->B
 	elif v <= 80:
-		return Vector2(0.975 - ((v - 50) / 30.0) * 0.953, 0.975) # basso R→L
+		return Vector2(0.975 - ((v - 50) / 30.0) * 0.953, 0.975) # basso R->L
 	else:
-		return Vector2(0.022, 0.975 - ((v - 80) / 20.0) * 0.953) # sinistra B→T
+		return Vector2(0.022, 0.975 - ((v - 80) / 20.0) * 0.953) # sinistra B->T
 
 
 ## Segnalino VP per ogni potenza sulla traccia perimetrale (bandiera + numero).
@@ -555,7 +555,7 @@ func _make_region_button(region: String) -> Button:
 	# indica il ruolo: verde = sorgente possibile, giallo = sorgente scelta, blu = destinazione.
 	var st := StyleBoxFlat.new()
 	var role := _move_role(region) if awaiting == "move" else ("pick" if awaiting_region else "")
-	# IMPORTANTE: un Button `flat` NON disegna lo stylebox "normal" → l'evidenziazione
+	# IMPORTANTE: un Button `flat` NON disegna lo stylebox "normal" -> l'evidenziazione
 	# sparirebbe. Quindi flat SOLO quando non c'è ruolo (zona trasparente, lascia passare).
 	btn.flat = (role == "")
 	if role != "":
@@ -617,7 +617,7 @@ func _layout_army_badges() -> void:
 			overlay.add_child(tank)
 			if cnt > 1:
 				var lbl := Label.new()
-				lbl.text = "×%d" % cnt
+				lbl.text = "x%d" % cnt
 				lbl.add_theme_color_override("font_color", POWER_COLORS.get(owner, Color.WHITE))
 				lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 				lbl.add_theme_constant_override("outline_size", maxi(2, int(h * 0.12)))
@@ -870,7 +870,7 @@ func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> voi
 			p.exhausted[c.get("id", "")] = true   # gli alleati usati per lo sconto si esauriscono
 		region_countries.get(region, {}).get("available", []).erase(country)
 		_refill_available(region)
-		_status("%s: Improve Relations con %s (−%d Dip%s)." % [
+		_status("%s: Improve Relations con %s (-%d Dip%s)." % [
 			p.power.to_upper(), country.get("display_name", ""), cost,
 			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 		_after_change()
@@ -964,7 +964,7 @@ func _on_hand_card_tap(card: Dictionary) -> void:
 		_play_card(card)            # 2° tap sulla stessa carta = giocala
 		return
 	_selected_hand_card = card
-	_status("Selezionata «%s»: ri-toccala per giocarla, oppure tocca la Moneta +10 o una carta Strategica." % card.get("display_name", "carta"))
+	_status("Selezionata '%s': ri-toccala per giocarla, oppure tocca la Moneta +10 o una carta Strategica." % card.get("display_name", "carta"))
 	_render_hand()
 
 
@@ -1031,7 +1031,7 @@ func _play_card(card: Dictionary) -> void:
 	if not playing_card.is_empty():
 		return  # gia' in risoluzione
 	if _plays_left <= 0:
-		_status("Hai già giocato in questo turno. Premi «Fine turno».")
+		_status("Hai già giocato in questo turno. Premi 'Fine turno'.")
 		return
 	if not card.has("effect_ops"):
 		_status("Questa carta non ha effetto giocabile.")
@@ -1048,13 +1048,13 @@ func _play_card(card: Dictionary) -> void:
 func _mods_text(mods: Dictionary) -> String:
 	var bits := []
 	if Modifiers.improve_discount(mods) > 0:
-		bits.append("Improve −%d Dip" % Modifiers.improve_discount(mods))
-	if mods.has("engage_discount_per_army"): bits.append("Engage −1/Armata")
-	if mods.has("engage_discount_per_allied"): bits.append("Engage −1/alleato")
-	if mods.has("engage_discount_1_in"): bits.append("Engage −1 in alcune Regioni")
+		bits.append("Improve -%d Dip" % Modifiers.improve_discount(mods))
+	if mods.has("engage_discount_per_army"): bits.append("Engage -1/Armata")
+	if mods.has("engage_discount_per_allied"): bits.append("Engage -1/alleato")
+	if mods.has("engage_discount_1_in"): bits.append("Engage -1 in alcune Regioni")
 	if Modifiers.money_for_services(mods) > 0:
 		bits.append("paga %d money per Servizio" % Modifiers.money_for_services(mods))
-	return "  ·  [" + ", ".join(bits) + "]" if bits.size() > 0 else ""
+	return "  -  [" + ", ".join(bits) + "]" if bits.size() > 0 else ""
 
 
 func _advance_play() -> void:
@@ -1169,7 +1169,7 @@ func _advance_play() -> void:
 			var pr3 := _active()
 			var disc := int(op.get("discount", 0))
 			if _increase_prosperity_discounted(pr3, disc):
-				_status("Prosperità → livello %d." % pr3.prosperity_level)
+				_status("Prosperità -> livello %d." % pr3.prosperity_level)
 			else:
 				_status("Prosperità: Beni di consumo insufficienti.")
 			_after_change()
@@ -1213,7 +1213,7 @@ func _pick_slot(region: String, cb: Callable) -> void:
 
 
 ## Coordinata normalizzata della PROSSIMA casella Influenza permanente libera della
-## Regione (riga «permanent_fill» per quelle aggiunte in gioco); [] se nessuna libera.
+## Regione (riga "permanent_fill" per quelle aggiunte in gioco); [] se nessuna libera.
 func _next_free_perm_pos(region: String) -> Array:
 	var conf: Dictionary = layout.get("influence_slots", {}).get(region, {})
 	var track: InfluenceTrack = gs.regions[region].get("track")
@@ -1284,7 +1284,7 @@ func _layout_influence_cells() -> void:
 
 func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
 	# Caselle più GRANDI e contrastate, così si vedono bene e non si va a tentativi.
-	# NB: niente `flat` (un Button flat NON disegnerebbe lo stylebox → cella invisibile).
+	# NB: niente `flat` (un Button flat NON disegnerebbe lo stylebox -> cella invisibile).
 	var s := board_native.y * 0.046
 	var b := Button.new()
 	b.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1341,7 +1341,7 @@ func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
 	else:
 		for c in chosen:
 			p.exhausted[c.get("id", "")] = true   # alleati usati per lo sconto
-		_status("%s: Engage in %s (−%d Dip, +%d VP%s)." % [
+		_status("%s: Engage in %s (-%d Dip, +%d VP%s)." % [
 			p.power.to_upper(), region.replace("_", " "), cost, vp,
 			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 	_layout_overlays()
@@ -1380,7 +1380,7 @@ func _exhaustable_allies(region: String) -> Array:
 ## se l'azione va a buon fine). Senza candidati, chiama subito cb([]).
 ## Sconto esaurendo alleati: si fa CLICCANDO le carte alleate della Regione nella
 ## plancia (un click le attiva per lo sconto, un altro le annulla). La barra in alto
-## mostra lo sconto e «Conferma» / «Salta». Senza candidati, chiama subito cb([]).
+## mostra lo sconto e "Conferma" / "Salta". Senza candidati, chiama subito cb([]).
 func _pick_exhaust_discount(region: String, title: String, cb: Callable) -> void:
 	if _exhaustable_allies(region).is_empty():
 		cb.call([])
@@ -1404,7 +1404,7 @@ func _show_exhaust_choice_bar() -> void:
 		if bool(_exhaust_sel.get(String(c.get("id", "")), false)):
 			discount += int(c.get("value", 0))
 	var lab := Label.new()
-	lab.text = "%s — tocca le tue nazioni alleate della Regione per scontare:  −%d Dip" % [String(_exhaust_ctx.get("title", "")), discount]
+	lab.text = "%s - tocca le tue nazioni alleate della Regione per scontare:  -%d Dip" % [String(_exhaust_ctx.get("title", "")), discount]
 	lab.add_theme_color_override("font_color", Color(0.95, 0.9, 0.6))
 	lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(lab)
@@ -1451,7 +1451,7 @@ func _exhaust_skip() -> void:
 		(cb as Callable).call([])
 
 
-# --- Move: spostamento libero delle Armate (riserva → Regione e tra Regioni) ---
+# --- Move: spostamento libero delle Armate (riserva -> Regione e tra Regioni) ---
 
 ## Avvia un Move: il giocatore sceglie una SORGENTE (la Riserva o una Regione con
 ## sue Armate), poi una Regione di DESTINAZIONE; ripete fino al massimo o "Fine".
@@ -1531,7 +1531,7 @@ func _on_move_region(region: String) -> void:
 			c["source"] = region
 			_refresh_move_ui()
 		else:
-			_status("Nessuna tua Armata qui. Scegli una Regione con tue Armate o «Riserva».")
+			_status("Nessuna tua Armata qui. Scegli una Regione con tue Armate o 'Riserva'.")
 		return
 	# scelta della destinazione
 	if region == c["source"]:
@@ -1566,8 +1566,8 @@ func _do_move_step(dest: String) -> void:
 	da[p.power] = int(da.get(p.power, 0)) + 1
 	c["moved"] = int(c["moved"]) + 1
 	c["source"] = null
-	var from_txt := "Riserva" if String(src) == "_reserve" else String(src).replace("_", " ")
-	_status("Armata: %s → %s%s." % [from_txt, dest.replace("_", " "), "" if bool(c["free"]) else "  (−%d money)" % Actions.MOVE_COST])
+	var from_txt := 'Riserva' if String(src) == "_reserve" else String(src).replace("_", " ")
+	_status("Armata: %s -> %s%s." % [from_txt, dest.replace("_", " "), "" if bool(c["free"]) else "  (-%d money)" % Actions.MOVE_COST])
 	if int(c["moved"]) >= int(c["max"]):
 		_finish_move()
 	else:
@@ -1629,7 +1629,7 @@ func _region_do_drop(_at: Vector2, data: Variant, region: String) -> void:
 	_do_move_step(region)   # gestisce costo, trasferimento, moved++, cap e fine
 
 ## Drop sul vassoio Riserva: riporta 1 Armata dalla Regione alla Riserva (gratis,
-## non conta nel max — annulla lo spostamento).
+## non conta nel max - annulla lo spostamento).
 func _reserve_can_drop(_at: Vector2, data: Variant) -> bool:
 	return data is Dictionary and String((data as Dictionary).get("move_src", "_reserve")) != "_reserve"
 
@@ -1642,7 +1642,7 @@ func _reserve_do_drop(_at: Vector2, data: Variant) -> void:
 	sa[p.power] = int(sa.get(p.power, 0)) - 1
 	p.armies_available += 1
 	_move_ctx["moved"] = maxi(0, int(_move_ctx.get("moved", 0)) - 1)
-	_status("Armata: %s → Riserva (rientro)." % src.replace("_", " "))
+	_status("Armata: %s -> Riserva (rientro)." % src.replace("_", " "))
 	_refresh_move_ui()
 
 
@@ -1655,15 +1655,15 @@ func _refresh_move_ui() -> void:
 
 
 ## Barra flottante del Move: vassoio RISERVA (carro trascinabile + drop per i rientri)
-## e «Fine spostamento». Niente più scelta della sorgente: si trascina direttamente.
+## e "Fine spostamento". Niente più scelta della sorgente: si trascina direttamente.
 ## Controlli del Move nella BARRA SCELTE in alto (non più galleggianti sulla mappa):
-## info + vassoio Riserva (drag) + «Fine spostamento» (+ «Annulla» se non hai ancora mosso).
+## info + vassoio Riserva (drag) + "Fine spostamento" (+ "Annulla" se non hai ancora mosso).
 func _refresh_move_bar() -> void:
 	_clear_choice_bar()
 	var p := _active()
 	var c := _move_ctx
 	var info := Label.new()
-	info.text = "Sposta Armate  %d/%d — trascina i carri (Riserva ↔ mappa · zona ↔ zona)" % [int(c.get("moved", 0)), int(c["max"])]
+	info.text = "Sposta Armate  %d/%d - trascina i carri (Riserva / mappa - zona / zona)" % [int(c.get("moved", 0)), int(c["max"])]
 	info.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
@@ -1684,7 +1684,7 @@ func _refresh_move_bar() -> void:
 
 
 ## Vassoio Riserva del Move: un carro TRASCINABILE (schiera dalla riserva) che è anche
-## DROP TARGET (trascinaci un carro per farlo rientrare). Mostra "×N".
+## DROP TARGET (trascinaci un carro per farlo rientrare). Mostra "xN".
 func _move_reserve_tray(p: PlayerState) -> Control:
 	var tray := Panel.new()
 	tray.custom_minimum_size = Vector2(118, 40)
@@ -1710,7 +1710,7 @@ func _move_reserve_tray(p: PlayerState) -> Control:
 		tank.custom_minimum_size = Vector2(48, 26)
 		hb.add_child(tank)
 	var lbl := Label.new()
-	lbl.text = "Riserva ×%d" % p.armies_available
+	lbl.text = "Riserva x%d" % p.armies_available
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	hb.add_child(lbl)
@@ -1779,7 +1779,7 @@ func _pick_growth() -> void:
 	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 8)
 	panel.add_child(vb)
 	var head := Label.new()
-	head.text = "Get a Growth Card — livello %d" % nl
+	head.text = "Get a Growth Card - livello %d" % nl
 	head.add_theme_font_size_override("font_size", _base_fs() + 2)
 	head.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))
 	vb.add_child(head)
@@ -1804,7 +1804,7 @@ func _pick_growth() -> void:
 		info.custom_minimum_size = Vector2(cw, 0)
 		cell.add_child(info)
 		row.add_child(cell)
-	var skip := Button.new(); skip.text = "— Salta —"
+	var skip := Button.new(); skip.text = "- Salta -"
 	skip.pressed.connect(func(): _close_popup(); _after_change(); _advance_play())
 	vb.add_child(skip)
 
@@ -1866,7 +1866,7 @@ func _trade_allied_import(p: PlayerState, R: String) -> int:
 
 
 ## Nomi delle Country alleate del giocatore che forniscono l'import di R (per chiarire
-## che l'import "banca" passa in realtà dalle proprie nazioni alleate — non da una banca).
+## che l'import "banca" passa in realtà dalle proprie nazioni alleate - non da una banca).
 func _allied_importer_names(p: PlayerState, R: String) -> Array:
 	var names := []
 	for c in p.allied_countries:
@@ -1976,7 +1976,7 @@ func _trade_export_used() -> int:
 	return (_trade_sel.get("export", {}) as Dictionary).size() + (1 if _trade_armies > 0 else 0)
 
 
-## Avvia il Commercio: niente popup — si lavora sulla resource track della PLANCIA
+## Avvia il Commercio: niente popup - si lavora sulla resource track della PLANCIA
 ## del giocatore (cassetto aperto). Si tocca un prodotto e lo si sposta verso 0
 ## (vendi) o verso 10 (compra).
 func _open_trade_ui() -> void:
@@ -2003,7 +2003,7 @@ func _trade_src_qty(p: PlayerState, R: String, src: String) -> int:
 	return 0
 
 
-## Sorgente d'import scelta per R (default: la prima disponibile — la banca se c'è).
+## Sorgente d'import scelta per R (default: la prima disponibile - la banca se c'è).
 func _trade_selected_src(p: PlayerState, R: String) -> String:
 	if _trade_import_src.has(R):
 		var chosen := String(_trade_import_src[R])
@@ -2074,7 +2074,7 @@ func _trade_confirm() -> void:
 		var na := mini(_trade_armies, p.armies_available)
 		p.armies_available -= na
 		p.money += int(Actions.EXPORT_GAIN.get("armies", 20)) * na
-	var from_players := 0
+	var diplo_eligible := false
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
 		var cost := int(Actions.IMPORT_COST.get(R, 0))
@@ -2083,22 +2083,25 @@ func _trade_confirm() -> void:
 		# RISERVA (i simboli Import delle tue alleate). Solo il giocatore dà money/Diplomazia.
 		var src := _trade_selected_src(p, R)
 		if src != "reserve":
-			var from_seller := mini(q, _commerce_faceup_for(src, R))   # quante vengono dal venditore
+			var card_qty := _commerce_faceup_for(src, R)   # quante ne elenca la sua Commerce card
+			var from_seller := mini(q, card_qty)           # quante vengono dal venditore
 			if from_seller > 0:
-				_commerce_consume(src, R, from_seller)   # gira solo le carte che servono (anche neutrali)
+				_commerce_consume(src, R, from_seller)   # gira la carta (anche per le neutrali)
 				var seller := gs.player_by_power(src)
 				if seller != null:
-					# Giocatore reale: incassa il money delle SUE unità e prende +1 Servizio;
-					# comprando da lui guadagni +1 Diplomazia.
+					# Giocatore reale: incassa il money delle SUE unità e prende +1 Servizio.
 					seller.money += cost * from_seller
 					seller.gain_resource("services", 1, 0)
-					from_players += from_seller
+					# +1 Diplomazia SOLO comprando l'INTERA carta del venditore (es. tutti e 3
+					# dalla Russia); comprandone meno giri comunque la carta ma niente Diplomazia.
+					if from_seller >= card_qty:
+						diplo_eligible = true
 				# Potenza neutrale (2-3 giocatori): niente money/Diplomazia.
 		# Le unità oltre la vendita del giocatore vengono dalla Riserva (base alleate).
 		p.gain_resource(R, q, 0)
-	# +1 Diplomazia SOLO se hai comprato da un altro giocatore (pag. 13), non per
-	# un import qualsiasi dalla banca/potenze neutrali.
-	if from_players > 0:
+	# +1 Diplomazia (una sola, a prescindere dalle transazioni) se hai comprato l'intera
+	# carta da almeno un GIOCATORE reale (pag. 13).
+	if diplo_eligible:
 		p.gain_resource("diplomacy", 1, 0)
 	var sold_armies := _trade_armies
 	_trade_sel = {}
@@ -2107,8 +2110,8 @@ func _trade_confirm() -> void:
 	_trade_mode = false
 	_trade_active_res = ""
 	_clear_choice_bar()
-	if from_players > 0:
-		_status("Commercio completato (%d unità comprate da altri giocatori)." % from_players)
+	if diplo_eligible:
+		_status("Commercio completato (comprato da un altro giocatore: +1 Diplomazia).")
 	elif sold_armies > 0:
 		_status("Commercio completato (vendute %d Armate)." % sold_armies)
 	else:
@@ -2232,14 +2235,14 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 			var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(3)
 			var k := i - cur
 			if i == cur:
-				sb.bg_color = Color(0.30, 0.30, 0.36, 0.92); b.text = "•"
+				sb.bg_color = Color(0.30, 0.30, 0.36, 0.92); b.text = "-"
 			else:
 				sb.bg_color = Color(0.16, 0.5, 0.28, 0.92)
 				b.text = "+%d" % k
 				if not req.is_empty():
 					var bits := []
 					for ck in req:
-						bits.append("−%d" % (int(req[ck]) * k))
+						bits.append("-%d" % (int(req[ck]) * k))
 					b.text += " " + ",".join(bits)
 			if i == staged and i != cur:
 				sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4)
@@ -2252,16 +2255,16 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 func _show_produce_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var info := Label.new()
-	info.text = "PRODUCE — tocca le caselle sulla track della plancia (entro la tua Produzione)"
+	info.text = "PRODUCE - tocca le caselle sulla track della plancia (entro la tua Produzione)"
 	info.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
 	var arm_cap := int(p.production.get("armies", 0))
 	if arm_cap > 0:
-		var al := Label.new(); al.text = "Armate (−1 Materia cad.):"
+		var al := Label.new(); al.text = "Armate (-1 Materia cad.):"
 		al.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(al)
-		var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(34, 0)
+		var minus := Button.new(); minus.text = "-"; minus.custom_minimum_size = Vector2(34, 0)
 		minus.disabled = int(_produce_sel.get("armies", 0)) <= 0
 		minus.pressed.connect(_produce_armies_adjust.bind(-1))
 		choice_flow.add_child(minus)
@@ -2333,7 +2336,7 @@ func _pick_choice(options: Array, cb: Callable) -> void:
 
 
 ## Scelta a bottoni nella BARRA SCELTE in alto (niente più popup sopra la board):
-## il prompt va nello stato, ogni opzione è un bottone chiaro, più «Annulla».
+## il prompt va nello stato, ogni opzione è un bottone chiaro, più "Annulla".
 func _show_popup(prompt: String, items: Array, cb: Callable) -> void:
 	_clear_choice_bar()
 	_status(prompt)
@@ -2497,10 +2500,10 @@ func _build_drawer() -> void:
 		fl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		fl.offset_left = 8; fl.offset_top = 5; fl.offset_right = -8; fl.offset_bottom = -5
 		b.add_child(fl)
-		# Marcatore "▶ a chi tocca" (mostrato/nascosto in _refresh_tab_bar).
+		# Marcatore "> a chi tocca" (mostrato/nascosto in _refresh_tab_bar).
 		var mark := Label.new()
 		mark.name = "TurnMark"
-		mark.text = "▶"
+		mark.text = ">"
 		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		mark.add_theme_color_override("font_color", Color(1, 0.95, 0.4))
 		mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
@@ -2526,7 +2529,7 @@ func _layout_ui() -> void:
 	top_hud.position = Vector2.ZERO
 	top_hud.size = Vector2(w, hud_h)
 	# Niente DOPPIONE di informazioni: quando la barra scelte è visibile (riga 3) la
-	# riga di stato (riga 2) si nasconde — il contesto è già nella barra scelte.
+	# riga di stato (riga 2) si nasconde - il contesto è già nella barra scelte.
 	if status_label:
 		status_label.visible = not (choice_bar and choice_bar.visible)
 	# Barra scelte SOTTO l'HUD (quando attiva): sposta giù l'inizio della mappa.
@@ -2622,12 +2625,12 @@ func _refresh_hud(p: PlayerState) -> void:
 	# Barra snella: round + fase + indicatore di TURNO (a chi tocca, nel suo colore) +
 	# denaro + Fine turno. VP sui segnalini del tabellone; Prosperità sulla plancia.
 	var rl := Label.new()
-	rl.text = ("Round %d/6 · Azione %d/4" % [gs.round, mini(my_turn, 4)]) if _ui_phase == "Azione" else ("Round %d/6 · %s" % [gs.round, _ui_phase])
+	rl.text = ("Round %d/6 - Azione %d/4" % [gs.round, mini(my_turn, 4)]) if _ui_phase == "Azione" else ("Round %d/6 - %s" % [gs.round, _ui_phase])
 	rl.add_theme_color_override("font_color", Color(0.72, 0.78, 0.9))
 	hud_box.add_child(rl)
-	# Indicatore di turno BEN VISIBILE: ▶ + potenza nel suo colore.
+	# Indicatore di turno BEN VISIBILE: > + potenza nel suo colore.
 	var turn := Label.new()
-	turn.text = "▶ %s" % p.power.to_upper()
+	turn.text = "> %s" % p.power.to_upper()
 	turn.add_theme_font_size_override("font_size", _base_fs() + 3)
 	turn.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	turn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -2638,14 +2641,14 @@ func _refresh_hud(p: PlayerState) -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hud_box.add_child(spacer)
 	var endt := Button.new()
-	endt.text = "Fine turno"
-	# In Preparazione si sceglie il Focus (barra in alto): «Fine turno» è disattivato.
+	endt.text = 'Fine turno'
+	# In Preparazione si sceglie il Focus (barra in alto): 'Fine turno' è disattivato.
 	endt.disabled = game_over or not playing_card.is_empty() or _ui_phase == "Preparazione"
 	endt.pressed.connect(_end_turn)
 	hud_box.add_child(endt)
 
 
-## Maniglie: una per potenza, colorate; ▶ = a chi tocca, ▼ = cassetto aperto.
+## Maniglie: una per potenza, colorate; > = a chi tocca, ▼ = cassetto aperto.
 func _refresh_tab_bar() -> void:
 	var map_lock: bool = awaiting in ["region", "board_country", "move", "convert_influence", "reset_influence"]
 	for i in tab_bar.get_child_count():
@@ -2688,7 +2691,7 @@ func _refresh_drawer_content() -> void:
 	# scelte in alto (_show_trade_bar / _show_produce_bar). Qui resta solo la plancia
 	# interattiva (track risorse) da toccare/trascinare.
 
-	# Riga in colonne: plancia · nazioni amiche · commercio · strategic asset.
+	# Riga in colonne: plancia - nazioni amiche - commercio - strategic asset.
 	# Niente più etichette di testo: le sezioni si riconoscono dalle carte stesse.
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 14)
@@ -2759,7 +2762,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	view.custom_minimum_size = Vector2(pw, ph)
 	view.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	view.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	# Area interna a DIMENSIONE FISSA (pw×ph) col rapporto reale dell'immagine: tutti
+	# Area interna a DIMENSIONE FISSA (pwxph) col rapporto reale dell'immagine: tutti
 	# i segnalini si ancorano qui, così la plancia non si deforma mai anche se il
 	# contenitore prova a stirarla.
 	var area := Control.new()
@@ -2769,24 +2772,33 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	view.add_child(area)
 	board_bg = TextureRect.new()
 	board_bg.texture = load("res://assets/player_boards/%s.jpg" % p.power)
-	# Full-rect dell'area (pw×ph, rapporto reale): segue l'area senza deformarsi.
+	# Full-rect dell'area (pwxph, rapporto reale): segue l'area senza deformarsi.
 	board_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	board_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	board_bg.stretch_mode = TextureRect.STRETCH_SCALE
 	board_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	area.add_child(board_bg)
-	# Zone Focus cliccabili (solo per il giocatore di turno): toccando la colonna
-	# si sposta la pedina del Focus lì. Niente più bottoni di testo sotto.
+	# Zone Focus cliccabili (solo per il giocatore di turno): toccando la colonna si sposta
+	# la pedina del Focus lì. In PREPARAZIONE le colonne sono EVIDENZIATE (bordo dorato):
+	# è lì che si sceglie il Focus, cliccando direttamente sulla plancia.
 	if is_active:
+		var in_prep: bool = (_ui_phase == "Preparazione" and _prep_idx < gs.players.size())
 		for f in FOCUS_ZONES.size():
 			var fb := Button.new()
-			fb.flat = true
+			fb.flat = not in_prep   # in preparazione NON flat, così l'evidenziazione si vede
 			fb.anchor_left = FOCUS_ZONES[f][0]; fb.anchor_right = FOCUS_ZONES[f][1]
 			fb.anchor_top = 0.27; fb.anchor_bottom = 0.67
-			var fst := StyleBoxFlat.new(); fst.bg_color = Color(0, 0, 0, 0)
+			var fst := StyleBoxFlat.new()
+			if in_prep:
+				fst.bg_color = Color(0.95, 0.8, 0.2, 0.16)
+				fst.set_border_width_all(maxi(2, int(ph * 0.012))); fst.border_color = Color(1.0, 0.85, 0.3, 0.95)
+				fst.set_corner_radius_all(6)
+				fb.tooltip_text = "Scegli Focus %s" % FOCUS_NAME[f]
+			else:
+				fst.bg_color = Color(0, 0, 0, 0)
 			fb.add_theme_stylebox_override("normal", fst)
-			var fhv := StyleBoxFlat.new(); fhv.bg_color = Color(1, 1, 1, 0.08)
-			fb.add_theme_stylebox_override("hover", fhv)
+			var fhv := fst.duplicate(); fhv.bg_color = Color(0.95, 0.8, 0.2, 0.34) if in_prep else Color(1, 1, 1, 0.10)
+			fb.add_theme_stylebox_override("hover", fhv); fb.add_theme_stylebox_override("pressed", fhv)
 			fb.pressed.connect(_do_focus.bind(f))
 			area.add_child(fb)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
@@ -2811,11 +2823,12 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	var producing := is_active and _produce_mode
 	var stack: Dictionary = {}
 	for res in RES_TOKENS:
-		var amt := int(p.resources.get(res, 0))
+		# Durante il Commercio i prodotti commerciabili sono TOKEN CLICCABILI (li disegna
+		# _add_trade_overlays): qui li salto per non disegnarli due volte.
 		if trading and res in TRADE_RES:
-			amt = amt - int((_trade_sel.get("export", {}) as Dictionary).get(res, 0)) \
-				+ int((_trade_sel.get("import", {}) as Dictionary).get(res, 0))
-		elif producing:
+			continue
+		var amt := int(p.resources.get(res, 0))
+		if producing:
 			amt = mini(10, amt + int(_produce_sel.get(res, 0)))   # token mostrato alla quantità prodotta
 		var slot := _resource_slot(amt)
 		var n := int(stack.get(amt, 0))
@@ -2837,15 +2850,17 @@ func _trade_select_res(res: String) -> void:
 	_trade_rerender()
 
 
-## Tocco su un anello-casella: seleziona il prodotto; se la casella ne contiene più
-## d'uno (stessa quantità), CICLA tra loro a ogni tocco — così due prodotti sulla
-## stessa casella sono entrambi raggiungibili senza ambiguità.
+## Tocco sull'icona di una casella: SELEZIONA il prodotto (va in primo piano). Ri-toccando,
+## se la casella ne contiene più d'uno passa al successivo; dopo l'ultimo DESELEZIONA.
 func _trade_cycle_select(group: Array) -> void:
 	if group.is_empty():
 		return
 	if _trade_active_res in group:
 		var i: int = group.find(_trade_active_res)
-		_trade_active_res = String(group[(i + 1) % group.size()])
+		if i + 1 < group.size():
+			_trade_active_res = String(group[i + 1])   # prossimo prodotto della casella
+		else:
+			_trade_active_res = ""                       # era l'ultimo -> deseleziona
 	else:
 		_trade_active_res = String(group[0])
 	_trade_rerender()
@@ -2853,7 +2868,7 @@ func _trade_cycle_select(group: Array) -> void:
 
 # --- Drag&drop (iterazione 2, sopra al tap): trascini il token risorsa sulla
 # track e lo rilasci su una casella valida. Usa il drag&drop nativo di Godot
-# (set_drag_forwarding) — niente calcolo manuale del puntatore. ---
+# (set_drag_forwarding) - niente calcolo manuale del puntatore. ---
 
 ## Inizio trascinamento di un token risorsa: arma il prodotto (così compaiono le
 ## caselle valide come bersagli di rilascio) e mostra un'anteprima sotto il dito.
@@ -2880,53 +2895,75 @@ func _trade_do_drop(_at_position: Vector2, _data: Variant, R: String, i: int) ->
 	_trade_set_target(R, i)
 
 
-## Overlay del Commercio sulla resource track: senza prodotto selezionato ogni token
-## commerciabile è toccabile (anello evidenziato); con un prodotto selezionato mostra
-## le caselle 0-10 valide (verso 0 vendi, verso 10 compra) col money su ognuna.
+## Commercio sulla resource track: ogni prodotto è la sua ICONA (token) cliccabile -
+## niente cerchi/anelli. Toccando l'icona la SELEZIONI (si illumina e va in primo piano);
+## ri-toccando, se la casella ha più prodotti passi al successivo, altrimenti la deselezioni.
+## Con un prodotto selezionato puoi TRASCINARLO o toccare una casella per spostarlo lì.
 func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) -> void:
 	var exp: Dictionary = _trade_sel.get("export", {})
 	var imp: Dictionary = _trade_sel.get("import", {})
-	# Raggruppa i prodotti commerciabili per CASELLA (stessa quantità → stessa casella):
-	# un solo anello cliccabile per casella che SELEZIONA il prodotto e, se la casella
-	# ne ha più d'uno, CICLA tra loro a ogni tocco (↻). Il drag resta sul prodotto attivo.
+	# Raggruppa i prodotti per CASELLA (stessa quantità "staged" -> stessa casella).
 	var by_slot := {}   # amt -> [res...]
 	for res in TRADE_RES:
 		var amt := int(p.resources.get(res, 0)) - int(exp.get(res, 0)) + int(imp.get(res, 0))
 		if not by_slot.has(amt):
 			by_slot[amt] = []
 		(by_slot[amt] as Array).append(res)
+	var ts := ph * 0.12   # dimensione del token-icona
 	for amt in by_slot:
 		var group: Array = by_slot[amt]
-		var active_here: bool = _trade_active_res in group
 		var slot := _resource_slot(int(amt))
-		var d := ph * 0.16
-		var b := Button.new()   # niente flat: l'anello dev'essere visibile
-		b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
-		b.offset_left = -d * 0.5; b.offset_right = d * 0.5; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
-		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d)); sb.bg_color = Color(1, 1, 1, 0.0)
-		sb.set_border_width_all(maxi(2, int(d * 0.12)))
-		sb.border_color = Color(0.95, 0.85, 0.4) if active_here else Color(0.55, 0.8, 1.0, 0.9)
-		for stn in ["normal", "hover", "pressed", "focus"]:
-			b.add_theme_stylebox_override(stn, sb)
+		var front := String(_trade_active_res) if _trade_active_res in group else ""
+		# Ordine di disegno: il prodotto in primo piano (selezionato) per ULTIMO = in cima.
+		var ordered := []
+		for res in group:
+			if res != front:
+				ordered.append(res)
+		if front != "":
+			ordered.append(front)
+		for idx in ordered.size():
+			var res := String(ordered[idx])
+			var is_front := (res == front)
+			var off := idx * ts * 0.5
+			# Evidenziazione: un alone dorato DIETRO l'icona selezionata (solo l'icona).
+			if is_front:
+				var halo := Panel.new()
+				halo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				halo.anchor_left = slot.x; halo.anchor_right = slot.x; halo.anchor_top = slot.y; halo.anchor_bottom = slot.y
+				halo.offset_left = -ts * 0.62 + off; halo.offset_right = ts * 0.62 + off
+				halo.offset_top = -ts * 0.62; halo.offset_bottom = ts * 0.62
+				var hs := StyleBoxFlat.new(); hs.bg_color = Color(1.0, 0.85, 0.3, 0.30)
+				hs.set_corner_radius_all(int(ts)); hs.set_border_width_all(maxi(2, int(ts * 0.12))); hs.border_color = Color(1.0, 0.85, 0.3, 0.95)
+				halo.add_theme_stylebox_override("panel", hs)
+				area.add_child(halo)
+			var tok := TextureRect.new()
+			tok.texture = load("res://assets/tokens/%s.png" % res)
+			tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tok.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tok.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tok.anchor_left = slot.x; tok.anchor_right = slot.x; tok.anchor_top = slot.y; tok.anchor_bottom = slot.y
+			tok.offset_left = -ts * 0.5 + off; tok.offset_right = ts * 0.5 + off
+			tok.offset_top = -ts * 0.5; tok.offset_bottom = ts * 0.5
+			if not is_front and front != "":
+				tok.modulate = Color(0.6, 0.6, 0.65)   # le non in primo piano si oscurano
+			area.add_child(tok)
+		# Area cliccabile sopra la pila (trasparente): seleziona/cicla; se selezionata, trascina.
+		var btn := Button.new()
+		btn.flat = true
+		btn.anchor_left = slot.x; btn.anchor_right = slot.x; btn.anchor_top = slot.y; btn.anchor_bottom = slot.y
+		var w := ts * (0.5 + 0.5 * ordered.size())
+		btn.offset_left = -ts * 0.5; btn.offset_right = w; btn.offset_top = -ts * 0.6; btn.offset_bottom = ts * 0.6
 		var labels := []
 		for res in group:
 			labels.append(RES_LABEL.get(res, res))
-		b.tooltip_text = "Commercia " + ", ".join(labels) + ("  ·  ri-tocca per cambiare prodotto" if group.size() > 1 else "")
-		if group.size() > 1:
-			b.text = "↻"
-			b.add_theme_font_size_override("font_size", maxi(9, int(d * 0.5)))
-			b.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4) if active_here else Color(0.7, 0.85, 1.0))
-		b.pressed.connect(_trade_cycle_select.bind(group.duplicate()))
-		# Drag SOLO se la casella ha un unico prodotto: con più prodotti il drag (su touch
-		# parte anche da un tocco breve) "ruberebbe" il tap e il CICLO non scatterebbe mai.
-		# Con più prodotti si usa il tap per ciclare/selezionare, poi le caselle valide.
-		if group.size() == 1:
-			b.set_drag_forwarding(_trade_drag_begin.bind(String(group[0])), Callable(), Callable())
-		area.add_child(b)
-	# Nessun prodotto selezionato: ci si ferma agli anelli di selezione.
+		btn.tooltip_text = ", ".join(labels) + ("  (ri-tocca per cambiare prodotto)" if group.size() > 1 else "")
+		btn.pressed.connect(_trade_cycle_select.bind(group.duplicate()))
+		if front != "":
+			btn.set_drag_forwarding(_trade_drag_begin.bind(front), Callable(), Callable())
+		area.add_child(btn)
+	# Con un prodotto selezionato: caselle valide col money (verso 0 vendi, verso 10 compra).
 	if _trade_active_res == "":
 		return
-	# Prodotto selezionato: caselle valide col money (verso 0 vendi, verso 10 compra).
 	var R := _trade_active_res
 	var qty := int(p.resources.get(R, 0))
 	var lo := maxi(0, qty - _trade_export_cap(p, R))
@@ -2934,7 +2971,7 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 	var eff := qty - int(exp.get(R, 0)) + int(imp.get(R, 0))
 	for i in range(lo, hi + 1):
 		if i == eff:
-			continue   # la casella corrente è già l'anello di selezione/ciclo
+			continue   # la casella corrente ha già il token in primo piano
 		var slot := _resource_slot(i)
 		var d := ph * 0.135
 		var b := Button.new()
@@ -2945,15 +2982,14 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 		if i < qty:
 			sb.bg_color = Color(0.16, 0.5, 0.24, 0.92); b.text = "+%d" % (int(Actions.EXPORT_GAIN.get(R, 0)) * (qty - i))
 		else:
-			sb.bg_color = Color(0.55, 0.2, 0.2, 0.92); b.text = "−%d" % (int(Actions.IMPORT_COST.get(R, 0)) * (i - qty))
+			sb.bg_color = Color(0.55, 0.2, 0.2, 0.92); b.text = "-%d" % (int(Actions.IMPORT_COST.get(R, 0)) * (i - qty))
 		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
 		b.pressed.connect(_trade_set_target.bind(R, i))
-		# Drop target del drag&drop: rilasciando qui il token, imposta questa quantità.
 		b.set_drag_forwarding(Callable(), _trade_can_drop.bind(R), _trade_do_drop.bind(R, i))
 		area.add_child(b)
 
 
-## Banner del Commercio (in cima al cassetto): Δ money, prodotto selezionato +
+## Banner del Commercio (in cima al cassetto): saldo money, prodotto selezionato +
 ## sorgenti d'import (bandierine), Conferma/Annulla. Non è un popup.
 ## Controlli del Commercio NELLA BARRA SCELTE in alto (non più ancorati alla plancia):
 ## riepilogo, prodotto attivo + sorgenti (bandierine), Cambia prodotto/Conferma/Annulla,
@@ -2962,7 +2998,7 @@ func _show_trade_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var td := _trade_deal(p.power)
 	var info := Label.new()
-	info.text = "COMMERCIO  ·  Δ %+d money  ·  Exp %d/%d Imp %d/%d" % [_trade_delta(),
+	info.text = "COMMERCIO  -  saldo %+d money  -  Exp %d/%d Imp %d/%d" % [_trade_delta(),
 		_trade_export_used(), int(td.get("exports", 2)),
 		(_trade_sel.get("import", {}) as Dictionary).size(), int(td.get("imports", 2))]
 	info.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
@@ -2972,7 +3008,7 @@ func _show_trade_bar(p: PlayerState) -> void:
 		# Selezione del prodotto SULLA CASELLA (si tocca/trascina il token sulla plancia;
 		# se due prodotti stanno sulla stessa casella, ri-toccando si CICLA tra loro).
 		var hint := Label.new()
-		hint.text = "— tocca un prodotto sulla plancia (ri-tocca la stessa casella per cambiare prodotto); poi scegli da CHI comprare"
+		hint.text = "- tocca un prodotto sulla plancia (ri-tocca la stessa casella per cambiare prodotto); poi scegli da CHI comprare"
 		hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
 		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(hint)
@@ -2980,7 +3016,7 @@ func _show_trade_bar(p: PlayerState) -> void:
 		var R := _trade_active_res
 		var base := _trade_allied_import(p, R)
 		var rl := Label.new()
-		rl.text = "%s — importabili %d (alleate %d + venditore) · scegli da chi:" % [RES_LABEL.get(R, R), _trade_import_cap_sel(p, R), base]
+		rl.text = "%s - importabili %d (alleate %d + venditore) - scegli da chi:" % [RES_LABEL.get(R, R), _trade_import_cap_sel(p, R), base]
 		rl.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 		rl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(rl)
@@ -3013,10 +3049,10 @@ func _trade_armies_row(p: PlayerState, ex_max: int) -> Control:
 	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 6)
 	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var lbl := Label.new()
-	lbl.text = "Vendi Armate (riserva %d) — 20 money cad.:" % p.armies_available
+	lbl.text = "Vendi Armate (riserva %d) - 20 money cad.:" % p.armies_available
 	lbl.add_theme_color_override("font_color", Color(0.85, 0.8, 0.6))
 	row.add_child(lbl)
-	var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 28)
+	var minus := Button.new(); minus.text = "-"; minus.custom_minimum_size = Vector2(30, 28)
 	minus.disabled = _trade_armies <= 0
 	minus.pressed.connect(_trade_armies_adjust.bind(-1))
 	row.add_child(minus)
@@ -3053,7 +3089,7 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 		fb.tooltip_text = "Solo le tue alleate (Riserva): importi fino a %d, niente +1 Diplomazia" % int(s["n"])
 	else:
 		var inc := int(s["n"]) - base
-		fb.tooltip_text = "%s vende %d → totale importabile %d (%d alleate + %d %s), +1 Diplomazia" % [
+		fb.tooltip_text = "%s vende %d -> totale importabile %d (%d alleate + %d %s), +1 Diplomazia" % [
 			POWER_LABEL.get(src, src.to_upper()), inc, int(s["n"]), base, inc, POWER_LABEL.get(src, src.to_upper())]
 	var fsb := StyleBoxFlat.new(); fsb.set_corner_radius_all(5); fsb.bg_color = Color(0.2, 0.22, 0.28)
 	fsb.content_margin_left = 7; fsb.content_margin_right = 7
@@ -3068,9 +3104,9 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 		fb.add_theme_stylebox_override(stn, fsb)
 	fb.add_theme_font_size_override("font_size", _base_fs())
 	if src == "reserve":
-		fb.text = "Solo alleate ×%d" % int(s["n"])
+		fb.text = "Solo alleate x%d" % int(s["n"])
 	else:
-		# Bandiera (icona) + NOME della superpotenza + «+M» (quanto AGGIUNGE alla base): è
+		# Bandiera (icona) + NOME della superpotenza + "+M" (quanto AGGIUNGE alla base): è
 		# chiaro da quale giocatore compri e che la sua quantità si somma alle tue alleate.
 		fb.icon = load("res://assets/flags/%s.png" % src)
 		fb.expand_icon = true
@@ -3085,7 +3121,7 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 const RESERVE_ARMY_POS := Vector2(0.40, 0.05)
 
 ## Pedine Armata della riserva del giocatore, impilate (sovrapposte) in alto sulla
-## plancia, con "×N" del totale.
+## plancia, con "xN" del totale.
 func _add_reserve_armies(view: Control, p: PlayerState, ph: float) -> void:
 	var n := p.armies_available
 	if n <= 0:
@@ -3106,7 +3142,7 @@ func _add_reserve_armies(view: Control, p: PlayerState, ph: float) -> void:
 		tr.offset_top = -th * 0.5; tr.offset_bottom = th * 0.5
 		view.add_child(tr)
 	var lbl := Label.new()
-	lbl.text = "×%d" % n
+	lbl.text = "x%d" % n
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	lbl.add_theme_font_size_override("font_size", maxi(11, int(ph * 0.05)))
@@ -3127,7 +3163,7 @@ func _resource_slot(amount: int) -> Vector2:
 	return Vector2(RES_TRACK_X[a - 6], 0.9036)
 
 
-## Cubo/disco segnalino a coordinate normalizzate (circle=true → disco prosperità/focus).
+## Cubo/disco segnalino a coordinate normalizzate (circle=true -> disco prosperità/focus).
 func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col: Color, circle: bool) -> void:
 	var d := ph * (0.082 if circle else 0.074)
 	var s := Vector2(d, d)
@@ -3173,7 +3209,7 @@ func _prosperity_strip(p: PlayerState) -> Control:
 	for i in steps.size():
 		var step: Dictionary = steps[i]
 		var cell := Label.new()
-		cell.text = "  %dCG→%dVP  " % [int(step.get("cost_consumer_goods", 0)), int(step.get("vp", 0))]
+		cell.text = "  %dCG->%dVP  " % [int(step.get("cost_consumer_goods", 0)), int(step.get("vp", 0))]
 		var box := StyleBoxFlat.new()
 		if i < p.prosperity_level:
 			box.bg_color = Color(0.3, 0.7, 0.4, 0.9)
@@ -3189,7 +3225,7 @@ func _prosperity_strip(p: PlayerState) -> Control:
 
 ## Sezione alleati: le nazioni amiche come carte-immagine reali (cliccabili solo
 ## per il giocatore di turno: Invest/Build a Base). Le carte della STESSA nazione
-## si impilano (sovrapposte, con badge ×N): più carte = più simboli Export/Import,
+## si impilano (sovrapposte, con badge xN): più carte = più simboli Export/Import,
 ## quindi più capacità di commercio con quella nazione. Accanto, la carta Trade
 ## Deals (Commercio) del giocatore.
 func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> void:
@@ -3271,8 +3307,8 @@ func _apply_exhausted(card: Control, sz: Vector2) -> void:
 
 
 ## Pila di carte della stessa nazione: le copie in più stanno dietro, leggermente
-## sfalsate; un badge ×N indica quante sono (più simboli = più Export/Import).
-## exhausted=true → la nazione è esaurita (grigia/ruotata).
+## sfalsate; un badge xN indica quante sono (più simboli = più Export/Import).
+## exhausted=true -> la nazione è esaurita (grigia/ruotata).
 func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool, exhausted := false, on_press := Callable()) -> Control:
 	var handler: Callable = on_press if on_press.is_valid() else _on_allied_pressed.bind(cn)
 	if count <= 1:
@@ -3304,9 +3340,9 @@ func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, click
 	if clickable:
 		front.pressed.connect(handler)
 	holder.add_child(front)
-	# Badge ×N.
+	# Badge xN.
 	var badge := Label.new()
-	badge.text = "×%d" % count
+	badge.text = "x%d" % count
 	badge.add_theme_font_size_override("font_size", maxi(12, _base_fs()))
 	badge.add_theme_color_override("font_color", Color(1, 1, 1))
 	var bst := StyleBoxFlat.new()
@@ -3384,7 +3420,7 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 			var qy := int((cards[i] as Dictionary)[res])
 			prods.append("%d %s" % [qy, RES_LABEL.get(res, res)] if qy > 1 else String(RES_LABEL.get(res, res)))
 		# "una risorsa per carta": le risorse sulla stessa carta sono alternative (O).
-		pcard.tooltip_text = "Commerce %d/%d%s — vende: %s" % [i + 1, cards.size(), "  (usata)" if used else "", " o ".join(prods)]
+		pcard.tooltip_text = "Commerce %d/%d%s - vende: %s" % [i + 1, cards.size(), "  (usata)" if used else "", " o ".join(prods)]
 		prow.add_child(pcard)
 
 
@@ -3414,7 +3450,7 @@ func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		var lbl := Label.new()
-		lbl.text = "• " + String(ONGOING_DESC.get(tag, tag))
+		lbl.text = "- " + String(ONGOING_DESC.get(tag, tag))
 		lbl.add_theme_font_size_override("font_size", maxi(11, _base_fs() - 2))
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3531,14 +3567,14 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	bar.flat = true
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 	if auto_hide:
-		bar.text = "Mano nascosta durante la scelta — %d carte" % p.hand.size()
+		bar.text = "Mano nascosta durante la scelta - %d carte" % p.hand.size()
 		bar.disabled = true
 		hand_pinned.add_child(bar)
 		hand_box = null
 		return
 	# Barra con toggle per collassare la mano (così non copre mai la plancia).
-	var plays_txt := "" if _plays_left == 1 else "  ·  %d giocate" % _plays_left if _plays_left > 0 else "  ·  turno esaurito"
-	bar.text = "%s  La tua mano (%d)%s" % ["[+]" if hand_collapsed else "[–]", p.hand.size(), plays_txt]
+	var plays_txt := "" if _plays_left == 1 else "  -  %d giocate" % _plays_left if _plays_left > 0 else "  -  turno esaurito"
+	bar.text = "%s  La tua mano (%d)%s" % ["[+]" if hand_collapsed else "[-]", p.hand.size(), plays_txt]
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
 	if hand_collapsed:
@@ -3574,7 +3610,7 @@ const COIN_DENOMS := [20, 10, 5, 1]
 
 ## Denaro come monete vere: scomposizione greedy del totale nei tagli 20/10/5/1,
 ## rese come immagini sovrapposte, seguite dalla cifra totale. Se servono troppe
-## monete, mostra un taglio per denominazione con "×N".
+## monete, mostra un taglio per denominazione con "xN".
 func _money_widget(amount: int) -> Control:
 	var fs := _base_fs()
 	var cs := fs + 6   # lato moneta ~ altezza del testo
@@ -3589,7 +3625,7 @@ func _money_widget(amount: int) -> Control:
 	var total_coins := 0
 	for d in COIN_DENOMS:
 		total_coins += int(counts[d])
-	var compact := total_coins > 8   # troppe monete: una per taglio con ×N
+	var compact := total_coins > 8   # troppe monete: una per taglio con xN
 	var stack := HBoxContainer.new()
 	stack.add_theme_constant_override("separation", -int(cs * 0.45))  # leggera sovrapposizione
 	for d in COIN_DENOMS:
@@ -3607,7 +3643,7 @@ func _money_widget(amount: int) -> Control:
 			stack.add_child(ic)
 		if compact and n > 1:
 			var x := Label.new()
-			x.text = "×%d" % n
+			x.text = "x%d" % n
 			x.add_theme_font_size_override("font_size", maxi(10, fs - 3))
 			stack.add_child(x)
 	box.add_child(stack)
@@ -3644,9 +3680,9 @@ func _end_turn() -> void:
 func _turn_hint() -> String:
 	var p := _active()
 	if _plays_left <= 0:
-		return "%s: turno esaurito — premi «Fine turno»." % p.power.to_upper()
+		return "%s: turno esaurito - premi 'Fine turno'." % p.power.to_upper()
 	var focus_txt := ", oppure scegli un Focus sulla plancia" if int(_focus_round.get(p.power, -1)) != gs.round else ""
-	return "▶ Tocca a %s: gioca una carta dalla mano%s, poi «Fine turno»." % [p.power.to_upper(), focus_txt]
+	return "> Tocca a %s: gioca una carta dalla mano%s, poi 'Fine turno'." % [p.power.to_upper(), focus_txt]
 
 
 ## Carte giocabili nel turno: 1 di base, +1 al primo turno del round con
@@ -3658,15 +3694,16 @@ func _reset_plays() -> void:
 
 
 ## Azione Focus: sposta la pedina Focus sulla colonna scelta e prepara (ready) le
-## Country card esaurite — 2 di base, +1 per ogni "ready_extra_on_focus". Consuma
+## Country card esaurite - 2 di base, +1 per ogni "ready_extra_on_focus". Consuma
 ## l'azione del turno (come giocare una carta).
 func _do_focus(f: int) -> void:
 	if not playing_card.is_empty():
 		return
-	# In PREPARAZIONE la scelta del Focus è guidata dalla barra in alto: instradala lì
-	# (così cliccare la colonna Focus sulla plancia equivale a premere il bottone).
+	# In PREPARAZIONE la scelta del Focus si fa toccando una colonna sulla plancia: applica
+	# le azioni del Focus (ready + produce) e passa al giocatore successivo.
 	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
-		_prep_choose_focus(f)
+		_status(_apply_focus(_active(), f))
+		_prep_advance()
 		return
 	var p := _active()
 	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
@@ -3715,9 +3752,9 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 			produced.append("%s +%d" % [RES_LABEL.get(rt, rt), made])
 	var msg := "Focus %s" % FOCUS_NAME[f]
 	if readied > 0:
-		msg += " — preparate %d Country card" % readied
+		msg += " - preparate %d Country card" % readied
 	if produced.size() > 0:
-		msg += " · Prodotto: %s" % ", ".join(produced)
+		msg += " - Prodotto: %s" % ", ".join(produced)
 	return msg + "."
 
 
@@ -3727,14 +3764,20 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 ## Avvia la PREPARATION guidata del round (reveal/turn order/produzione primaria/pesca
 ## sono già stati fatti): scelta del Focus, un giocatore alla volta in ordine di turno.
 func _begin_preparation() -> void:
+	# Round 1: NIENTE preparazione guidata - tutti partono con Focus Domestic.
+	if gs.round <= 1:
+		for pp in gs.players:
+			pp.focus = WO.Focus.DOMESTIC
+		_begin_action_phase()
+		return
 	gs.phase = WO.Phase.PREPARATION
 	_ui_phase = "Preparazione"
 	_prep_idx = 0
 	_prep_step()
 
 
-## Passo della PREPARATION: chiede il Focus al giocatore corrente; finiti tutti,
-## inizia la fase Azione.
+## Passo della PREPARATION: il giocatore sceglie il Focus CLICCANDO una colonna sulla
+## sua plancia (evidenziata); finiti tutti i giocatori, inizia la fase Azione.
 func _prep_step() -> void:
 	if _prep_idx >= gs.players.size():
 		_begin_action_phase()
@@ -3743,94 +3786,22 @@ func _prep_step() -> void:
 	drawer_open = true
 	drawer_power = _active().power
 	_after_change()
-	_prep_focus_bar()
+	_prep_bar()
 
 
-## Barra in alto della PREPARATION: intestazione + 3 bottoni Focus (con cosa fanno).
-func _prep_focus_bar() -> void:
+## Barra in alto della PREPARATION: solo l'istruzione (NIENTE bottoni - la scelta del
+## Focus si fa toccando una colonna sulla plancia).
+func _prep_bar() -> void:
 	_clear_choice_bar()
 	var p := _active()
 	var head := Label.new()
-	head.text = "Preparazione — %s · scegli il Focus:" % p.power.to_upper()
-	head.add_theme_font_size_override("font_size", _base_fs() + 2)
+	head.text = "Preparazione - %s: scegli il Focus toccando una colonna evidenziata sulla plancia" % p.power.to_upper()
+	head.add_theme_font_size_override("font_size", _base_fs() + 1)
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(head)
-	var keys := ["domestic", "diplomatic", "military"]
-	for f in 3:
-		var fb: Dictionary = focus_bonuses.get(keys[f], {})
-		var prod := []
-		for rt in (fb.get("produce", []) as Array):
-			prod.append(RES_LABEL.get(rt, rt))
-		var b := Button.new()
-		b.text = "%s — prepara %d Country" % [FOCUS_NAME[f], int(fb.get("ready_country_cards", 1))]
-		if prod.size() > 0:
-			b.text += ", produce %s" % ", ".join(prod)
-		b.add_theme_font_size_override("font_size", _base_fs() + 1)
-		b.tooltip_text = String(fb.get("ongoing", ""))
-		b.pressed.connect(_prep_choose_focus.bind(f))
-		choice_flow.add_child(b)
 	choice_bar.visible = true
 	_layout_ui()
-
-
-## Il giocatore sceglie il Focus: applica ready+produce, poi offre l'aumento Produzione.
-func _prep_choose_focus(f: int) -> void:
-	var p := _active()
-	_status(_apply_focus(p, f))
-	_prep_boost_bar(p, f)
-
-
-## Offre (opzionale) l'aumento di una Produzione spendendo Energia — l'azione legata al
-## Focus. Diplomatic/Military: un tipo fisso; Domestic: una Produzione a scelta. «Continua»
-## passa al giocatore successivo.
-func _prep_boost_bar(p: PlayerState, f: int) -> void:
-	_after_change()   # ridisegna la plancia con ready/produce appena applicati
-	_clear_choice_bar()
-	var key: String = ["domestic", "diplomatic", "military"][f]
-	var fb: Dictionary = focus_bonuses.get(key, {})
-	var cost := int(fb.get("increase_production_cost", 8))
-	var head := Label.new()
-	head.text = "Preparazione — %s · Focus %s scelto." % [p.power.to_upper(), FOCUS_NAME[f]]
-	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
-	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	choice_flow.add_child(head)
-	if int(p.resources.get("energy", 0)) >= cost:
-		var lab := Label.new()
-		lab.text = "Aumenta Produzione (−%d Energia → +1):" % cost
-		lab.add_theme_color_override("font_color", Color(0.85, 0.9, 0.6))
-		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		choice_flow.add_child(lab)
-		var types: Array
-		if fb.has("increase_production"):
-			types = [String(fb["increase_production"])]
-		else:
-			types = ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy", "armies"]
-		for rt in types:
-			if int(p.production.get(rt, 0)) >= 5:
-				continue   # tracciato Produzione già al massimo
-			var b := Button.new()
-			b.text = "+1 %s" % RES_LABEL.get(rt, rt)
-			b.add_theme_font_size_override("font_size", _base_fs() + 1)
-			b.pressed.connect(_prep_do_boost.bind(p, String(rt), cost))
-			choice_flow.add_child(b)
-	var skip := Button.new()
-	skip.text = "Continua"
-	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
-	skip.pressed.connect(_prep_advance)
-	choice_flow.add_child(skip)
-	choice_bar.visible = true
-	_layout_ui()
-
-
-## Applica l'aumento Produzione (paga l'Energia) e passa al giocatore successivo.
-func _prep_do_boost(p: PlayerState, rt: String, cost: int) -> void:
-	if int(p.resources.get("energy", 0)) < cost:
-		return
-	p.resources["energy"] = int(p.resources.get("energy", 0)) - cost
-	p.production[rt] = int(p.production.get(rt, 0)) + 1
-	_status("%s: Produzione %s +1 (−%d Energia)." % [p.power.to_upper(), RES_LABEL.get(rt, rt), cost])
-	_prep_advance()
 
 
 ## Passa al giocatore successivo della PREPARATION.
@@ -3848,7 +3819,7 @@ func _begin_action_phase() -> void:
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
 	_reset_plays()
-	_status("Round %d — Azione. %s" % [gs.round, _turn_hint()])
+	_status("Round %d - Azione. %s" % [gs.round, _turn_hint()])
 	_after_change()
 
 
@@ -3949,7 +3920,7 @@ func _show_research() -> void:
 	var content_w: float = panel_w - 36.0   # larghezza utile per le righe di carte
 
 	var head := Label.new()
-	head.text = "Research — %s   ·   Research disponibili: %d" % [p.power.to_upper(), _research_points]
+	head.text = "Research - %s   -   Research disponibili: %d" % [p.power.to_upper(), _research_points]
 	head.add_theme_font_size_override("font_size", _base_fs() + 2)
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	vb.add_child(head)
@@ -3965,10 +3936,10 @@ func _show_research() -> void:
 		var cost := int(card.get("market_cost", 0))
 		mrow.add_child(_market_card_sized(card, "costo %d R" % cost, _research_points < cost, mcard_w, mcard_h, _buy_market.bind(card)))
 
-	# Opzione (pag. 17): −2 Research per scartare le 3 carte più a destra.
+	# Opzione (pag. 17): -2 Research per scartare le 3 carte più a destra.
 	if not market_display.is_empty():
 		var reshuffle := Button.new()
-		reshuffle.text = "Cambia Market: −2 Research → scarta le 3 a destra"
+		reshuffle.text = "Cambia Market: -2 Research -> scarta le 3 a destra"
 		reshuffle.disabled = _research_points < 2
 		reshuffle.pressed.connect(_market_reshuffle_3)
 		vb.add_child(reshuffle)
@@ -4005,7 +3976,7 @@ func _buy_market(card: Dictionary) -> void:
 	if spent >= 0:
 		_research_points -= spent
 		_market_take(card)
-		_status("Comprata dal Market: %s (−%d Research)." % [card.get("display_name", ""), spent])
+		_status("Comprata dal Market: %s (-%d Research)." % [card.get("display_name", ""), spent])
 		_after_change()
 		_show_research()
 
@@ -4044,7 +4015,7 @@ func _market_reshuffle_3() -> void:
 		return
 	_research_points -= 2
 	_market_discard_rightmost(3)
-	_status("Market: scartate le 3 carte più a destra (−2 Research).")
+	_status("Market: scartate le 3 carte più a destra (-2 Research).")
 	_after_change()
 	_show_research()
 
@@ -4075,7 +4046,7 @@ func _apply_auto_influence(lines: Array) -> String:
 		player_powers.append(p.power)
 	if player_powers.size() >= 4:
 		return ""   # tutte le potenze sono controllate da giocatori
-	lines.append("— Auto-Influence (potenze neutrali) —")
+	lines.append("- Auto-Influence (potenze neutrali) -")
 	var first_art := ""
 	# Si applicano DUE carte Auto-Influence per round (pag. 18), una alla volta.
 	for _i in 2:
@@ -4095,7 +4066,7 @@ func _apply_auto_influence(lines: Array) -> String:
 			var row: Dictionary = rows[power]
 			var txt := "%s: +Influenza in %s" % [power.to_upper(), String(row.get("region", "")).replace("_", " ")]
 			if bool(row.get("army", false)):
-				txt += " · +1 Armata"
+				txt += " - +1 Armata"
 			lines.append(txt)
 		# Money del commercio (pag. 18): solo se il giocatore ha una Commerce card a
 		# faccia in su, che viene girata; altrimenti niente.
@@ -4122,11 +4093,11 @@ func _allied_count_in_region(p: PlayerState, region: String) -> int:
 func _run_aftermath() -> void:
 	gs.phase = WO.Phase.AFTERMATH
 	_ui_phase = "Aftermath"
-	_aftermath_lines = ["— Aftermath round %d —" % gs.round]
+	_aftermath_lines = ["- Aftermath round %d -" % gs.round]
 	_threat_defense = {}
 	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
 	_aftermath_ai_art = _apply_auto_influence(_aftermath_lines)
-	# Return on Investments — quota FDI (automatica): 2 money per FDI × valore del Paese.
+	# Return on Investments - quota FDI (automatica): 2 money per FDI x valore del Paese.
 	# Lo scarto degli Engage token (5 money/Country) è una SCELTA, gestita nei popup.
 	for p in gs.players:
 		var roi := Aftermath.return_on_investments(p, p.fdi_values, [])
@@ -4146,7 +4117,7 @@ func _aftermath_player_step() -> void:
 
 
 ## Scelte di Aftermath del giocatore, TUTTE sulla mappa/plancia (niente popup):
-## - scartare un Engage token: si TOCCA il token sulla mappa → money o Difesa;
+## - scartare un Engage token: si TOCCA il token sulla mappa -> money o Difesa;
 ## - Increase Prosperity: si TOCCA la prossima corona sulla traccia Prosperità;
 ## - "Continua" nella barra in alto passa al giocatore successivo.
 func _show_aftermath_choices(p: PlayerState) -> void:
@@ -4158,18 +4129,18 @@ func _show_aftermath_choices(p: PlayerState) -> void:
 	_aftermath_bar(p)
 
 
-## Barra in alto dell'Aftermath: intestazione, eventuale «Aumenta Prosperità» e «Continua».
+## Barra in alto dell'Aftermath: intestazione, eventuale "Aumenta Prosperità" e "Continua".
 func _aftermath_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var head := Label.new()
-	head.text = "Aftermath — %s  ·  round %d" % [p.power.to_upper(), gs.round]
+	head.text = "Aftermath - %s  -  round %d" % [p.power.to_upper(), gs.round]
 	head.add_theme_font_size_override("font_size", _base_fs() + 2)
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(head)
 	if not p.engage_tokens.is_empty():
 		var hint := Label.new()
-		hint.text = "— tocca un Engage token sulla mappa per scartarlo (→ money o Difesa)"
+		hint.text = "- tocca un Engage token sulla mappa per scartarlo (-> money o Difesa)"
 		hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.6))
 		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(hint)
@@ -4180,7 +4151,7 @@ func _aftermath_bar(p: PlayerState) -> void:
 		var cost := int(step.get("cost_consumer_goods", 999))
 		if int(p.resources.get("consumer_goods", 0)) >= cost:
 			var bpr := Button.new()
-			bpr.text = "Aumenta Prosperità (−%d CG → +%d VP, +%d money)" % [cost, int(step.get("vp", 0)), int(step.get("money", 0))]
+			bpr.text = "Aumenta Prosperità (-%d CG -> +%d VP, +%d money)" % [cost, int(step.get("vp", 0)), int(step.get("money", 0))]
 			bpr.add_theme_font_size_override("font_size", _base_fs() + 1)
 			bpr.pressed.connect(_aftermath_prosperity.bind(p))
 			choice_flow.add_child(bpr)
@@ -4193,7 +4164,7 @@ func _aftermath_bar(p: PlayerState) -> void:
 	_layout_ui()
 
 
-## «Continua»: chiude le scelte del giocatore corrente e passa al successivo.
+## "Continua": chiude le scelte del giocatore corrente e passa al successivo.
 func _aftermath_continue() -> void:
 	_aftermath_choice_p = null
 	_clear_choice_bar()
@@ -4208,7 +4179,7 @@ func _on_aftermath_token(p: PlayerState, region: String) -> void:
 	_clear_choice_bar()
 	var n := _allied_count_in_region(p, region)
 	var lab := Label.new()
-	lab.text = "Engage in %s — scarta per:" % String(region).replace("_", " ")
+	lab.text = "Engage in %s - scarta per:" % String(region).replace("_", " ")
 	lab.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
 	lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(lab)
@@ -4231,14 +4202,14 @@ func _on_aftermath_token(p: PlayerState, region: String) -> void:
 	_layout_ui()
 
 
-## Scarta un Engage token per money (5 × Country alleate della Regione) — ROI (#6).
+## Scarta un Engage token per money (5 x Country alleate della Regione) - ROI (#6).
 func _aftermath_token_money(p: PlayerState, region: String) -> void:
 	if region not in p.engage_tokens:
 		return
 	p.engage_tokens.erase(region)
 	var n := _allied_count_in_region(p, region)
 	p.money += 5 * n
-	_aftermath_lines.append("%s: scarta Engage in %s → +%d money" % [p.power.to_upper(), region.replace("_", " "), 5 * n])
+	_aftermath_lines.append("%s: scarta Engage in %s -> +%d money" % [p.power.to_upper(), region.replace("_", " "), 5 * n])
 	_layout_engage_tokens()
 	_show_aftermath_choices(p)
 
@@ -4252,7 +4223,7 @@ func _aftermath_token_defense(p: PlayerState, region: String) -> void:
 	if not _threat_defense.has(region):
 		_threat_defense[region] = {}
 	_threat_defense[region][p.power] = int(_threat_defense[region].get(p.power, 0)) + 2 * n
-	_aftermath_lines.append("%s: scarta Engage in %s → +%d Difesa (THREAT)" % [p.power.to_upper(), region.replace("_", " "), 2 * n])
+	_aftermath_lines.append("%s: scarta Engage in %s -> +%d Difesa (THREAT)" % [p.power.to_upper(), region.replace("_", " "), 2 * n])
 	_layout_engage_tokens()
 	_show_aftermath_choices(p)
 
@@ -4261,7 +4232,7 @@ func _aftermath_token_defense(p: PlayerState, region: String) -> void:
 func _aftermath_prosperity(p: PlayerState) -> void:
 	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
 	if GamePhases.increase_prosperity(p, steps):
-		_aftermath_lines.append("%s: Prosperità → liv. %d" % [p.power.to_upper(), p.prosperity_level])
+		_aftermath_lines.append("%s: Prosperità -> liv. %d" % [p.power.to_upper(), p.prosperity_level])
 	_show_aftermath_choices(p)
 
 
@@ -4272,14 +4243,14 @@ func _aftermath_resolve() -> void:
 	for p in gs.players:
 		mil_focus[p.power] = (p.focus == WO.Focus.MILITARY)
 		player_powers.append(p.power)
-	# NATO (USA↔EU) solo se entrambe le potenze sono in gioco (pag. 19).
+	# NATO (USA/EU) solo se entrambe le potenze sono in gioco (pag. 19).
 	var nato := Threat.nato_pairs(player_powers)
 	for rid in gs.regions:
 		var rd: Dictionary = gs.regions[rid]
 		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, _threat_defense.get(rid, {}), nato)
 		for power in loss:
 			gs.add_vp(power, -int(loss[power]))
-			_aftermath_lines.append("%s: −%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
+			_aftermath_lines.append("%s: -%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
 
 	# Scoring delle Regioni nei round 3 e 6.
 	if gs.is_scoring_round():
@@ -4295,7 +4266,7 @@ func _aftermath_resolve() -> void:
 	_show_summary(_aftermath_lines, func(): _next_round(), _aftermath_ai_art)
 
 
-## Reveal Country Cards (Preparation): in ogni Regione ruota una carta — la più
+## Reveal Country Cards (Preparation): in ogni Regione ruota una carta - la più
 ## vecchia disponibile torna in fondo al mazzo e ne compare una nuova.
 func _reveal_country_cards() -> void:
 	for rid in region_countries:
@@ -4324,7 +4295,7 @@ func _next_round() -> void:
 		p.draw_cards(6 + _ongoing_count(p, "extra_draw_per_round"))
 	_used_ongoing = {}   # abilità once-per-round di nuovo disponibili
 	_commerce_flipped = {}  # Commerce card di nuovo disponibili
-	_status("Round %d — Preparazione: ogni potenza sceglie il Focus." % gs.round)
+	_status("Round %d - Preparazione: ogni potenza sceglie il Focus." % gs.round)
 	_begin_preparation()   # scelta GUIDATA del Focus (niente più automatismo)
 
 
@@ -4337,12 +4308,12 @@ func _game_end() -> void:
 	var eb := GameRunner.apply_game_end_bonuses(gs)
 	var ranking := gs.players.duplicate()
 	ranking.sort_custom(func(a, b): return a.victory_points > b.victory_points)
-	var lines: Array[String] = ["— FINE PARTITA —", "Token Maggioranza: " + _vp_summary(mt)]
+	var lines: Array[String] = ["- FINE PARTITA -", "Token Maggioranza: " + _vp_summary(mt)]
 	if not eb.is_empty():
 		lines.append("Bonus fine partita: " + _vp_summary(eb))
 	lines.append("")
 	for i in ranking.size():
-		lines.append("%d) %s — %d VP" % [i + 1, ranking[i].power.to_upper(), ranking[i].victory_points])
+		lines.append("%d) %s - %d VP" % [i + 1, ranking[i].power.to_upper(), ranking[i].victory_points])
 	lines.append("")
 	# Spareggi del regolamento (pag. 21); vittoria eventualmente condivisa.
 	var champs := GameRunner.winners(gs)
@@ -4350,7 +4321,7 @@ func _game_end() -> void:
 	for w in champs:
 		champs_up.append(String(w).to_upper())
 	lines.append(("Vittoria condivisa: %s" % ", ".join(champs_up)) if champs.size() > 1
-		else "Vincitore: %s" % (champs_up[0] if champs_up.size() > 0 else "—"))
+		else "Vincitore: %s" % (champs_up[0] if champs_up.size() > 0 else "-"))
 	_show_summary(lines, func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
 	_after_change()
 
@@ -4360,12 +4331,12 @@ func _vp_summary(d: Dictionary) -> String:
 	for k in d:
 		if int(d[k]) != 0:
 			parts.append("%s %+d" % [k.to_upper(), int(d[k])])
-	return ", ".join(parts) if parts.size() > 0 else "—"
+	return ", ".join(parts) if parts.size() > 0 else "-"
 
 
 ## Popup di riepilogo con un pulsante Continua.
 ## Riepilogo (fine round / fine partita): pannello ANCORATO A DESTRA che NON copre la
-## mappa (velo leggero, board visibile a sinistra). Scrollabile; «Continua» chiude.
+## mappa (velo leggero, board visibile a sinistra). Scrollabile; "Continua" chiude.
 func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 	for c in popup_layer.get_children():
 		c.queue_free()
@@ -4444,14 +4415,14 @@ func _render_hand() -> void:
 		# Con una carta selezionata, le NON selezionate si oscurano: la scelta è evidente.
 		if has_sel and not sel:
 			btn.modulate = Color(0.5, 0.5, 0.55)
-		btn.tooltip_text = "%s\n%s\n(tocca per selezionare · ri-tocca per giocare)" % [card.get("display_name", ""), card.get("effect_text", "")]
+		btn.tooltip_text = "%s\n%s\n(tocca per selezionare - ri-tocca per giocare)" % [card.get("display_name", ""), card.get("effect_text", "")]
 		btn.pressed.connect(_on_hand_card_tap.bind(card))
 		hand_box.add_child(btn)
 	# Separatore tra le carte e i "modi alternativi di giocare la carta selezionata".
 	var sep := VSeparator.new()
 	sep.add_theme_constant_override("separation", 10)
 	hand_box.add_child(sep)
-	# Gettone 💰10 (faccia in giù → +10 money): consuma la carta selezionata.
+	# Gettone 💰10 (faccia in giù -> +10 money): consuma la carta selezionata.
 	hand_box.add_child(_hand_money_token(ch, busy, has_sel))
 	# Carte Strategiche: consumano la carta selezionata per attivarsi.
 	for asset in p.strategic_assets:
@@ -4513,7 +4484,7 @@ func _card_row() -> HBoxContainer:
 	return row
 
 
-## Carta Market/Growth come IMMAGINE reale (dimensione w×h data dal chiamante, così
+## Carta Market/Growth come IMMAGINE reale (dimensione wxh data dal chiamante, così
 ## sta nella riga senza accavallarsi) + etichetta costo sotto, cliccabile.
 func _market_card_sized(card: Dictionary, cost_text: String, disabled: bool, w: float, h: float, on_press: Callable) -> Control:
 	var box := VBoxContainer.new()

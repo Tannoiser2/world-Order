@@ -484,6 +484,39 @@ func _init() -> void:
 			psrc.allied_countries = sv_allies3
 			board.trade_deals = sv_td3
 
+			# Diplomazia con carta da 3 (regola Russia): comprandone MENO di 3 giri comunque
+			# la carta ma NON guadagni Diplomazia; +1 solo comprando l'intera carta (3).
+			var pd: PlayerState = board._active()
+			var sell3_pw := "russia" if pd.power != "russia" else "china"
+			var sell3: PlayerState = board.gs.player_by_power(sell3_pw)
+			if sell3 != null:
+				var sv_a4: Array = pd.allied_countries
+				var sv_t4: Dictionary = board.trade_deals
+				pd.allied_countries = []        # niente base alleate: tutto dal venditore
+				pd.money = 200
+				board.trade_deals = {"cards": [{"power": pd.power, "exports": 2, "imports": 2,
+					"import_from": {sell3_pw: ["energy"]}}],
+					"commerce_cards": {sell3_pw: [{"energy": 3}]}}   # una carta da 3 energia
+				pd.resources["energy"] = 0; pd.resources["diplomacy"] = 0
+				board._commerce_flipped = {}
+				board._open_trade_ui()
+				board._trade_pick_src("energy", sell3_pw)
+				board._trade_set_target("energy", 2)   # parziale (2 di 3)
+				board._trade_confirm()
+				var partial_ok: bool = pd.resources["energy"] == 2 and pd.resources["diplomacy"] == 0
+				pd.resources["energy"] = 0; pd.resources["diplomacy"] = 0
+				board._commerce_flipped = {}
+				board._open_trade_ui()
+				board._trade_pick_src("energy", sell3_pw)
+				board._trade_set_target("energy", 3)   # intera carta (3 di 3)
+				board._trade_confirm()
+				var full_ok: bool = pd.resources["energy"] == 3 and pd.resources["diplomacy"] == 1
+				print("[%s] Diplomazia carta da 3: +1 solo comprando tutte e 3 (Russia)" % ["OK" if (partial_ok and full_ok) else "FAIL"])
+				if not (partial_ok and full_ok): fails += 1
+				pd.allied_countries = sv_a4
+				board.trade_deals = sv_t4
+				board._trade_sel = {}
+
 		# Carte nazione impilate: più carte della STESSA nazione sommano i simboli
 		# Export → più capacità di commercio (e il cap cresce di conseguenza).
 		var stack_card := {"id": "irl", "exports": ["energy"], "imports": []}
@@ -908,10 +941,10 @@ func _init() -> void:
 	var safety := 0
 	while not b2.game_over and safety < 400:
 		safety += 1
-		# PREPARAZIONE: ogni giocatore sceglie il Focus (Domestic) e salta il boost.
+		# PREPARAZIONE (round 2+): ogni giocatore sceglie il Focus cliccando una colonna
+		# sulla plancia → qui simulato con _do_focus(0) (Domestic), che applica e avanza.
 		if b2._ui_phase == "Preparazione":
-			b2._prep_choose_focus(0)   # applica ready+produce, mostra la barra "boost"
-			b2._prep_advance()         # salta l'aumento Produzione, prossimo giocatore
+			b2._do_focus(0)
 			await process_frame
 			continue
 		# "Continua" può stare nel popup (riepiloghi) o nella barra scelte (Aftermath su mappa).
