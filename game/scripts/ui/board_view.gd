@@ -1808,7 +1808,7 @@ func _pick_growth() -> void:
 		if not afford:
 			card.modulate = Color(0.5, 0.5, 0.55)
 		else:
-			card.pressed.connect(_buy_growth_action.bind(c, nl))
+			card.pressed.connect(_cmd_buy_growth.bind(c, nl))
 		cell.add_child(card)
 		var info := Label.new()
 		info.text = "%s  (+%d VP)" % [_cost_text(c.get("cost", {})), int(c.get("victory_points", 0))]
@@ -3784,10 +3784,11 @@ func apply_command(cmd: Dictionary) -> bool:
 	if not GameCommands.valid_shape(cmd):
 		push_warning("Comando malformato ignorato: %s" % cmd)
 		return false
-	# GATING: per ora si accettano solo comandi del seggio ATTIVO (in Azione è il
-	# giocatore di turno; in Preparazione/Aftermath active_seat è impostato dal flusso).
-	if int(cmd["seat"]) != active_seat:
-		push_warning("Comando fuori turno (seat %d, attivo %d): ignorato" % [int(cmd["seat"]), active_seat])
+	# GATING: il comando deve venire dal seggio che PUÒ agire ora (vedi _acting_seat):
+	# Azione/Preparazione/Research -> giocatore di turno; Aftermath -> giocatore Aftermath.
+	var acting := _acting_seat()
+	if int(cmd["seat"]) != acting:
+		push_warning("Comando fuori turno (seat %d, attivo %d): ignorato" % [int(cmd["seat"]), acting])
 		return false
 	var a: Dictionary = cmd["args"]
 	match String(cmd["type"]):
@@ -3818,10 +3819,59 @@ func apply_command(cmd: Dictionary) -> bool:
 			if cn2.is_empty():
 				return false
 			_on_exhaust_toggle(cn2)
+		"buy_growth":
+			var gc := _growth_by_id(String(a["card_id"]))
+			if gc.is_empty():
+				return false
+			_buy_growth_action(gc, _next_growth_level(_active()))
+		"buy_market":
+			var mc := _market_by_id(String(a["card_id"]))
+			if mc.is_empty():
+				return false
+			_buy_market(mc)
+		"aftermath_token":
+			if _aftermath_choice_p == null:
+				return false
+			if String(a["kind"]) == "money":
+				_aftermath_token_money(_aftermath_choice_p, String(a["region"]))
+			else:
+				_aftermath_token_defense(_aftermath_choice_p, String(a["region"]))
+		"aftermath_prosperity":
+			if _aftermath_choice_p == null:
+				return false
+			_aftermath_prosperity(_aftermath_choice_p)
+		"aftermath_continue":
+			if _aftermath_choice_p == null:
+				return false
+			_aftermath_continue()
 		_:
 			return false
 	_command_log.append(cmd)
 	return true
+
+
+## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
+## (_aftermath_choice_p); altrove (Azione/Preparazione/Research) è active_seat,
+## che il flusso tiene già aggiornato sul giocatore corrente.
+func _acting_seat() -> int:
+	if _aftermath_choice_p != null:
+		return gs.players.find(_aftermath_choice_p)
+	return active_seat
+
+
+## Risolutori per ID (i comandi riferiscono carte per id stabile).
+func _growth_by_id(id: String) -> Dictionary:
+	for c in _available_growth(_active()):
+		if String((c as Dictionary).get("id", "")) == id:
+			return c
+	return {}
+
+
+func _market_by_id(id: String) -> Dictionary:
+	for c in market_display:
+		if String((c as Dictionary).get("id", "")) == id:
+			return c
+	return {}
 
 
 ## Risolve un country_id nella carta nazione alleata del giocatore attivo (i comandi
@@ -3873,6 +3923,30 @@ func _cmd_pick_allied_country(cn: Dictionary) -> void:
 
 func _cmd_exhaust_ally(cn: Dictionary) -> void:
 	apply_command(GameCommands.exhaust_ally(active_seat, _next_seq(), String(cn.get("id", ""))))
+
+
+func _cmd_buy_growth(card: Dictionary, _nl: int) -> void:
+	apply_command(GameCommands.buy_growth(active_seat, _next_seq(), String(card.get("id", ""))))
+
+
+func _cmd_buy_market(card: Dictionary) -> void:
+	apply_command(GameCommands.buy_market(active_seat, _next_seq(), String(card.get("id", ""))))
+
+
+func _cmd_aftermath_token_money(p: PlayerState, region: String) -> void:
+	apply_command(GameCommands.aftermath_token(gs.players.find(p), _next_seq(), region, "money"))
+
+
+func _cmd_aftermath_token_defense(p: PlayerState, region: String) -> void:
+	apply_command(GameCommands.aftermath_token(gs.players.find(p), _next_seq(), region, "defense"))
+
+
+func _cmd_aftermath_prosperity(p: PlayerState) -> void:
+	apply_command(GameCommands.aftermath_prosperity(gs.players.find(p), _next_seq()))
+
+
+func _cmd_aftermath_continue() -> void:
+	apply_command(GameCommands.aftermath_continue(_acting_seat(), _next_seq()))
 
 
 func _end_turn() -> void:
@@ -4132,7 +4206,7 @@ func _show_research() -> void:
 	var mcard_h: float = mcard_w / 0.72
 	for card in market_display:
 		var cost := int(card.get("market_cost", 0))
-		mrow.add_child(_market_card_sized(card, "costo %d R" % cost, _research_points < cost, mcard_w, mcard_h, _buy_market.bind(card)))
+		mrow.add_child(_market_card_sized(card, "costo %d R" % cost, _research_points < cost, mcard_w, mcard_h, _cmd_buy_market.bind(card)))
 
 	# Opzione (pag. 17): -2 Research per scartare le 3 carte più a destra.
 	if not market_display.is_empty():
@@ -4350,12 +4424,12 @@ func _aftermath_bar(p: PlayerState) -> void:
 			var bpr := Button.new()
 			bpr.text = "Aumenta Prosperità (-%d CG -> +%d VP, +%d money)" % [cost, int(step.get("vp", 0)), int(step.get("money", 0))]
 			bpr.add_theme_font_size_override("font_size", _base_fs() + 1)
-			bpr.pressed.connect(_aftermath_prosperity.bind(p))
+			bpr.pressed.connect(_cmd_aftermath_prosperity.bind(p))
 			choice_flow.add_child(bpr)
 	var done := Button.new()
 	done.text = "Continua"
 	done.add_theme_font_size_override("font_size", _base_fs() + 1)
-	done.pressed.connect(_aftermath_continue)
+	done.pressed.connect(_cmd_aftermath_continue)
 	choice_flow.add_child(done)
 	choice_bar.visible = true
 	_layout_ui()
@@ -4383,12 +4457,12 @@ func _on_aftermath_token(p: PlayerState, region: String) -> void:
 	var bmoney := Button.new()
 	bmoney.text = "+%d money (ROI)" % (5 * n)
 	bmoney.add_theme_font_size_override("font_size", _base_fs() + 1)
-	bmoney.pressed.connect(_aftermath_token_money.bind(p, region))
+	bmoney.pressed.connect(_cmd_aftermath_token_money.bind(p, region))
 	choice_flow.add_child(bmoney)
 	var bdef := Button.new()
 	bdef.text = "+%d Difesa (THREAT)" % (2 * n)
 	bdef.add_theme_font_size_override("font_size", _base_fs() + 1)
-	bdef.pressed.connect(_aftermath_token_defense.bind(p, region))
+	bdef.pressed.connect(_cmd_aftermath_token_defense.bind(p, region))
 	choice_flow.add_child(bdef)
 	var cancel := Button.new()
 	cancel.text = "Annulla"

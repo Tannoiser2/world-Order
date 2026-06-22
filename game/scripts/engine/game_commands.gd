@@ -17,6 +17,10 @@ const KNOWN := [
 	"choose_focus", "play_card", "end_turn", "use_ongoing",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
+	# Get a Growth Card (Azione) e acquisto al Market (Research)
+	"buy_growth", "buy_market",
+	# Aftermath (fase per-giocatore; gating sul giocatore Aftermath, non su active_seat)
+	"aftermath_token", "aftermath_prosperity", "aftermath_continue",
 ]
 
 
@@ -63,6 +67,27 @@ static func exhaust_ally(seat: int, seq: int, country_id: String) -> Dictionary:
 	return make("exhaust_ally", seat, seq, {"country_id": country_id})
 
 
+static func buy_growth(seat: int, seq: int, card_id: String) -> Dictionary:
+	return make("buy_growth", seat, seq, {"card_id": card_id})
+
+
+static func buy_market(seat: int, seq: int, card_id: String) -> Dictionary:
+	return make("buy_market", seat, seq, {"card_id": card_id})
+
+
+## Aftermath. `kind`: "money" (ROI) o "defense" (THREAT). seat = giocatore Aftermath.
+static func aftermath_token(seat: int, seq: int, region: String, kind: String) -> Dictionary:
+	return make("aftermath_token", seat, seq, {"region": region, "kind": kind})
+
+
+static func aftermath_prosperity(seat: int, seq: int) -> Dictionary:
+	return make("aftermath_prosperity", seat, seq, {})
+
+
+static func aftermath_continue(seat: int, seq: int) -> Dictionary:
+	return make("aftermath_continue", seat, seq, {})
+
+
 ## Validazione STRUTTURALE (forma e tipi), non di merito: le regole le verifica
 ## il motore quando il comando viene applicato.
 static func valid_shape(cmd: Variant) -> bool:
@@ -91,4 +116,11 @@ static func valid_shape(cmd: Variant) -> bool:
 				and String(args.get("slot", "")) in ["permanent", "temporary"]
 		"pick_allied_country", "exhaust_ally":
 			return typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
+		"buy_growth", "buy_market":
+			return typeof(args.get("card_id")) == TYPE_STRING and String(args["card_id"]) != ""
+		"aftermath_token":
+			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != "" \
+				and String(args.get("kind", "")) in ["money", "defense"]
+		"aftermath_prosperity", "aftermath_continue":
+			return true
 	return false

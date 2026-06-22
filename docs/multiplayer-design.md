@@ -183,9 +183,10 @@ Tutti compatibili con questa architettura ma rimandati.
   - [x] v0.7.76: `choose_focus`, `play_card`, `end_turn`
   - [x] v0.7.77: `use_ongoing` e sotto-scelte di Azione — `pick_region`,
     `pick_influence_cell`, `pick_allied_country`, `exhaust_ally`
+  - [x] v0.7.78: `buy_growth`, `buy_market`, e Aftermath (`aftermath_token`,
+    `aftermath_prosperity`, `aftermath_continue`) con gating per FASE (`_acting_seat()`)
   - [ ] **Resta**: `produce` e `trade` (comandi a payload pieno con la selezione),
-    `move_army` (drag&drop), `buy_growth`/`buy_market`, `pass_turn`/`play_strategic_asset`,
-    e i comandi **Aftermath** (gating per fase simultanea, non per `active_seat`).
+    `move_army` (drag&drop), `pass_turn`/`play_strategic_asset`.
   - [ ] **Step B**: estrarre `SessionContext` e spostarci `awaiting`/`playing_card`/temp.
 - [ ] **Fase 1** — trasporto + lobby (Step C)
 - [ ] **Fase 2** — sincronizzazione (Step D)
