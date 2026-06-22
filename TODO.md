@@ -118,7 +118,7 @@ Audit regolamento↔codice completo (3 aree: azioni, setup/fasi, aftermath/scori
 > Nota: costi/sconti di Improve Relations, Engage (incl. Diplomatic Focus −2), Move (5/Armata), formula Build-a-Base, gating Growth e la logica Influenza temporanea (FIFO/convert/reset) risultano **corretti**. Le tabelle dati delle abilità speciali in `board.json` sono giuste: il problema è che non vengono chiamate.
 
 ### 🟡 Aperti / da raffinare (UI, noti da questa sessione)
-- [ ] Verificare i dati `board.json` di TUTTE le Regioni vs tabellone stampato (MENA era errata).
+- [x] ✅ (v0.7.47) Verificati i dati `board.json` di TUTTE le 7 Regioni vs tabellone stampato (`assets/board/board.jpg`): slot perm/temp, majority_bonus, engage_cost, bandiere zone_of_interest e cubi iniziali corrispondono. La MENA (segnalata errata in passato) è ora corretta.
 - [ ] Engage token: posa calibrata sul simbolo "handshake" stampato.
 - [ ] FDI/Base anche sulle Country sul tabellone (non solo nel cassetto).
 - [ ] Maggioranza a inizio partita (tutti pari) — valutare se nasconderla.
