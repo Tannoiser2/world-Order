@@ -344,6 +344,55 @@ func _init() -> void:
 		board._trade_sel = {}
 		board._close_popup()
 
+		# Trade su TRACK (nuovo modello): tap su una casella verso 0 = vendi, verso 10 = compra.
+		var ptt: PlayerState = board._active()
+		var saved_allies: Array = ptt.allied_countries
+		var saved_td: Dictionary = board.trade_deals
+		ptt.allied_countries = [{"id": "tt", "region": "africa", "value": 1,
+			"exports": ["energy", "energy"], "imports": ["food"]}]
+		ptt.resources["energy"] = 4
+		ptt.resources["food"] = 2
+		board.trade_deals = {"cards": [{"power": ptt.power, "exports": 2, "imports": 2, "import_from": {}}]}
+		board._open_trade_ui()
+		board._trade_set_target("energy", 2)   # 4→2 = vendi 2 (cap export 2)
+		board._trade_set_target("food", 3)     # 2→3 = compra 1 (cap import 1)
+		var tt_ok: bool = int(board._trade_sel["export"].get("energy", 0)) == 2 \
+			and int(board._trade_sel["import"].get("food", 0)) == 1
+		board._trade_set_target("energy", 0)   # vorrebbe vendere 4 → limitato al cap 2
+		var tt_cap_ok: bool = int(board._trade_sel["export"].get("energy", 0)) == 2
+		print("[%s] Trade track: verso 0 vende, verso 10 compra, cap rispettato" % ["OK" if (tt_ok and tt_cap_ok) else "FAIL"])
+		if not (tt_ok and tt_cap_ok): fails += 1
+		board._trade_sel = {}
+		board._close_popup()
+		ptt.allied_countries = saved_allies
+		board.trade_deals = saved_td
+
+		# Trade: scelta della SORGENTE d'import via bandierina (banca vs altro giocatore).
+		var psrc: PlayerState = board._active()
+		var seller2_pw := "russia" if psrc.power != "russia" else "china"
+		var seller2: PlayerState = board.gs.player_by_power(seller2_pw)
+		if seller2 != null:
+			var sv_allies3: Array = psrc.allied_countries
+			var sv_td3: Dictionary = board.trade_deals
+			psrc.allied_countries = [{"id": "ss", "region": "africa", "value": 1,
+				"exports": [], "imports": ["services", "services"]}]   # banca offre 2 services
+			board.trade_deals = {"cards": [{"power": psrc.power, "exports": 2, "imports": 2,
+				"import_from": {seller2_pw: ["services"]}}]}             # il venditore offre 1
+			psrc.resources["services"] = 0
+			psrc.money = 100
+			var s2_money0: int = seller2.money
+			board._open_trade_ui()
+			var def_src: String = board._trade_selected_src(psrc, "services")   # default = banca
+			board._trade_pick_src("services", seller2_pw)                       # scelgo il venditore
+			var picked_cap: int = board._trade_import_cap_sel(psrc, "services") # = 1 (offerta venditore)
+			board._trade_set_target("services", 1)                             # compra 1 dal venditore
+			board._trade_confirm()
+			var src_ok: bool = def_src == "bank" and picked_cap == 1 and seller2.money == s2_money0 + 10
+			print("[%s] Trade: scelta venditore via bandierina (compra dal giocatore scelto)" % ["OK" if src_ok else "FAIL"])
+			if not src_ok: fails += 1
+			psrc.allied_countries = sv_allies3
+			board.trade_deals = sv_td3
+
 		# Carte nazione impilate: più carte della STESSA nazione sommano i simboli
 		# Export → più capacità di commercio (e il cap cresce di conseguenza).
 		var stack_card := {"id": "irl", "exports": ["energy"], "imports": []}

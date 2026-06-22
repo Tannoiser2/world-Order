@@ -68,6 +68,7 @@ var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per
 var focus_bonuses: Dictionary = {}      # ready/produce/ongoing per ogni Focus (domestic/diplomatic/military)
 var _auto_inf_deck: Array = []          # mazzo Auto-Influence (potenze neutrali, <4 giocatori)
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
+var _trade_import_src: Dictionary = {}  # R -> sorgente d'import scelta ("bank" o power)
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
@@ -1568,6 +1569,42 @@ func _trade_delta() -> int:
 
 func _open_trade_ui() -> void:
 	_trade_sel = {"export": {}, "import": {}}
+	_trade_import_src = {}
+	_render_trade_ui()
+
+
+## Quantità di R offerta da una specifica sorgente ("bank" o un power).
+func _trade_src_qty(p: PlayerState, R: String, src: String) -> int:
+	for s in _import_sources(p, R):
+		if String(s["src"]) == src:
+			return int(s["n"])
+	return 0
+
+
+## Sorgente d'import scelta per R (default: la prima disponibile — la banca se c'è).
+func _trade_selected_src(p: PlayerState, R: String) -> String:
+	if _trade_import_src.has(R):
+		var chosen := String(_trade_import_src[R])
+		if _trade_src_qty(p, R, chosen) > 0:
+			return chosen
+	var srcs := _import_sources(p, R)
+	return String(srcs[0]["src"]) if not srcs.is_empty() else "bank"
+
+
+## Cap d'import di R dalla SOLA sorgente selezionata (così scegli da chi comprare).
+func _trade_import_cap_sel(p: PlayerState, R: String) -> int:
+	return _trade_src_qty(p, R, _trade_selected_src(p, R))
+
+
+## Sceglie la sorgente d'import (bandierina) per R e ri-limita la quantità.
+func _trade_pick_src(R: String, src: String) -> void:
+	_trade_import_src[R] = src
+	var p := _active()
+	var imp: Dictionary = _trade_sel["import"]
+	if imp.has(R):
+		imp[R] = mini(int(imp[R]), _trade_src_qty(p, R, src))
+		if int(imp[R]) <= 0:
+			imp.erase(R)
 	_render_trade_ui()
 
 
@@ -1600,25 +1637,20 @@ func _trade_confirm() -> void:
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
 		var cost := int(Actions.IMPORT_COST.get(R, 0))
-		# Attribuisci le unità alle sorgenti: prima la banca, poi gli altri giocatori.
-		var remaining := q
-		for s in _import_sources(p, R):
-			if remaining <= 0:
-				break
-			var take: int = mini(remaining, int(s["n"]))
-			p.money -= cost * take
-			if String(s["src"]) != "bank":
-				# Commercio reale: paghi il venditore, che incassa il money e prende
-				# +1 Servizio (bonus di vendita); la sua Commerce card si gira (1×/round).
-				var seller := gs.player_by_power(String(s["src"]))
-				if seller != null:
-					seller.money += cost * take
-					seller.gain_resource("services", 1, 0)
-					if not _commerce_flipped.has(s["src"]):
-						_commerce_flipped[s["src"]] = []
-					(_commerce_flipped[s["src"]] as Array).append(R)
-					from_players += take
-			remaining -= take
+		# Compri da UNA sorgente scelta (banca o un giocatore, via bandierina).
+		var src := _trade_selected_src(p, R)
+		p.money -= cost * q
+		if src != "bank":
+			# Commercio reale: paghi il venditore, che incassa il money e prende
+			# +1 Servizio (bonus di vendita); la sua Commerce card si gira (1×/round).
+			var seller := gs.player_by_power(src)
+			if seller != null:
+				seller.money += cost * q
+				seller.gain_resource("services", 1, 0)
+				if not _commerce_flipped.has(src):
+					_commerce_flipped[src] = []
+				(_commerce_flipped[src] as Array).append(R)
+				from_players += q
 		p.gain_resource(R, q, 0)
 	# +1 Diplomazia SOLO se hai comprato da un altro giocatore (pag. 13), non per
 	# un import qualsiasi dalla banca/potenze neutrali.
@@ -1626,6 +1658,7 @@ func _trade_confirm() -> void:
 		p.gain_resource("diplomacy", 1, 0)
 	_close_popup()
 	_trade_sel = {}
+	_trade_import_src = {}
 	if from_players > 0:
 		_status("Trade completato (%d unità comprate da altri giocatori)." % from_players)
 	else:
@@ -1634,7 +1667,31 @@ func _trade_confirm() -> void:
 	_advance_play()
 
 
-## Costruisce/aggiorna il popup di Trade.
+## Imposta la transazione di R per RAGGIUNGERE la quantità target sulla resource
+## track: verso 0 = VENDI (Export), verso 10 = COMPRA (Import). Rispetta i cap e il
+## numero di transazioni della Trade Deals card. target == quantità attuale = annulla.
+func _trade_set_target(R: String, target: int) -> void:
+	var p := _active()
+	var qty := int(p.resources.get(R, 0))
+	var exp: Dictionary = _trade_sel["export"]
+	var imp: Dictionary = _trade_sel["import"]
+	exp.erase(R)
+	imp.erase(R)
+	var ex_max := int(_trade_deal(p.power).get("exports", 2))
+	var im_max := int(_trade_deal(p.power).get("imports", 2))
+	if target < qty:
+		var sell := mini(qty - target, _trade_export_cap(p, R))
+		if sell > 0 and exp.size() < ex_max:
+			exp[R] = sell
+	elif target > qty:
+		var buy := mini(target - qty, _trade_import_cap_sel(p, R))
+		if buy > 0 and imp.size() < im_max:
+			imp[R] = buy
+	_render_trade_ui()
+
+
+## Costruisce/aggiorna il popup di Trade: una resource track 0-10 per risorsa, con
+## le caselle valide (entro i cap) cliccabili e il denaro guadagnato/speso indicato.
 func _render_trade_ui() -> void:
 	for c in popup_layer.get_children():
 		c.queue_free()
@@ -1652,48 +1709,117 @@ func _render_trade_ui() -> void:
 	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
 	panel.add_theme_stylebox_override("panel", st)
 	center.add_child(panel)
+	var panel_w: float = minf(size.x * 0.94, 720.0)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(panel_w, minf(size.y * 0.84, 620.0))
+	panel.add_child(scroll)
 	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6)
-	panel.add_child(vb)
+	vb.custom_minimum_size = Vector2(panel_w - 28.0, 0)
+	scroll.add_child(vb)
+
+	var ex_used := (_trade_sel["export"] as Dictionary).size()
+	var im_used := (_trade_sel["import"] as Dictionary).size()
 	var head := Label.new()
-	head.text = "TRADE — Export max %d · Import max %d   ·   Δ money: %+d" % [int(td.get("exports", 2)), int(td.get("imports", 2)), _trade_delta()]
+	head.text = "COMMERCIO — verso 0 = VENDI · verso 10 = COMPRA   ·   Δ money: %+d" % _trade_delta()
 	head.add_theme_font_size_override("font_size", _base_fs() + 2)
 	head.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
 	vb.add_child(head)
-	var grid := GridContainer.new(); grid.columns = 3; grid.add_theme_constant_override("h_separation", 14); grid.add_theme_constant_override("v_separation", 4)
-	vb.add_child(grid)
+	var sub := Label.new()
+	sub.text = "Transazioni: Export %d/%d · Import %d/%d" % [ex_used, int(td.get("exports", 2)), im_used, int(td.get("imports", 2))]
+	sub.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+	vb.add_child(sub)
+
+	var cell_w: float = clampf((panel_w - 150.0) / 11.0, 26.0, 50.0)
 	for R in TRADE_RES:
-		var name := Label.new()
-		name.text = "%s (hai %d)" % [RES_LABEL.get(R, R), int(p.resources.get(R, 0))]
-		name.custom_minimum_size = Vector2(150, 0)
-		grid.add_child(name)
-		grid.add_child(_trade_stepper(R, "export", _trade_export_cap(p, R)))
-		grid.add_child(_trade_stepper(R, "import", _trade_import_cap(p, R)))
+		vb.add_child(_trade_track_row(p, R, cell_w))
+
 	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
 	vb.add_child(btns)
-	var ok := Button.new(); ok.text = "Conferma Trade"; ok.pressed.connect(_trade_confirm)
+	var ok := Button.new(); ok.text = "Conferma Commercio"; ok.pressed.connect(_trade_confirm)
 	btns.add_child(ok)
 	var cancel := Button.new(); cancel.text = "Annulla"
 	cancel.pressed.connect(func(): _close_popup(); _trade_sel = {}; _advance_play())
 	btns.add_child(cancel)
 
 
-func _trade_stepper(R: String, kind: String, cap: int) -> Control:
-	var box := HBoxContainer.new(); box.add_theme_constant_override("separation", 4)
-	var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 0)
-	minus.disabled = cap == 0
-	minus.pressed.connect(_trade_adjust.bind(R, kind, -1))
-	box.add_child(minus)
-	var q := int((_trade_sel.get(kind, {}) as Dictionary).get(R, 0))
-	var lab := Label.new()
-	var unit := int(Actions.EXPORT_GAIN.get(R, 0)) if kind == "export" else int(Actions.IMPORT_COST.get(R, 0))
-	lab.text = "%s %d/%d (%s%d/u)" % ["Exp" if kind == "export" else "Imp", q, cap, "+" if kind == "export" else "−", unit]
-	lab.custom_minimum_size = Vector2(118, 0)
-	box.add_child(lab)
-	var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(30, 0)
-	plus.disabled = cap == 0 or q >= cap
-	plus.pressed.connect(_trade_adjust.bind(R, kind, 1))
-	box.add_child(plus)
-	return box
+## Una riga: icona risorsa + le 11 caselle (0-10) della resource track. Le caselle
+## valide (entro export/import cap) sono cliccabili e mostrano il money; a destra le
+## sorgenti d'importazione (banca / altri giocatori).
+func _trade_track_row(p: PlayerState, R: String, cell_w: float) -> Control:
+	var qty := int(p.resources.get(R, 0))
+	var ex_cap := _trade_export_cap(p, R)
+	var im_cap := _trade_import_cap_sel(p, R)   # cap della sola sorgente scelta
+	var exp: Dictionary = _trade_sel["export"]
+	var imp: Dictionary = _trade_sel["import"]
+	var eff := qty - int(exp.get(R, 0)) + int(imp.get(R, 0))
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 3)
+	var head := HBoxContainer.new(); head.custom_minimum_size = Vector2(110, 0); head.add_theme_constant_override("separation", 4)
+	var icon := TextureRect.new()
+	icon.texture = load("res://assets/tokens/%s.png" % R)
+	icon.custom_minimum_size = Vector2(22, 22)
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(icon)
+	var nlab := Label.new(); nlab.text = "%s (%d)" % [RES_LABEL.get(R, R), qty]
+	head.add_child(nlab)
+	row.add_child(head)
+	for i in range(0, 11):
+		var valid := i >= qty - ex_cap and i <= qty + im_cap
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(cell_w, 34)
+		b.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 4))
+		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(4)
+		if i == qty:
+			sb.bg_color = Color(0.30, 0.30, 0.36)
+			b.text = "•"
+		elif i < qty:
+			sb.bg_color = Color(0.16, 0.42, 0.22) if valid else Color(0.12, 0.12, 0.14)
+			b.text = ("+%d" % (int(Actions.EXPORT_GAIN.get(R, 0)) * (qty - i))) if valid else ""
+		else:
+			sb.bg_color = Color(0.46, 0.20, 0.20) if valid else Color(0.12, 0.12, 0.14)
+			b.text = ("−%d" % (int(Actions.IMPORT_COST.get(R, 0)) * (i - qty))) if valid else ""
+		if i == eff and eff != qty:
+			sb.set_border_width_all(3); sb.border_color = Color(0.95, 0.85, 0.4)
+		b.add_theme_stylebox_override("normal", sb)
+		b.add_theme_stylebox_override("hover", sb)
+		b.add_theme_stylebox_override("pressed", sb)
+		b.disabled = not valid
+		if valid:
+			b.pressed.connect(_trade_set_target.bind(R, i))
+		row.add_child(b)
+	# Sorgenti d'import: una "casella" per ognuna (banca o bandierina della potenza
+	# che vende). Si sceglie da chi comprare cliccandola; la selezionata è evidenziata.
+	var srcs := _import_sources(p, R)
+	if not srcs.is_empty():
+		var sel_src := _trade_selected_src(p, R)
+		var arrow := Label.new(); arrow.text = "  ←"
+		arrow.add_theme_color_override("font_color", Color(0.6, 0.7, 0.85))
+		row.add_child(arrow)
+		for s in srcs:
+			var src := String(s["src"])
+			var fb := Button.new()
+			fb.custom_minimum_size = Vector2(36, 30)
+			fb.tooltip_text = ("Banca" if src == "bank" else src.to_upper()) + "  (vende %d)" % int(s["n"])
+			var fsb := StyleBoxFlat.new(); fsb.set_corner_radius_all(4)
+			fsb.bg_color = Color(0.2, 0.22, 0.26)
+			if src == sel_src:
+				fsb.set_border_width_all(3); fsb.border_color = Color(0.95, 0.85, 0.4)
+			fb.add_theme_stylebox_override("normal", fsb)
+			fb.add_theme_stylebox_override("hover", fsb)
+			fb.add_theme_stylebox_override("pressed", fsb)
+			if src == "bank":
+				fb.text = "🏦×%d" % int(s["n"])
+				fb.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 4))
+			else:
+				var fi := TextureRect.new()
+				fi.texture = load("res://assets/flags/%s.png" % src)
+				fi.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				fi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				fi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				fb.add_child(fi)
+			fb.pressed.connect(_trade_pick_src.bind(R, src))
+			row.add_child(fb)
+	return row
 
 
 func _pick_resource(prompt: String, cb: Callable) -> void:
