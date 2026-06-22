@@ -167,6 +167,23 @@ func _init() -> void:
 	board._end_turn()
 	check.call("end_turn ora CONSENTITO", board.round_turn_count == rtc_e + 1)
 
+	# 11) Rete: snapshot dello stato di INTERAZIONE (awaiting/influence_pick) round-trip.
+	board.awaiting = "region"
+	board.awaiting_op = {"op": "engage"}
+	board._ui_phase = "Azione"
+	board.playing_card = {"display_name": "C"}
+	board._influence_pick = {"regions": ["europe", "africa"], "force": "permanent"}
+	var snap_ui: Dictionary = board._ui_snapshot()
+	check.call("ui_snapshot: cattura awaiting", String(snap_ui.get("awaiting", "")) == "region")
+	check.call("ui_snapshot: cattura influence_pick",
+		(snap_ui.get("influence_pick", {}).get("regions", []) as Array).size() == 2)
+	board.awaiting = ""; board.awaiting_op = {}; board.playing_card = {}; board._influence_pick = {}
+	board._apply_ui_snapshot(snap_ui)
+	check.call("apply_ui_snapshot: ripristina awaiting", board.awaiting == "region")
+	check.call("apply_ui_snapshot: playing segnaposto", not board.playing_card.is_empty())
+	check.call("apply_ui_snapshot: ripristina influence_pick",
+		(board._influence_pick.get("regions", []) as Array).size() == 2)
+
 	print("Verifica command bus: %s" % ("OK" if cnt["fails"] == 0 else "FALLITA (%d)" % cnt["fails"]))
 	board.queue_free()
 	await process_frame

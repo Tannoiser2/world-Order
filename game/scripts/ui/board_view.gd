@@ -4016,18 +4016,54 @@ func apply_command(cmd: Dictionary) -> bool:
 		_:
 			return false
 	_command_log.append(cmd)
-	# RETE: l'HOST, dopo aver applicato, ribroadcasta a ogni client lo stato redatto.
+	# RETE: l'HOST, dopo aver applicato, ribroadcasta a ogni client lo stato redatto +
+	# lo stato di INTERAZIONE (cosa attende ora), così il client puo' renderizzare gli
+	# highlight e pilotare il proprio turno.
 	if net != null and net.is_host():
-		net.broadcast_snapshots(func(seat: int): return gs.state_for_seat(seat))
+		net.broadcast_snapshots(func(seat: int): return {"gs": gs.state_for_seat(seat), "ui": _ui_snapshot()})
 	return true
 
 
-## CLIENT: rende lo stato (redatto) ricevuto dall'host. Ricostruisce gs e ridisegna.
+## CLIENT: rende lo stato (redatto) ricevuto dall'host. Ricostruisce gs + lo stato di
+## interazione (awaiting/_influence_pick) e ridisegna. Supporta sia {gs, ui} sia un gs raw.
 func apply_remote_snapshot(state: Dictionary) -> void:
 	if state.is_empty():
 		return
-	gs = GameState.from_dict(state)
+	var gsd: Dictionary = state.get("gs", state)
+	gs = GameState.from_dict(gsd)
+	if state.has("ui"):
+		_apply_ui_snapshot(state["ui"])
 	_refresh()
+
+
+## Stato di INTERAZIONE corrente (per la rete): cosa la Vista attende ORA. La callback di
+## _influence_pick NON e' serializzabile e si omette: al client servono solo regioni/slot
+## per disegnare le caselle; il comando risultante lo risolve l'host (che ha la callback).
+func _ui_snapshot() -> Dictionary:
+	return {
+		"awaiting": awaiting,
+		"awaiting_op": awaiting_op.duplicate(true),
+		"ui_phase": _ui_phase,
+		"active_seat": active_seat,
+		"acting_seat": _acting_seat(),
+		"playing": not playing_card.is_empty(),
+		"influence_pick": {
+			"regions": (_influence_pick.get("regions", []) as Array).duplicate(),
+			"force": String(_influence_pick.get("force", "")),
+		} if not _influence_pick.is_empty() else {},
+	}
+
+
+func _apply_ui_snapshot(ui: Dictionary) -> void:
+	awaiting = String(ui.get("awaiting", ""))
+	awaiting_op = (ui.get("awaiting_op", {}) as Dictionary).duplicate(true)
+	_ui_phase = String(ui.get("ui_phase", "Azione"))
+	active_seat = int(ui.get("active_seat", active_seat))
+	# Il client non possiede la carta reale in risoluzione: un segnaposto basta a riflettere
+	# lo stato "in gioco" per il rendering/gating.
+	playing_card = {"display_name": "(in gioco)"} if bool(ui.get("playing", false)) else {}
+	var ip: Dictionary = ui.get("influence_pick", {})
+	_influence_pick = {"regions": ip.get("regions", []), "force": String(ip.get("force", ""))} if not ip.is_empty() else {}
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
