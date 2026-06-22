@@ -30,6 +30,11 @@ const TURN_ORDER_SLOTS := [Vector2(0.0886, 0.2427), Vector2(0.1380, 0.2428), Vec
 
 var gs: GameState
 var active_seat := 0
+## Command bus (Step A, vedi docs/multiplayer-design.md): gli input di gioco
+## passano per apply_command(). _cmd_seq numera i comandi del seggio locale;
+## _command_log li registra (utile per test/replay e, in futuro, per la rete).
+var _cmd_seq := 0
+var _command_log: Array = []
 var board_rect: TextureRect
 var overlay: Control
 var card_layer: Control            # carte nazione nelle aree designate
@@ -969,7 +974,7 @@ func _on_hand_card_tap(card: Dictionary) -> void:
 		return
 	if _selected_hand_card == card:
 		_selected_hand_card = {}
-		_play_card(card)            # 2° tap sulla stessa carta = giocala
+		_cmd_play_card(card)        # 2° tap sulla stessa carta = giocala (via command bus)
 		return
 	_selected_hand_card = card
 	_status("Selezionata '%s': ri-toccala per giocarla, oppure tocca la Moneta +10 o una carta Strategica." % card.get("display_name", "carta"))
@@ -2528,7 +2533,7 @@ func _build_drawer() -> void:
 	end_turn_btn = Button.new()
 	end_turn_btn.text = "Fine turno"
 	end_turn_btn.z_index = 50
-	end_turn_btn.pressed.connect(_end_turn)
+	end_turn_btn.pressed.connect(_cmd_end_turn)
 	add_child(end_turn_btn)
 
 	# Pannello MANO a tutta larghezza, in basso (sopra le linguette). Si SOVRAPPONE sia
@@ -2904,7 +2909,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			fb.add_theme_stylebox_override("normal", fst)
 			var fhv := fst.duplicate(); fhv.bg_color = Color(0.95, 0.8, 0.2, 0.34) if in_prep else Color(1, 1, 1, 0.10)
 			fb.add_theme_stylebox_override("hover", fhv); fb.add_theme_stylebox_override("pressed", fhv)
-			fb.pressed.connect(_do_focus.bind(f))
+			fb.pressed.connect(_cmd_choose_focus.bind(f))
 			area.add_child(fb)
 	var col: Color = POWER_COLORS.get(p.power, Color.WHITE)
 	# Cubi di Produzione: uno sul livello attuale di ogni tracciato.
@@ -3767,6 +3772,62 @@ func _money_widget(amount: int) -> Control:
 
 func _kv2(t: String) -> Label:
 	var l := Label.new(); l.text = t; return l
+
+
+## --- Command bus (Step A) -------------------------------------------------
+## UNICO punto d'ingresso per gli input di GIOCO instradati finora: choose_focus,
+## play_card, end_turn. Gli altri input (trade, produce, sotto-scelte, aftermath)
+## verranno aggiunti qui man mano (vedi docs/multiplayer-design.md). In hot-seat
+## è chiamato localmente; in rete lo chiamerà SOLO l'host sui comandi ricevuti.
+## Ritorna true se il comando è stato accettato e applicato.
+func apply_command(cmd: Dictionary) -> bool:
+	if not GameCommands.valid_shape(cmd):
+		push_warning("Comando malformato ignorato: %s" % cmd)
+		return false
+	# GATING: per ora si accettano solo comandi del seggio ATTIVO (in Azione è il
+	# giocatore di turno; in Preparazione/Aftermath active_seat è impostato dal flusso).
+	if int(cmd["seat"]) != active_seat:
+		push_warning("Comando fuori turno (seat %d, attivo %d): ignorato" % [int(cmd["seat"]), active_seat])
+		return false
+	var a: Dictionary = cmd["args"]
+	match String(cmd["type"]):
+		"choose_focus":
+			_do_focus(int(a["focus"]))
+		"play_card":
+			var p := _active()
+			var idx := int(a["hand_index"])
+			if idx < 0 or idx >= p.hand.size():
+				push_warning("play_card: indice mano fuori range (%d/%d)" % [idx, p.hand.size()])
+				return false
+			_play_card(p.hand[idx])
+		"end_turn":
+			_end_turn()
+		_:
+			return false
+	_command_log.append(cmd)
+	return true
+
+
+func _next_seq() -> int:
+	_cmd_seq += 1
+	return _cmd_seq
+
+
+## Wrapper che traducono l'input della Vista in un COMANDO e lo passano al bus.
+## (I bottoni/click si collegano a questi, non più direttamente agli handler.)
+func _cmd_choose_focus(f: int) -> void:
+	apply_command(GameCommands.choose_focus(active_seat, _next_seq(), f))
+
+
+func _cmd_end_turn() -> void:
+	apply_command(GameCommands.end_turn(active_seat, _next_seq()))
+
+
+func _cmd_play_card(card: Dictionary) -> void:
+	var idx := _active().hand.find(card)
+	if idx < 0:
+		return
+	apply_command(GameCommands.play_card(active_seat, _next_seq(), idx))
 
 
 func _end_turn() -> void:
