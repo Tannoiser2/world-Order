@@ -52,6 +52,7 @@ var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
 var hand_pinned: VBoxContainer   # mano del giocatore, fissa in basso nel cassetto
 var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
+var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var tab_bg: Panel                   # sfondo solido della barra linguette
@@ -879,26 +880,45 @@ func _on_region_pressed(region: String) -> void:
 
 # --- Gioco di una carta ---
 
-## Tocco su una carta della mano: scegli se giocarla a faccia su (la sua azione)
-## o a faccia in giù per +10 money, oppure per attivare un tuo Strategic Asset.
-func _on_hand_card(card: Dictionary) -> void:
+## Tocco su una carta della mano: 1° tap = la SELEZIONA (evidenziata); ri-tocco la
+## stessa = la GIOCA (azione normale). Niente più popup "Come giochi?": per +10 money
+## o per uno Strategic Asset, con la carta selezionata tocchi il gettone 💰10 o la carta
+## Strategica nella mano (vedi _on_play_money_token / _on_play_strategic_token).
+func _on_hand_card_tap(card: Dictionary) -> void:
 	if not playing_card.is_empty() or _plays_left <= 0:
 		return
-	var p := _active()
-	var items := [
-		{"label": "Gioca: %s" % card.get("display_name", "carta"), "value": {"t": "play"}},
-		{"label": "Faccia in giù: +10 money", "value": {"t": "money"}},
-	]
-	for asset in p.strategic_assets:
-		items.append({"label": "Strategic Asset: %s" % asset.get("display_name", "?"), "value": {"t": "asset", "asset": asset}})
-	_show_popup("Come giochi «%s»?" % card.get("display_name", "carta"), items, func(choice):
-		var t := String(choice.get("t", ""))
-		if t == "play":
-			_play_card(card)
-		elif t == "money":
-			_play_facedown_money(card)
-		elif t == "asset":
-			_play_strategic_asset(card, choice["asset"]))
+	if _selected_hand_card == card:
+		_selected_hand_card = {}
+		_play_card(card)            # 2° tap sulla stessa carta = giocala
+		return
+	_selected_hand_card = card
+	_status("Selezionata «%s»: ri-toccala per giocarla, oppure tocca 💰10 o una carta Strategica." % card.get("display_name", "carta"))
+	_render_hand()
+
+
+## Gettone 💰10: con una carta selezionata, la scarta (faccia in giù) per +10 money.
+func _on_play_money_token() -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	if _selected_hand_card.is_empty():
+		_status("Prima seleziona una carta dalla mano, poi tocca 💰10 per scartarla e prendere +10 money.")
+		return
+	var card := _selected_hand_card
+	_selected_hand_card = {}
+	_play_facedown_money(card)
+
+
+## Carta Strategica nella mano: con una carta selezionata, la usa come costo (faccia
+## in giù) per attivare quello Strategic Asset.
+func _on_play_strategic_token(asset: Dictionary) -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	if _selected_hand_card.is_empty():
+		_status("Prima seleziona una carta dalla mano, poi tocca una carta Strategica per attivarla (la carta è il costo).")
+		return
+	var card := _selected_hand_card
+	_selected_hand_card = {}
+	_play_strategic_asset(card, asset)
 
 
 ## Carta a faccia in giù per +10 money: la carta va negli scarti, +10 money,
@@ -1642,6 +1662,7 @@ func _finish_card() -> void:
 		p.played.append(playing_card)
 	_playing_asset = false
 	playing_card = {}
+	_selected_hand_card = {}
 	active_mods = {}
 	awaiting = ""
 	_trade_exported = {}
@@ -3397,6 +3418,7 @@ func _end_turn() -> void:
 		return
 	if popup_layer.get_child_count() > 0:
 		return  # un popup (Research/riepilogo) e' aperto
+	_selected_hand_card = {}
 	round_turn_count += 1
 	if round_turn_count >= 4 * gs.players.size():
 		_begin_research()
@@ -4023,15 +4045,83 @@ func _render_hand() -> void:
 		return
 	for c in hand_box.get_children():
 		c.queue_free()
+	var p := _active()
 	var ch := _hand_card_height()
-	for card in _active().hand:
-		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), false)
+	var busy: bool = not playing_card.is_empty() or _plays_left <= 0
+	var has_sel: bool = not _selected_hand_card.is_empty()
+	# Carte della mano: 1° tap evidenzia, ri-tap gioca.
+	for card in p.hand:
+		var sel: bool = card == _selected_hand_card
+		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), sel, false)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		btn.disabled = not playing_card.is_empty() or _plays_left <= 0
-		btn.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
-		btn.pressed.connect(_on_hand_card.bind(card))
+		btn.disabled = busy
+		btn.tooltip_text = "%s\n%s\n(tocca per selezionare · ri-tocca per giocare)" % [card.get("display_name", ""), card.get("effect_text", "")]
+		btn.pressed.connect(_on_hand_card_tap.bind(card))
 		hand_box.add_child(btn)
+	# Separatore tra le carte e i "modi alternativi di giocare la carta selezionata".
+	var sep := VSeparator.new()
+	sep.add_theme_constant_override("separation", 10)
+	hand_box.add_child(sep)
+	# Gettone 💰10 (faccia in giù → +10 money): consuma la carta selezionata.
+	hand_box.add_child(_hand_money_token(ch, busy, has_sel))
+	# Carte Strategiche: consumano la carta selezionata per attivarsi.
+	for asset in p.strategic_assets:
+		hand_box.add_child(_hand_strategic_token(asset, ch, busy, has_sel))
+
+
+## Gettone Moneta da 10 nella mano: immagine della moneta + "+10"; attivo solo se c'è
+## una carta selezionata (e non si sta già risolvendo qualcosa).
+func _hand_money_token(ch: int, busy: bool, has_sel: bool) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var b := Button.new()
+	var d := int(ch * 0.62)
+	b.custom_minimum_size = Vector2(d, d)
+	b.flat = true
+	b.disabled = busy
+	b.tooltip_text = "Scarta la carta selezionata (faccia in giù) per +10 money"
+	if not has_sel:
+		b.modulate = Color(0.55, 0.55, 0.6)
+	b.pressed.connect(_on_play_money_token)
+	var ic := TextureRect.new()
+	ic.texture = load("res://assets/money/coin_10.png")
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(ic)
+	box.add_child(b)
+	var lab := Label.new()
+	lab.text = "+10"
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_color_override("font_color", Color(0.95, 0.85, 0.3))
+	box.add_child(lab)
+	return box
+
+
+## Carta Strategica nella mano: immagine reale (wide), attiva solo con una carta
+## selezionata. Toccandola, la carta selezionata è il costo.
+func _hand_strategic_token(asset: Dictionary, ch: int, busy: bool, has_sel: bool) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var w := int(ch * 0.94)
+	var card := _country_card_button(asset, Vector2(w, int(w / 2.4)), false, false)
+	card.disabled = busy
+	card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), asset.get("effect_text", "")]
+	if not has_sel:
+		card.modulate = Color(0.6, 0.6, 0.65)
+	card.pressed.connect(_on_play_strategic_token.bind(asset))
+	box.add_child(card)
+	var lab := Label.new()
+	lab.text = "Strategica"
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
+	lab.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 3))
+	box.add_child(lab)
+	return box
 
 
 ## Riga orizzontale scrollabile di carte (Market/Growth) come la mano.
