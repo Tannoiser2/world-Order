@@ -31,6 +31,7 @@ var armies_available: int = 0     # Army token sulla plancia (non sul Resource T
 var strategic_assets: Array = []
 var growth_cards: Array = []
 var used_strategic_assets: Array = []
+var executive_order_used: bool = false   # Executive Order: se NON usata, +3 VP a fine partita
 var fdi_values: Array = []         # valori dei Paesi con un tuo token FDI (per Return on Investments)
 var fdi_countries: Array = []      # id dei Paesi su cui hai un token FDI (per il rendering)
 var bases: Array = []              # id dei Paesi su cui hai una Base militare
@@ -38,14 +39,15 @@ var engage_tokens: Array = []      # Regioni su cui hai un Engage token (max 3)
 
 const RESOURCE_CAP := 10
 
-## Aggiunge risorse rispettando il cap a 10 (oltre il 10 si converte in money,
-## tranne le Armate che vanno perse). Ritorna il money guadagnato per eccedenza.
+## Aggiunge risorse rispettando il cap a 10 (regolamento pag. 16): oltre il 10
+## ogni unità si converte in money pari al suo Import cost, TRANNE Diplomazia e
+## Armate, la cui eccedenza va semplicemente persa. Ritorna il money guadagnato.
 func gain_resource(rtype: String, amount: int, import_cost: int = 0) -> int:
 	var overflow_money := 0
 	for _i in amount:
 		if resources[rtype] < RESOURCE_CAP:
 			resources[rtype] += 1
-		elif rtype != "armies":
+		elif rtype != "armies" and rtype != "diplomacy":
 			overflow_money += import_cost
 	money += overflow_money
 	return overflow_money
