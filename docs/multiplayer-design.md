@@ -188,6 +188,12 @@ Tutti compatibili con questa architettura ma rimandati.
   - [ ] **Resta**: `produce` e `trade` (comandi a payload pieno con la selezione),
     `move_army` (drag&drop), `pass_turn`/`play_strategic_asset`.
   - [ ] **Step B**: estrarre `SessionContext` e spostarci `awaiting`/`playing_card`/temp.
-- [ ] **Fase 1** — trasporto + lobby (Step C)
-- [ ] **Fase 2** — sincronizzazione (Step D)
-- [ ] **Fase 3** — robustezza (Step E)
+- [~] **Fase 1/2 — nucleo rete** (v0.7.85): modulo `NetSession` (host-authoritative)
+  con trasporto **WebSocket** (`host_lan`/`join_lan`) e **loopback** in-process per i test;
+  protocollo lobby/start + relay **comando -> host -> snapshot REDATTO al client**.
+  `board_view.apply_command()` instradato: da CLIENT invia all'host, da HOST applica e
+  ribroadcasta; `apply_remote_snapshot()` per i client. Test `verify_net` (loopback) OK.
+  - [ ] **Resta**: lobby UI nel menu (host/join, codice stanza/IP, scelta potenze);
+    sync dello stato di interazione (`awaiting`/pending_input) per pilotare il turno del
+    client; integrazione con il flusso scena.
+- [ ] **Fase 3** — robustezza (riconnessione, AFK, relay per Internet)
