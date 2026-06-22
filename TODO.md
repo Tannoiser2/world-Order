@@ -49,10 +49,9 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 >   in riga senza accavallarsi, Growth in orizzontale, pannello scrollabile/adattato.
 > - **#11** Market: comprando ne compare una nuova a sinistra; opzione −2 Research per
 >   scartare le 3 a destra; scarto di fine Research (2/1/0 per 2/3/4 giocatori).
-> - **#12 BLOCCATO dai dati**: i file `data/countries/*.json` non hanno il valore
->   **Research** delle Country (non trascritto dalle carte). Serve aggiungere il campo
->   `research` per ogni Country (dalle carte) prima di poter esaurire le Country per
->   aggiungere Research nel passo Research. `buy_market_card` ha già `extra_from_countries`.
+> - **#12 FATTO**: nel Research puoi esaurire le Country alleate ready per aggiungere
+>   **il loro valore** ai punti Research (il Research di una Country = il suo `value`,
+>   confermato dall'esempio del regolamento: Singapore 2 + Tajikistan 1 = 3).
 
 ### 🔴 Discrepanze rispetto al regolamento (dettaglio originale dell'audit)
 

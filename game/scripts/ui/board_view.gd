@@ -2980,6 +2980,20 @@ func _show_research() -> void:
 		reshuffle.pressed.connect(_market_reshuffle_3)
 		vb.add_child(reshuffle)
 
+	# --- #12: esaurisci Country alleate per aggiungere il loro valore al Research ---
+	var allies := _research_ready_allies(p)
+	if not allies.is_empty():
+		vb.add_child(_section("Esaurisci una Country alleata per +Research (= suo valore):"))
+		var aflow := HFlowContainer.new()
+		aflow.add_theme_constant_override("h_separation", 6)
+		aflow.add_theme_constant_override("v_separation", 6)
+		vb.add_child(aflow)
+		for c in allies:
+			var ab := Button.new()
+			ab.text = "%s  +%d R" % [c.get("display_name", "?"), int(c.get("value", 0))]
+			ab.pressed.connect(_research_exhaust_ally.bind(c))
+			aflow.add_child(ab)
+
 	# --- Growth: carte LARGHE (landscape) dimensionate per la riga ---
 	vb.add_child(_section("Growth (livello %d, spendi risorse):" % _next_growth_level(p)))
 	var ag := _available_growth(p)
@@ -3013,6 +3027,33 @@ func _buy_market(card: Dictionary) -> void:
 		_status("Comprata dal Market: %s (−%d Research)." % [card.get("display_name", ""), spent])
 		_after_change()
 		_show_research()
+
+
+## Country alleate ancora READY: esaurendole nel Research aggiungono il loro valore
+## ai punti Research (pag. 17; il valore = quello usato per Improve Relations/Engage).
+func _research_ready_allies(p: PlayerState) -> Array:
+	var out := []
+	var seen := {}
+	for c in p.allied_countries:
+		var id := String(c.get("id", ""))
+		if id == "" or id in seen or bool(p.exhausted.get(id, false)):
+			continue
+		seen[id] = true
+		out.append(c)
+	return out
+
+
+## Esaurisce una Country alleata per aggiungere il suo valore ai punti Research (#12).
+func _research_exhaust_ally(country: Dictionary) -> void:
+	var p := _active()
+	var id := String(country.get("id", ""))
+	if id == "" or bool(p.exhausted.get(id, false)):
+		return
+	p.exhausted[id] = true
+	_research_points += int(country.get("value", 0))
+	_status("Esaurita %s: +%d Research." % [country.get("display_name", "?"), int(country.get("value", 0))])
+	_after_change()
+	_show_research()
 
 
 ## Opzione del Research (pag. 17): spendi 2 Research per scartare le 3 carte più a
