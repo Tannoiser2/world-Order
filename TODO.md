@@ -36,7 +36,19 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 >
 > ### ⏳ DA FARE
 > Resta: #13 (spareggio ordine turno con starting money, bassa).
-> Più i 🔵 da playtest (Focus in Preparation, carte prodotto multiple, Trade drag&drop).
+> Più i 🔵 da playtest (Focus in Preparation, carte prodotto multiple) e:
+> - **Trade: drag&drop** vero (trascinare i token) — iterazione 2, sopra al tap.
+> - **Trade: vendita Armate** dalla riserva (20 cad., non sulla resource track) — #14
+>   lato vendita-riserva, non ancora nella UI Commercio.
+>
+> ### ✅ FATTO 2026-06-22 (6° giro — Commercio sulla resource track)
+> - Nuovo Commercio: niente più tabella di testo. Ogni risorsa ha la sua **track 0-10**;
+>   tocchi una **casella valida** (entro i cap) → verso 0 **vendi**, verso 10 **compri**,
+>   col **denaro guadagnato/speso** scritto su ogni casella.
+> - **Scelta del venditore via BANDIERINA**: a fianco di ogni risorsa le sorgenti d'import
+>   (🏦 banca + bandiere delle potenze che la vendono); clicchi quella da cui comprare e
+>   il cap si adatta alla sua offerta. La logica (cap, P2P, +1 Diplomazia) è invariata.
+>   Il **drag&drop** vero arriverà come iterazione 2.
 >
 > ### ✅ FATTO 2026-06-22 (5° giro — Auto-Influence completo)
 > - **#9** ora si applicano **2 carte Auto-Influence per round** (non 1).
