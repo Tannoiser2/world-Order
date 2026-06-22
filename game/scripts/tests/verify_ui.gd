@@ -617,6 +617,33 @@ func _init() -> void:
 		print("[%s] acquisto Market: carta nel mazzo, slot rifornito, Research speso" % ["OK" if buy_ok else "FAIL"])
 		if not buy_ok: fails += 1
 
+		# #11 — meccanica Market scarto/ricambio (su stato controllato, poi ripristino).
+		var _save_disp: Array = board.market_display.duplicate()
+		var _save_deck: Array = board.market_deck.duplicate()
+		board.market_display = [{"id": "m0"}, {"id": "m1"}, {"id": "m2"}, {"id": "m3"}, {"id": "m4"}]
+		board.market_deck = [{"id": "d0"}, {"id": "d1"}, {"id": "d2"}, {"id": "d3"}]
+		board._market_take(board.market_display[2])   # compra m2 → nuova carta a sinistra
+		var take_ok: bool = board.market_display.size() == 5 \
+			and String(board.market_display[0]["id"]) == "d3" \
+			and String(board.market_display[1]["id"]) == "m0" \
+			and String(board.market_display[3]["id"]) == "m3"
+		print("[%s] Market #11: la carta comprata è sostituita a sinistra" % ["OK" if take_ok else "FAIL"])
+		if not take_ok: fails += 1
+		board.market_display = [{"id": "a0"}, {"id": "a1"}, {"id": "a2"}, {"id": "a3"}, {"id": "a4"}]
+		board.market_deck = [{"id": "e0"}, {"id": "e1"}, {"id": "e2"}]
+		board._market_discard_rightmost(3)            # scarta le 3 a destra, rivela 3 a sinistra
+		var mdisc_ok: bool = board.market_display.size() == 5 \
+			and String(board.market_display[3]["id"]) == "a0" \
+			and String(board.market_display[4]["id"]) == "a1"
+		print("[%s] Market #11: scarta le 3 a destra, rivela 3 a sinistra" % ["OK" if mdisc_ok else "FAIL"])
+		if not mdisc_ok: fails += 1
+		var endn: int = board._market_end_discard_count()
+		var expect_end: int = {2: 2, 3: 1}.get(board.gs.players.size(), 0)
+		print("[%s] Market #11: scarto fine Research = %d (%d giocatori)" % ["OK" if endn == expect_end else "FAIL", endn, board.gs.players.size()])
+		if endn != expect_end: fails += 1
+		board.market_display = _save_disp
+		board.market_deck = _save_deck
+
 		# Growth: acquisto della prossima Growth (livello 1) spendendo risorse.
 		var ag: Array = board._available_growth(ac)
 		if ag.size() > 0:
