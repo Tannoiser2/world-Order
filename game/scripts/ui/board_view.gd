@@ -47,6 +47,8 @@ var popup_layer: Control
 # HUD persistente + cassetto (drawer) della plancia giocatore.
 var top_hud: PanelContainer
 var hud_box: HBoxContainer
+var choice_bar: Panel             # barra SOTTO l'HUD per le scelte (niente popup sulla board)
+var choice_flow: HFlowContainer   # contenuto della barra scelte (prompt + bottoni)
 var drawer: Panel                   # foglio in basso, mostrato a richiesta
 var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
@@ -2208,49 +2210,49 @@ func _pick_choice(options: Array, cb: Callable) -> void:
 	_show_popup("Scegli un'opzione:", items, cb)
 
 
+## Scelta a bottoni nella BARRA SCELTE in alto (niente più popup sopra la board):
+## il prompt va nello stato, ogni opzione è un bottone chiaro, più «Annulla».
 func _show_popup(prompt: String, items: Array, cb: Callable) -> void:
-	for c in popup_layer.get_children():
-		c.queue_free()
-	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.5)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(center)
-	var panel := PanelContainer.new()
-	center.add_child(panel)
-	var vb := VBoxContainer.new()
-	vb.custom_minimum_size = Vector2(360, 0)
-	panel.add_child(vb)
-	var lab := Label.new()
-	lab.text = prompt
-	vb.add_child(lab)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(360, 280)
-	vb.add_child(scroll)
-	var list := VBoxContainer.new()
-	scroll.add_child(list)
+	_clear_choice_bar()
+	_status(prompt)
+	var pl := Label.new()
+	pl.text = prompt
+	pl.add_theme_color_override("font_color", Color(0.95, 0.9, 0.6))
+	pl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(pl)
 	for it in items:
 		var b := Button.new()
-		b.text = it["label"]
+		b.text = String(it["label"])
+		b.add_theme_font_size_override("font_size", _base_fs() + 1)
 		b.pressed.connect(func():
-			_close_popup()
+			_clear_choice_bar()
 			cb.call(it["value"]))
-		list.add_child(b)
+		choice_flow.add_child(b)
 	var cancel := Button.new()
 	cancel.text = "Annulla"
 	cancel.pressed.connect(func():
-		_close_popup()
+		_clear_choice_bar()
 		_cancel_card())
-	vb.add_child(cancel)
+	choice_flow.add_child(cancel)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Svuota e nasconde la barra scelte (e ridà spazio alla mappa).
+func _clear_choice_bar() -> void:
+	if choice_flow:
+		for c in choice_flow.get_children():
+			c.queue_free()
+	if choice_bar:
+		choice_bar.visible = false
+	_layout_ui()
 
 
 func _close_popup() -> void:
 	for c in popup_layer.get_children():
 		c.queue_free()
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_clear_choice_bar()
 
 
 func _cancel_card() -> void:
@@ -2298,6 +2300,23 @@ func _build_hud() -> void:
 	status_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.95))
 	status_label.clip_text = true
 	vb.add_child(status_label)
+	# Barra delle SCELTE: subito sotto l'HUD, spinge giù la mappa (niente sovrapposizioni).
+	choice_bar = Panel.new()
+	var cst := StyleBoxFlat.new()
+	cst.bg_color = Color(0.10, 0.13, 0.18, 0.98)
+	cst.border_color = Color(0.95, 0.8, 0.3, 0.8); cst.set_border_width_all(0); cst.border_width_bottom = 2
+	choice_bar.add_theme_stylebox_override("panel", cst)
+	choice_bar.visible = false
+	add_child(choice_bar)
+	var cmargin := MarginContainer.new()
+	cmargin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cmargin.add_theme_constant_override("margin_left", 8); cmargin.add_theme_constant_override("margin_right", 8)
+	cmargin.add_theme_constant_override("margin_top", 4); cmargin.add_theme_constant_override("margin_bottom", 4)
+	choice_bar.add_child(cmargin)
+	choice_flow = HFlowContainer.new()
+	choice_flow.add_theme_constant_override("h_separation", 8)
+	choice_flow.add_theme_constant_override("v_separation", 4)
+	cmargin.add_child(choice_flow)
 
 
 ## Cassetto in basso: una scheda per ogni potenza in gioco. Aprendone una si vede
@@ -2383,14 +2402,20 @@ func _layout_ui() -> void:
 	var hud_h := clampf(h * 0.11, 40, 86)
 	top_hud.position = Vector2.ZERO
 	top_hud.size = Vector2(w, hud_h)
+	# Barra scelte SOTTO l'HUD (quando attiva): sposta giù l'inizio della mappa.
+	var choice_h := 0.0
+	if choice_bar and choice_bar.visible:
+		choice_h = clampf(h * 0.075, 40, 60)
+		choice_bar.position = Vector2(0, hud_h)
+		choice_bar.size = Vector2(w, choice_h)
 	var tab_h := clampf(h * 0.08, 34, 64)
 	tab_bg.position = Vector2(0, h - tab_h)
 	tab_bg.size = Vector2(w, tab_h)
 	tab_bar.position = Vector2(4, h - tab_h + 2)
 	tab_bar.size = Vector2(w - 8, tab_h - 4)
-	# La mappa occupa SOLO lo spazio tra HUD (in alto) e barra linguette (in basso).
-	map_viewport.position = Vector2(0, hud_h)
-	map_viewport.size = Vector2(w, maxf(1.0, h - hud_h - tab_h))
+	# La mappa occupa SOLO lo spazio tra HUD (+barra scelte) in alto e linguette in basso.
+	map_viewport.position = Vector2(0, hud_h + choice_h)
+	map_viewport.size = Vector2(w, maxf(1.0, h - hud_h - choice_h - tab_h))
 	var dy := h * 0.30   # il cassetto copre ~62% dello schermo: ci sta tutto
 	drawer.visible = drawer_open
 	drawer.position = Vector2(0, dy)

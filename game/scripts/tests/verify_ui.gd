@@ -122,7 +122,7 @@ func _init() -> void:
 		var dip_pre2: int = pdsc.resources["diplomacy"]
 		board._on_region_pressed("europe")   # apre il popup sconto (1 alleato in europe)
 		board._exhaust_sel = {"ally_disc": true}
-		var ok_btn: Button = _find_button(board.popup_layer, "Conferma")
+		var ok_btn: Button = _find_button(board, "Conferma")
 		if ok_btn: ok_btn.pressed.emit()
 		board._on_influence_cell("europe", "temporary")  # scelta slot SULLA MAPPA
 		var spent2: int = dip_pre2 - pdsc.resources["diplomacy"]
@@ -167,7 +167,7 @@ func _init() -> void:
 		board._play_card(card_bb)
 		board._on_allied_pressed(bb_country)
 		board._on_influence_cell("africa", "temporary")  # scelta slot SULLA MAPPA → poi popup Armate
-		var n2_btn: Button = _find_button(board.popup_layer, "2 Armata/e")   # scelgo 2 Armate
+		var n2_btn: Button = _find_button(board, "2 Armata/e")   # scelgo 2 Armate
 		if n2_btn: n2_btn.pressed.emit()
 		var bb_region_post: int = int((board.gs.regions["africa"]["armies"] as Dictionary).get(pbb.power, 0))
 		var bb_ok: bool = (card_bb in pbb.played) \
@@ -550,7 +550,7 @@ func _init() -> void:
 		var card_ip := {"display_name": "IP", "effect_ops": [{"op": "increase_production", "count": 2}]}
 		pip.hand.append(card_ip); board._plays_left = 9
 		board._play_card(card_ip)
-		var eb: Button = _find_button(board.popup_layer, board.RES_LABEL["energy"])
+		var eb: Button = _find_button(board, board.RES_LABEL["energy"])
 		if eb: eb.pressed.emit()
 		var ip_ok: bool = pip.production["energy"] == 3 and board.playing_card.is_empty()
 		print("[%s] op increase_production: Energia 1→3 (+2)" % ["OK" if ip_ok else "FAIL"])
@@ -563,7 +563,7 @@ func _init() -> void:
 		var card_tr := {"display_name": "TR", "effect_ops": [{"op": "trash", "source": "self"}]}
 		ptr.hand.append(card_tr); board._plays_left = 9
 		board._play_card(card_tr)
-		var vb: Button = _find_button(board.popup_layer, "Victim")
+		var vb: Button = _find_button(board, "Victim")
 		if vb: vb.pressed.emit()
 		var tr_ok: bool = not (victim in ptr.hand) and not (victim in ptr.discard) and board.playing_card.is_empty()
 		print("[%s] op trash: carta eliminata dal gioco" % ["OK" if tr_ok else "FAIL"])
@@ -576,7 +576,7 @@ func _init() -> void:
 		var card_ds := {"display_name": "DS", "effect_ops": [{"op": "discard", "n": 1, "then": [{"op": "play_another"}]}]}
 		pds.hand.append(card_ds); board._plays_left = 1
 		board._play_card(card_ds)
-		var d1b: Button = _find_button(board.popup_layer, "D1")
+		var d1b: Button = _find_button(board, "D1")
 		if d1b: d1b.pressed.emit()
 		var ds_ok: bool = (d1 in pds.discard) and board.playing_card.is_empty()
 		print("[%s] op discard: 1 scartata + then play_another" % ["OK" if ds_ok else "FAIL"])
@@ -742,7 +742,7 @@ func _init() -> void:
 		board._plays_left = 9
 		board._play_card(card_mod)
 		board._on_region_pressed(mreg)
-		var skip_b: Button = _find_button(board.popup_layer, "Salta (nessuno sconto)")
+		var skip_b: Button = _find_button(board, "Salta (nessuno sconto)")
 		if skip_b: skip_b.pressed.emit()   # popup sconto: non esaurisco alleati
 		board._on_influence_cell(mreg, "temporary")  # scelta slot SULLA MAPPA
 		var spent: int = dip_pre - pmod2.resources["diplomacy"]
