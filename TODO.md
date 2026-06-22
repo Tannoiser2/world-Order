@@ -37,7 +37,10 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 > ### ⏳ DA FARE
 > Resta: #13 (spareggio ordine turno con starting money, bassa).
 > Più:
-> - **Trade: drag&drop** vero (trascinare i token) — iterazione 2, sopra al tap.
+> - ✅ **Trade: drag&drop** (v0.7.48) — trascini il token risorsa sulla track e lo
+>   rilasci su una casella valida (drag&drop nativo Godot, `set_drag_forwarding`). Il
+>   tap resta come alternativa. La SENSAZIONE del gesto va confermata su dispositivo
+>   (non simulabile headless).
 > - ✅ **Commerce cards: composizione per-carta** confermata (v0.7.46): USA 1 Servizi/carta
 >   (×2), Cina 1 Beni/carta (×2), EU 1 Servizi O 1 Beni/carta (×2), Russia fino a 3 Energia
 >   O 3 Materie Prime/carta (×3). Ogni carta è `{risorsa: quantità}`; girarne una la consuma

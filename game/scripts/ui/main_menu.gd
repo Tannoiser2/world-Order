@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.47"
+const VERSION := "v0.7.48"
 const CHANGELOG := [
+	"v0.7.48 — COMMERCIO con DRAG&DROP: ora puoi TRASCINARE il token di un prodotto lungo la sua resource track e RILASCIARLO su una casella valida (verso 0 vendi, verso 10 compri), invece di toccare. Compaiono le caselle valide come bersagli col denaro su ognuna. Il TAP resta come alternativa. (La sensazione del trascinamento è da confermare sul tuo dispositivo.)",
 	"v0.7.47 — Verificati i dati del TABELLONE (board.json) di tutte e 7 le Regioni confrontandoli con l'immagine del tabellone stampato: slot Influenza permanenti/temporanei, bonus Maggioranza, costo Engage, bandiere (zone d'interesse) e cubi iniziali corrispondono tutti. La MENA (segnalata errata in passato) risulta ora corretta. Nessun valore da correggere.",
 	"v0.7.46 — CARTE PRODOTTO (Commerce) con quantità per carta: ogni carta vende UNA risorsa fino al suo tetto. USA 1 Servizi/carta (×2), Cina 1 Beni/carta (×2), EU 1 Servizi O 1 Beni/carta (×2), Russia fino a 3 Energia O 3 Materie Prime/carta (×3). Comprando da una potenza si girano le sue carte fino a coprire la quantità richiesta, e ogni carta girata è consumata per intero (anche l'altra risorsa): es. compri 2 Energia dalla Russia → giri 1 sola carta (restano 6 tra Energia/Materie sulle altre due).",
 	"v0.7.45 — COMMERCIO: ora puoi VENDERE le ARMATE dalla riserva (20 money cad.). Nel banner Commercio compare la riga «Vendi Armate (riserva N)» con − / + per scegliere quante venderne; il Δ money si aggiorna e la vendita occupa uno slot Export (come una risorsa). Le Armate NON sono importabili (puoi solo venderle). Completa la regola del Trade (il bene da 20 sono le Armate, non la Diplomazia).",

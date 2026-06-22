@@ -2418,6 +2418,35 @@ func _trade_select_res(res: String) -> void:
 	_trade_rerender()
 
 
+# --- Drag&drop (iterazione 2, sopra al tap): trascini il token risorsa sulla
+# track e lo rilasci su una casella valida. Usa il drag&drop nativo di Godot
+# (set_drag_forwarding) — niente calcolo manuale del puntatore. ---
+
+## Inizio trascinamento di un token risorsa: arma il prodotto (così compaiono le
+## caselle valide come bersagli di rilascio) e mostra un'anteprima sotto il dito.
+func _trade_drag_begin(_at_position: Vector2, res: String) -> Variant:
+	_trade_active_res = res
+	var prev := TextureRect.new()
+	var d := board_native.y * 0.06
+	prev.texture = load("res://assets/tokens/%s.png" % res)
+	prev.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	prev.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	prev.custom_minimum_size = Vector2(d, d); prev.size = Vector2(d, d)
+	set_drag_preview(prev)
+	_trade_rerender.call_deferred()   # ridisegna: appaiono le caselle valide (drop target)
+	return {"trade_res": res}
+
+
+## Si può rilasciare su una casella solo il token dello stesso prodotto.
+func _trade_can_drop(_at_position: Vector2, data: Variant, R: String) -> bool:
+	return data is Dictionary and String((data as Dictionary).get("trade_res", "")) == R
+
+
+## Rilascio su una casella i: imposta la transazione per raggiungere quella quantità.
+func _trade_do_drop(_at_position: Vector2, _data: Variant, R: String, i: int) -> void:
+	_trade_set_target(R, i)
+
+
 ## Overlay del Commercio sulla resource track: senza prodotto selezionato ogni token
 ## commerciabile è toccabile (anello evidenziato); con un prodotto selezionato mostra
 ## le caselle 0-10 valide (verso 0 vendi, verso 10 compra) col money su ognuna.
@@ -2437,8 +2466,10 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 			sb.set_border_width_all(2)
 			sb.border_color = Color(0.95, 0.85, 0.4) if staged else Color(0.55, 0.8, 1.0, 0.85)
 			b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
-			b.tooltip_text = "Commercia %s" % RES_LABEL.get(res, res)
+			b.tooltip_text = "Commercia %s (tocca o trascina)" % RES_LABEL.get(res, res)
 			b.pressed.connect(_trade_select_res.bind(res))
+			# Drag&drop: trascinando il token compaiono e si attivano le caselle valide.
+			b.set_drag_forwarding(_trade_drag_begin.bind(res), Callable(), Callable())
 			area.add_child(b)
 		return
 	# Un prodotto selezionato: caselle valide con il money.
@@ -2465,6 +2496,8 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 			sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4)
 		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
 		b.pressed.connect(_trade_set_target.bind(R, i))
+		# Drop target del drag&drop: rilasciando qui il token, imposta questa quantità.
+		b.set_drag_forwarding(Callable(), _trade_can_drop.bind(R), _trade_do_drop.bind(R, i))
 		area.add_child(b)
 
 
@@ -2487,7 +2520,7 @@ func _build_trade_banner(p: PlayerState) -> Control:
 	info.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
 	hb.add_child(info)
 	if _trade_active_res == "":
-		var hint := Label.new(); hint.text = "— tocca un prodotto sulla plancia (verso 0 vendi, verso 10 compri)"
+		var hint := Label.new(); hint.text = "— tocca o TRASCINA un prodotto sulla plancia (verso 0 vendi, verso 10 compri)"
 		hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 		hb.add_child(hint)
 	else:
