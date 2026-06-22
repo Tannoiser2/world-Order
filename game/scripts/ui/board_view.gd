@@ -661,20 +661,19 @@ func _layout_majority() -> void:
 
 ## Engage token (stretta di mano colorata per potenza) sulle Regioni dove il
 ## giocatore ha "engaged": posati in fila vicino alla traccia Influenza.
+## Token Engage: il PRIMO sul simbolo handshake calibrato (engage_slots); gli extra
+## si impilano lateralmente, o SOTTO per americas/europe/central_asia (poco spazio).
 func _layout_engage_tokens() -> void:
-	var slots: Dictionary = layout.get("influence_slots", {})
-	var h := board_native.y * 0.030
+	var slots: Dictionary = layout.get("engage_slots", {})
+	var h := board_native.y * 0.034
 	var w := h * 1.47
+	var stack_down := ["americas", "europe", "central_asia"]
 	for region in gs.regions:
-		var conf: Dictionary = slots.get(region, {})
-		if conf.is_empty():
+		var pos: Array = slots.get(region, [])
+		if pos.is_empty():
 			continue
-		var temp: Array = conf.get("temporary", [])
-		if temp.is_empty():
-			continue
-		# Punto di posa: sotto-sinistra della traccia temporanea (zona "handshake").
-		var bx := float(temp[0][0]) * board_native.x - w * 0.5
-		var by := (float(temp[0][1]) + 0.052) * board_native.y
+		var bx := float(pos[0]) * board_native.x - w * 0.5
+		var by := float(pos[1]) * board_native.y - h * 0.5
 		var n := 0
 		for p in gs.players:
 			if region in p.engage_tokens:
@@ -683,14 +682,17 @@ func _layout_engage_tokens() -> void:
 				tok.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				tok.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 				tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				tok.position = Vector2(bx + n * w * 0.62, by)
+				if region in stack_down:
+					tok.position = Vector2(bx, by + n * h * 1.05)
+				else:
+					tok.position = Vector2(bx + n * w * 1.05, by)
 				tok.size = Vector2(w, h)
 				overlay.add_child(tok)
 				n += 1
 
 
-## Posa le carte nazione disponibili (immagini originali) nelle aree designate
-## del tabellone (card_slots, calibrate dal salvataggio TTS).
+## Posa le carte nazione disponibili (immagini originali) nei 2 SLOT designati di
+## ogni Regione, centrate sui pallini calibrati (board_layout.json -> card_slots).
 func _layout_card_slots() -> void:
 	for c in card_layer.get_children():
 		c.queue_free()
@@ -698,20 +700,21 @@ func _layout_card_slots() -> void:
 	for region in slots:
 		if region.begins_with("_"):
 			continue
-		var r: Array = slots[region]
-		var x0: float = r[0] * board_native.x
-		var y0: float = r[1] * board_native.y
-		var sw: float = (r[2] - r[0]) * board_native.x
-		var sh: float = (r[3] - r[1]) * board_native.y
+		var centers: Array = slots[region]
+		if centers.is_empty():
+			continue
+		# Larghezza carta = distanza tra i 2 slot (carte affiancate come sul tabellone).
+		var spacing: float = 0.08
+		if centers.size() >= 2:
+			spacing = absf(float(centers[1][0]) - float(centers[0][0]))
+		var cw: float = spacing * 0.96 * board_native.x
+		var ch: float = cw / 0.71
 		var avail: Array = region_countries.get(region, {}).get("available", [])
-		var n: int = maxi(1, avail.size())
-		var gap: float = sw * 0.04
-		var cw: float = (sw - gap * (n - 1)) / n
-		for i in avail.size():
+		for i in mini(avail.size(), centers.size()):
 			# Niente flyover sulle carte sul tabellone: si leggono zoomando la mappa.
-			var card := _country_card_button(avail[i], Vector2(cw, sh), awaiting == "board_country", false)
+			var card := _country_card_button(avail[i], Vector2(cw, ch), awaiting == "board_country", false)
 			card.pressed.connect(_on_country_pressed.bind(avail[i], region))
-			card.position = Vector2(x0 + i * (cw + gap), y0)
+			card.position = Vector2(float(centers[i][0]) * board_native.x - cw * 0.5, float(centers[i][1]) * board_native.y - ch * 0.5)
 			card_layer.add_child(card)
 
 
