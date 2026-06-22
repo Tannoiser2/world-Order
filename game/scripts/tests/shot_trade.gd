@@ -15,7 +15,8 @@ func _initialize() -> void:
 	p.armies_available = maxi(p.armies_available, 6)
 	p.resources["services"] = 3
 	p.resources["food"] = 3        # Serv e Food sulla STESSA casella → anello con ↻ (ciclo)
-	board._open_trade_ui()   # stato iniziale: selezione del prodotto sulla casella
+	board._open_trade_ui()
+	board._trade_select_res("food")   # food selezionato (icona evidenziata in primo piano)
 	for _i in range(10):
 		await process_frame
 	await create_timer(0.3).timeout
