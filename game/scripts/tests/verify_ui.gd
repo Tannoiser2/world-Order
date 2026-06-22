@@ -736,10 +736,10 @@ func _init() -> void:
 			and board.hand_box != null and board.hand_box.get_child_count() >= ac.hand.size()
 		print("[%s] scheda potenza apre la plancia con la mano (%d carte)" % ["OK" if opened else "FAIL", ac.hand.size()])
 		if not opened: fails += 1
-		board._on_power_tab(ac.power)  # ri-tocco la stessa scheda -> chiude
-		var toggled: bool = board.drawer_open == false
-		print("[%s] ri-toccando la scheda attiva il cassetto si chiude" % ["OK" if toggled else "FAIL"])
-		if not toggled: fails += 1
+		board._on_power_tab(ac.power)  # nuovo layout: il pannello board resta SEMPRE visibile
+		var still_open: bool = board.drawer_open == true and board.drawer_power == ac.power
+		print("[%s] linguetta: il pannello board resta sempre visibile" % ["OK" if still_open else "FAIL"])
+		if not still_open: fails += 1
 
 		# Mano senza popup: 1° tap seleziona; gettone 💰10 scarta la selezionata per +10;
 		# ri-tap sulla stessa carta = giocala.
@@ -767,9 +767,11 @@ func _init() -> void:
 		ac.hand.append(card_close)
 		board._plays_left = 9
 		board._play_card(card_close)
-		var auto_closed: bool = board.awaiting == "region" and board.drawer_open == false
-		print("[%s] interazione mappa: il cassetto si richiude da solo" % ["OK" if auto_closed else "FAIL"])
-		if not auto_closed: fails += 1
+		# Nuovo layout: la mappa è a fianco della board, quindi il pannello board resta
+		# visibile anche durante l'interazione con la mappa (non si collassa più).
+		var map_ok: bool = board.awaiting == "region" and board.drawer_open == true
+		print("[%s] interazione mappa: il pannello board resta visibile" % ["OK" if map_ok else "FAIL"])
+		if not map_ok: fails += 1
 		board._on_region_pressed("south_asia")  # risolve e chiude la carta
 		board._on_influence_cell("south_asia", "temporary")  # scelta slot SULLA MAPPA
 
