@@ -644,6 +644,18 @@ func _init() -> void:
 		board.market_display = _save_disp
 		board.market_deck = _save_deck
 
+		# #12 — esaurendo una Country alleata ready, il Research aumenta del suo valore.
+		var pres: PlayerState = board._active()
+		board._research_points = 4
+		var ally12 := {"id": "country_res12", "display_name": "ResTest", "region": "africa", "value": 2}
+		pres.allied_countries.append(ally12)
+		pres.exhausted["country_res12"] = false
+		board._research_exhaust_ally(ally12)
+		var res12_ok: bool = board._research_points == 6 and bool(pres.exhausted.get("country_res12", false))
+		print("[%s] Research #12: esaurire una Country aggiunge il suo valore (+2)" % ["OK" if res12_ok else "FAIL"])
+		if not res12_ok: fails += 1
+		pres.allied_countries.erase(ally12)
+
 		# Growth: acquisto della prossima Growth (livello 1) spendendo risorse.
 		var ag: Array = board._available_growth(ac)
 		if ag.size() > 0:
