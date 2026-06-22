@@ -66,7 +66,9 @@ var market_content: VBoxContainer  # contenuto scrollabile del pannello mercato
 var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
 var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
-var card_preview_text: Label     # traduzione IT dell'effetto carta, accanto al flyover
+var card_preview_text: Label     # traduzione IT sovrapposta alla parte bassa della carta
+var card_preview_timer: Timer    # ritardo (~1s) prima di mostrare il flyover
+var _pending_preview: Dictionary = {}   # {tex, text} in attesa del ritardo
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
 var tab_bg: Panel                   # sfondo solido della barra linguette
@@ -121,6 +123,8 @@ var _influence_pick: Dictionary = {}   # scelta Influenza sulla MAPPA: {regions,
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
 var _commerce_flipped: Dictionary = {}  # venditore(power) -> [indici] carte Commerce già girate nel round
 var _plays_left := 1                  # carte ancora giocabili nel turno corrente (1 base)
+var _played_this_turn := false        # vero appena giocata/passata una carta: serve per
+                                      # bloccare 'Fine turno' finché non si agisce
 
 ## Abilità continuative (Growth): descrizione e se sono attivabili una volta/round.
 const ONGOING_DESC := {
@@ -210,21 +214,30 @@ func _ready() -> void:
 	card_preview.visible = false
 	card_preview.z_index = 200
 	add_child(card_preview)
-	# Pannello-testo del flyover: la TRADUZIONE in italiano dell'effetto carta, con font
-	# piccolo, mostrata accanto all'anteprima ingrandita (vedi _attach_preview).
+	# Traduzione IT SOVRAPPOSTA alla parte bassa della carta ingrandita (copre il testo
+	# inglese stampato, come a "tradurre" la carta). Sfondo OPACO, font piccolo.
 	card_preview_text = Label.new()
 	card_preview_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card_preview_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card_preview_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	card_preview_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card_preview_text.visible = false
-	card_preview_text.z_index = 200
+	card_preview_text.z_index = 201
+	card_preview_text.clip_text = true
 	var cpst := StyleBoxFlat.new()
-	cpst.bg_color = Color(0.04, 0.05, 0.08, 0.97)
+	cpst.bg_color = Color(0.06, 0.07, 0.10, 0.98)   # opaco: nasconde l'inglese sotto
 	cpst.set_corner_radius_all(6)
 	cpst.set_content_margin_all(8)
-	cpst.border_color = Color(0.5, 0.6, 0.78, 0.7); cpst.set_border_width_all(1)
+	cpst.border_color = Color(0.55, 0.65, 0.85, 0.8); cpst.set_border_width_all(1)
 	card_preview_text.add_theme_stylebox_override("normal", cpst)
-	card_preview_text.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98))
+	card_preview_text.add_theme_color_override("font_color", Color(0.93, 0.95, 0.99))
 	add_child(card_preview_text)
+	# Ritardo (~1s) prima di mostrare il flyover, come per i tooltip.
+	card_preview_timer = Timer.new()
+	card_preview_timer.one_shot = true
+	card_preview_timer.wait_time = 1.0
+	card_preview_timer.timeout.connect(_show_pending_preview)
+	add_child(card_preview_timer)
 
 	GamePhases.determine_turn_order(gs)
 	round_turn_count = 0
@@ -857,36 +870,51 @@ func _card_text(card: Dictionary) -> String:
 		card.get("effect_text", card.get("ability_text", "")))))
 
 
-## Flyover: passando il mouse su una carta ne mostra una versione ingrandita
-## ancorata a destra; se `text` è valorizzato, mostra accanto la TRADUZIONE italiana
-## dell'effetto (font piccolo). Uscendo, nasconde tutto.
+## Flyover: stando fermi col mouse su una carta (dopo ~1s) ne mostra una versione
+## ingrandita a destra, con la TRADUZIONE italiana dell'effetto SOVRAPPOSTA alla parte
+## bassa della carta (copre il testo inglese stampato). Uscendo, nasconde tutto.
 func _attach_preview(btn: Control, tex: Texture2D, text := "") -> void:
 	if tex == null or card_preview == null:
 		return
 	btn.mouse_entered.connect(func():
-		# Anteprima ANCORATA A DESTRA (e più contenuta) così non copre il centro
-		# della board né i testi delle scelte nei popup.
-		var h: float = minf(size.y * 0.6, 440.0)
-		var w: float = h * 0.71
-		var margin := 16.0
-		card_preview.texture = tex
-		card_preview.size = Vector2(w, h)
-		card_preview.position = Vector2(size.x - w - margin, (size.y - h) * 0.5)
-		card_preview.visible = true
-		# Traduzione IT a SINISTRA della carta ingrandita, font piccolo.
-		if text != "" and card_preview_text:
-			card_preview_text.add_theme_font_size_override("font_size", clampi(int(size.y * 0.022), 11, 18))
-			var tw: float = clampf(size.x * 0.24, 170.0, 340.0)
-			card_preview_text.size = Vector2(tw, 0)
-			card_preview_text.position = Vector2(maxf(8.0, size.x - w - margin - tw - 8.0), (size.y - h) * 0.5)
-			card_preview_text.text = text
-			card_preview_text.visible = true
-		elif card_preview_text:
-			card_preview_text.visible = false)
+		_pending_preview = {"tex": tex, "text": text}
+		if card_preview_timer:
+			card_preview_timer.start())
 	btn.mouse_exited.connect(func():
+		if card_preview_timer:
+			card_preview_timer.stop()
 		card_preview.visible = false
 		if card_preview_text:
 			card_preview_text.visible = false)
+
+
+## Mostra l'anteprima in attesa (chiamata dal timer dopo il ritardo).
+func _show_pending_preview() -> void:
+	if _pending_preview.is_empty() or card_preview == null:
+		return
+	var tex: Texture2D = _pending_preview.get("tex")
+	var text := String(_pending_preview.get("text", ""))
+	if tex == null:
+		return
+	var h: float = minf(size.y * 0.6, 440.0)
+	var w: float = h * 0.71
+	var margin := 16.0
+	var cx := size.x - w - margin
+	var cy := (size.y - h) * 0.5
+	card_preview.texture = tex
+	card_preview.size = Vector2(w, h)
+	card_preview.position = Vector2(cx, cy)
+	card_preview.visible = true
+	# Traduzione IT sulla PARTE BASSA della carta (copre l'inglese), font piccolo.
+	if text != "" and card_preview_text:
+		card_preview_text.add_theme_font_size_override("font_size", clampi(int(size.y * 0.019), 10, 16))
+		var th := h * 0.40
+		card_preview_text.size = Vector2(w, th)
+		card_preview_text.position = Vector2(cx, cy + h - th)
+		card_preview_text.text = text
+		card_preview_text.visible = true
+	elif card_preview_text:
+		card_preview_text.visible = false
 
 
 ## Click su una Country disponibile sul board: target di Improve Relations.
@@ -1054,6 +1082,7 @@ func _play_facedown_money(card: Dictionary) -> void:
 	p.discard.append(card)
 	p.money += 10
 	_plays_left -= 1
+	_played_this_turn = true
 	_status("Carta a faccia in giù: +10 money.")
 	_after_change()
 
@@ -1225,10 +1254,92 @@ func _advance_play() -> void:
 				_status("Prosperità: Beni di consumo insufficienti.")
 			_after_change()
 			_advance_play()
+		"repeat":
+			# Ripeti il "body" `times` volte: lo si ESPANDE in cima alla coda così ogni
+			# sotto-op si risolve INTERATTIVAMENTE (con i suoi target). Eseguirlo via
+			# EffectExecutor differirebbe place_armies/add_influence (niente target).
+			var rtimes := int(op.get("times", 1))
+			var rbody: Array = op.get("body", [])
+			var expanded := []
+			for _t in range(rtimes):
+				for bo in rbody:
+					expanded.append((bo as Dictionary).duplicate(true))
+			for i in range(expanded.size() - 1, -1, -1):
+				play_queue.push_front(expanded[i])
+			_advance_play()
+		"spend_for_gain":
+			_resolve_spend_for_gain(op)
+		"research_free":
+			_resolve_research_free(op)
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
 			_advance_play()
+
+
+## spend_for_gain: spendi fino a spend_max money; per ogni `per` money speso applichi
+## `gain` (es. +3 Diplomazia). Scelta a popup (Non spendere / soglie abbordabili).
+func _resolve_spend_for_gain(op: Dictionary) -> void:
+	var p := _active()
+	var spend_max := int(op.get("spend_max", 0))
+	var per := maxi(1, int(op.get("per", 1)))
+	var gain_op: Dictionary = op.get("gain", {})
+	var gtxt := _gain_op_text(gain_op)
+	var items := [{"label": "Non spendere", "value": 0}]
+	var amt := per
+	while amt <= spend_max:
+		if p.money >= amt:
+			items.append({"label": "Spendi %d money  ->  %s" % [amt, _times_text(amt / per, gtxt)], "value": amt})
+		amt += per
+	_show_popup("Quanto money spendi?", items, func(choice):
+		var spent := int(choice)
+		if spent > 0 and p.spend({"money": spent}):
+			for _i in range(spent / per):
+				EffectExecutor.run(gs, p.power, [gain_op])
+			_status("Spesi %d money: %s." % [spent, _times_text(spent / per, gtxt)])
+		_after_change()
+		_advance_play())
+
+
+## research_free: scegli una carta del Market (costo <= max) GRATIS e giocala SUBITO
+## (i suoi effetti vengono anteposti alla coda di risoluzione).
+func _resolve_research_free(op: Dictionary) -> void:
+	var max_cost := int(op.get("max", 6))
+	var items := []
+	for c in market_display:
+		if int(c.get("market_cost", 999)) <= max_cost:
+			items.append({"label": "%s (costo %d R)" % [c.get("display_name", "?"), int(c.get("market_cost", 0))], "value": c})
+	if items.is_empty():
+		_status("Research gratis: nessuna carta nel Market entro %d Research." % max_cost)
+		_advance_play()
+		return
+	_show_popup("Research gratis: scegli una carta (costo <= %d) da giocare subito:" % max_cost, items, func(choice):
+		var card: Dictionary = choice
+		_market_take(card)                 # rimuove dal Market e rivela una nuova carta
+		_active().played.append(card)
+		var ops: Array = card.get("effect_ops", [])
+		for i in range(ops.size() - 1, -1, -1):
+			play_queue.push_front((ops[i] as Dictionary).duplicate(true))
+		_status("Research gratis: giochi %s." % card.get("display_name", "?"))
+		_after_change()
+		_advance_play())
+
+
+## Descrizione breve di un op "gain_*" (per i testi delle scelte).
+func _gain_op_text(gop: Dictionary) -> String:
+	match String(gop.get("op", "")):
+		"gain_resource":
+			return "%d %s" % [int(gop.get("amount", 0)), RES_LABEL.get(String(gop.get("type", "")), gop.get("type", ""))]
+		"gain_money":
+			return "%d money" % int(gop.get("amount", 0))
+		"gain_armies":
+			return "%d Armate" % int(gop.get("amount", 0))
+		_:
+			return String(gop.get("op", "effetto"))
+
+
+func _times_text(n: int, gtxt: String) -> String:
+	return "%dx %s" % [n, gtxt] if n != 1 else gtxt
 
 
 func _resolve_region_op(region: String) -> void:
@@ -1785,6 +1896,7 @@ func _finish_card() -> void:
 	awaiting = ""
 	_trade_exported = {}
 	_plays_left -= 1
+	_played_this_turn = true
 	_status("Carta risolta.")
 	_after_change()
 
@@ -2784,7 +2896,10 @@ func _refresh_hud(p: PlayerState) -> void:
 	# Il tasto 'Fine turno' NON sta più nell'HUD (angolo alto-destra scomodo): è un tasto
 	# fisso in BASSO a destra (vedi end_turn_btn in _layout_ui). Qui ne aggiorno lo stato.
 	if end_turn_btn:
-		end_turn_btn.disabled = game_over or not playing_card.is_empty() or _ui_phase != "Azione"
+		# 'Fine turno' bloccato finché non hai GIOCATO (o passato) una carta nel turno.
+		# Eccezione: mano vuota (non puoi più agire) -> puoi comunque finire.
+		var must_play: bool = not _played_this_turn and not p.hand.is_empty() and _plays_left > 0
+		end_turn_btn.disabled = game_over or not playing_card.is_empty() or _ui_phase != "Azione" or must_play
 
 
 ## Maniglie: una per potenza, colorate; > = a chi tocca, ▼ = cassetto aperto.
@@ -4007,6 +4122,11 @@ func _end_turn() -> void:
 		return  # in Preparazione si sceglie il Focus, non si chiude il turno
 	if popup_layer.get_child_count() > 0:
 		return  # un popup (Research/riepilogo) e' aperto
+	# Non si chiude il turno senza aver GIOCATO (o passato) una carta - a meno che la
+	# mano sia vuota (niente da giocare) o non si abbiano piu' giocate disponibili.
+	if not _played_this_turn and not _active().hand.is_empty() and _plays_left > 0:
+		_status("Devi prima giocare una carta (o la Moneta +10 per passare).")
+		return
 	_selected_hand_card = {}
 	round_turn_count += 1
 	if round_turn_count >= 4 * gs.players.size():
@@ -4021,15 +4141,16 @@ func _end_turn() -> void:
 ## Prompt chiaro di inizio turno: a chi tocca e cosa può fare (indicatore guidato).
 func _turn_hint() -> String:
 	var p := _active()
-	if _plays_left <= 0:
-		return "%s: turno esaurito - premi 'Fine turno'." % p.power.to_upper()
-	return "Tocca a %s: gioca una carta dalla mano, poi 'Fine turno'." % p.power.to_upper()
+	if _plays_left <= 0 or _played_this_turn:
+		return "%s: premi 'Fine turno'." % p.power.to_upper()
+	return "Tocca a %s: gioca una carta dalla mano (poi si sblocca 'Fine turno')." % p.power.to_upper()
 
 
 ## Carte giocabili nel turno: 1 di base, +1 al primo turno del round con
 ## l'abilità "extra_play_first_turn".
 func _reset_plays() -> void:
 	_plays_left = 1
+	_played_this_turn = false
 	if round_turn_count < gs.players.size():
 		_plays_left += _ongoing_count(_active(), "extra_play_first_turn")
 

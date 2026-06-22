@@ -521,6 +521,35 @@ static func run_all() -> Dictionary:
 	check.call("redazione: mazzo coperto per tutti", (view0["players"][0]["deck"] as Array).is_empty())
 	check.call("redazione: seggio osservatore marcato", int(view0.get("viewer_seat", -1)) == 0)
 
+	# --- 14. Effetti carte: op non interattive ESEGUITE (non differite) ---
+	# Bug storico: gain_money_per_fdi/research_free/spend_for_gain cadevano nel default
+	# (no-op). Qui si verifica che le 'gain_*'/spend/sell vengano eseguite davvero.
+	var op_gs := GameSetup.new_game(["usa", "china", "russia", "eu"])
+	var op_px := op_gs.player_by_power("usa")
+	op_px.fdi_countries = ["c_a", "c_b"]; op_px.money = 0
+	EffectExecutor.run(op_gs, "usa", [{"op": "gain_money_per_fdi", "amount": 4}])
+	check.call("gain_money_per_fdi: 4 x 2 FDI = 8 money", op_px.money == 8)
+	op_px.money = 0; op_px.armies_available = 0
+	var op_s2 := EffectExecutor.run(op_gs, "usa", [
+		{"op": "gain_money", "amount": 5},
+		{"op": "gain_resource", "type": "energy", "amount": 1},
+		{"op": "gain_armies", "amount": 2},
+		{"op": "sell_armies", "n": 2, "money": 10},
+		{"op": "gain_money_per_fdi", "amount": 1},
+	])
+	check.call("op gain_*/spend eseguite, 0 differite", int(op_s2.get("deferred", 0)) == 0)
+	# Ogni tipo di op usato nei dati e' RICONOSCIUTO (niente 'unknown').
+	var op_all := {}
+	for op_arr in [DataLoader.load_market(), DataLoader.load_growth(), DataLoader.load_strategic_assets()]:
+		for op_cc in op_arr:
+			for op_oo in op_cc.get("effect_ops", []):
+				op_all[String(op_oo.get("op", ""))] = true
+	var op_unknown := []
+	for op_k in op_all:
+		if op_k != "" and not (op_k in EffectExecutor.KNOWN):
+			op_unknown.append(op_k)
+	check.call("nessun op dei dati sconosciuto a EffectExecutor", op_unknown.is_empty())
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}
 
 

@@ -115,6 +115,9 @@ static func _exec_one(gs: GameState, p: PlayerState, op: Dictionary, summary: Di
 			if p.armies_available >= n:
 				p.armies_available -= n
 				p.money += int(op.get("money", 0))
+		"gain_money_per_fdi":
+			# Guadagna `amount` money per ogni segnalino FDI sulle Country alleate.
+			p.money += int(op.get("amount", 0)) * p.fdi_countries.size()
 		"add_influence":
 			if op.has("region") and gs.regions.has(op["region"]):
 				var slot := "permanent" if bool(op.get("permanent", false)) else ""
