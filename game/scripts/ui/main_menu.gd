@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.35"
+const VERSION := "v0.7.36"
 const CHANGELOG := [
+	"v0.7.36 — AFTERMATH ora INTERATTIVO: invece di applicare tutto in automatico, ogni giocatore ha un popup di scelte. L'INCREASE PROSPERITY è opzionale (decidi tu se spendere i Consumer Goods per avanzare). Puoi SCARTARE i tuoi Engage token per ottenere +5 money per Country alleata della Regione (Return on Investments) OPPURE +2 Difesa per Country alleata, applicata al THREAT di quella Regione. La quota FDI del Return on Investments resta automatica.",
 	"v0.7.35 — L'anteprima ingrandita (flyover) delle carte al passaggio del mouse è ora ANCORATA A DESTRA e più contenuta: prima compariva grande al centro e copriva la board e i testi delle scelte nei popup.",
 	"v0.7.34 — Research: ora puoi ESAURIRE le Country alleate (ancora ready) per aggiungere il loro valore ai punti Research, da spendere nel Market (come da regolamento: es. Singapore +2, Tajikistan +1). I pulsanti compaiono nella schermata Research.",
 	"v0.7.33 — Schermata RESEARCH/MARKET rifatta e LEGGIBILE: le carte Market e Growth sono ora dimensionate per stare in una riga senza accavallarsi (le Growth mostrate in orizzontale), con il pannello scrollabile e adattato allo schermo. Aggiunte le regole del Market: comprando una carta ne compare una nuova a sinistra; puoi spendere 2 Research per scartare le 3 carte più a destra; a fine Research si scartano le carte più a destra (2 in 2 giocatori, 1 in 3, nessuna in 4).",

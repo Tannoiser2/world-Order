@@ -710,6 +710,32 @@ func _init() -> void:
 		print("[%s] Focus 1×/round (gratis): 2° clic non ri-prepara" % ["OK" if once_ok else "FAIL"])
 		if not once_ok: fails += 1
 
+		# Aftermath interattivo (#5/#6/#7): scelte invece di automatismi (ultimo uso di `board`).
+		var pam: PlayerState = board.gs.players[0]
+		board.gs.round = 1
+		for pp in board.gs.players:
+			pp.fdi_values = []
+			pp.engage_tokens = []
+		pam.money = 0
+		pam.prosperity_level = 0
+		pam.resources["consumer_goods"] = 5
+		pam.engage_tokens = ["africa", "europe"]
+		pam.allied_countries = [{"id": "aa", "region": "africa", "value": 1},
+			{"id": "ab", "region": "africa", "value": 1}, {"id": "ae", "region": "europe", "value": 1}]
+		board._run_aftermath()
+		var prosp_auto_ok: bool = pam.prosperity_level == 0          # #7: NON è automatica
+		board._aftermath_token_money(pam, "africa")                 # #6: 5 × 2 Country = 10
+		var roi6_ok: bool = pam.money == 10 and not ("africa" in pam.engage_tokens)
+		board._aftermath_token_defense(pam, "europe")               # #5: 2 × 1 = +2 Difesa
+		var def5_ok: bool = int((board._threat_defense.get("europe", {}) as Dictionary).get(pam.power, 0)) == 2 \
+			and not ("europe" in pam.engage_tokens)
+		board._aftermath_prosperity(pam)                            # #7: scelta → avanza
+		var prosp_ok: bool = pam.prosperity_level == 1
+		var after_ok: bool = prosp_auto_ok and roi6_ok and def5_ok and prosp_ok
+		print("[%s] Aftermath interattivo: Prosperità a scelta (#7) + Engage→money (#6) + Engage→Difesa (#5)" % ["OK" if after_ok else "FAIL"])
+		if not after_ok: fails += 1
+		board._close_popup()
+
 	# Partita completa attraverso la UI (Fine turno / Continua fino alla fine).
 	var b2: Node = load("res://scenes/board.tscn").instantiate()
 	get_root().add_child(b2)
