@@ -76,6 +76,11 @@ var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto i
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
+# Stato dell'Aftermath interattivo (scelte per giocatore prima di THREAT/Scoring).
+var _aftermath_idx := 0                  # giocatore corrente nella fase scelte
+var _aftermath_lines: Array[String] = [] # righe del riepilogo di fine round
+var _aftermath_ai_art := ""             # art della carta Auto-Influence (per il riepilogo)
+var _threat_defense: Dictionary = {}    # {region: {power: +Difesa}} da Engage token scartati
 # Stato del gioco di una carta:
 var playing_card: Dictionary = {}
 var play_queue: Array = []
@@ -3129,26 +3134,142 @@ func _apply_auto_influence(lines: Array) -> String:
 	return String(card.get("art", ""))
 
 
+## Numero di Country alleate del giocatore nella Regione (per i bonus da Engage token).
+func _allied_count_in_region(p: PlayerState, region: String) -> int:
+	var n := 0
+	for c in p.allied_countries:
+		if String(c.get("region", "")) == region:
+			n += 1
+	return n
+
+
 func _run_aftermath() -> void:
 	gs.phase = WO.Phase.AFTERMATH
-	var lines: Array[String] = ["— Aftermath round %d —" % gs.round]
+	_aftermath_lines = ["— Aftermath round %d —" % gs.round]
+	_threat_defense = {}
 	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
-	var ai_art := _apply_auto_influence(lines)
-
-	# Return on Investments: 2 money per ogni FDI × valore del Paese (1° passo Aftermath).
+	_aftermath_ai_art = _apply_auto_influence(_aftermath_lines)
+	# Return on Investments — quota FDI (automatica): 2 money per FDI × valore del Paese.
+	# Lo scarto degli Engage token (5 money/Country) è una SCELTA, gestita nei popup.
 	for p in gs.players:
 		var roi := Aftermath.return_on_investments(p, p.fdi_values, [])
 		if roi > 0:
-			lines.append("%s: +%d money (Return on Investments)" % [p.power.to_upper(), roi])
+			_aftermath_lines.append("%s: +%d money (FDI)" % [p.power.to_upper(), roi])
+	# Fase di SCELTE per giocatore (scarto Engage token + Increase Prosperity).
+	_aftermath_idx = 0
+	_aftermath_player_step()
 
-	# Increase Prosperity (auto, se il giocatore ha abbastanza Consumer Goods).
-	var pb: Dictionary = DataLoader.load_player_boards()
-	var steps: Array = pb.get("prosperity_track", {}).get("steps_partial", [])
-	for p in gs.players:
-		if GamePhases.increase_prosperity(p, steps):
-			lines.append("%s: Prosperità → liv. %d" % [p.power.to_upper(), p.prosperity_level])
 
-	# Resolve THREAT in ogni Regione.
+## Avanza la fase scelte dell'Aftermath: un popup per giocatore, poi risolve.
+func _aftermath_player_step() -> void:
+	if _aftermath_idx >= gs.players.size():
+		_aftermath_resolve()
+		return
+	_show_aftermath_choices(gs.players[_aftermath_idx])
+
+
+## Popup delle scelte di Aftermath del giocatore: scartare Engage token per money
+## (Return on Investments) o per Difesa (THREAT), e Increase Prosperity (opzionale).
+func _show_aftermath_choices(p: PlayerState) -> void:
+	for c in popup_layer.get_children():
+		c.queue_free()
+	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new(); dim.color = Color(0, 0, 0, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(center)
+	var panel := PanelContainer.new()
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99)
+	st.set_corner_radius_all(10); st.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", st)
+	center.add_child(panel)
+	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 8)
+	vb.custom_minimum_size = Vector2(420, 0)
+	panel.add_child(vb)
+
+	var head := Label.new()
+	head.text = "Aftermath — %s  ·  scelte (round %d)" % [p.power.to_upper(), gs.round]
+	head.add_theme_font_size_override("font_size", _base_fs() + 2)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	vb.add_child(head)
+
+	# Engage token: scartali per money (ROI) o per Difesa (THREAT). 1 token = 1 scelta.
+	if p.engage_tokens.is_empty():
+		var no_tok := Label.new(); no_tok.text = "Nessun Engage token da scartare."
+		no_tok.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		vb.add_child(no_tok)
+	else:
+		vb.add_child(_section("Scarta un Engage token (vale per le Country alleate della Regione):"))
+		for region in p.engage_tokens.duplicate():
+			var n := _allied_count_in_region(p, region)
+			var rlabel := String(region).replace("_", " ")
+			var bmoney := Button.new()
+			bmoney.text = "Scarta Engage in %s  →  +%d money (ROI)" % [rlabel, 5 * n]
+			bmoney.pressed.connect(_aftermath_token_money.bind(p, region))
+			vb.add_child(bmoney)
+			var bdef := Button.new()
+			bdef.text = "Scarta Engage in %s  →  +%d Difesa (THREAT)" % [rlabel, 2 * n]
+			bdef.pressed.connect(_aftermath_token_defense.bind(p, region))
+			vb.add_child(bdef)
+
+	# Increase Prosperity (opzionale): solo se il giocatore può permettersi il passo.
+	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
+	if p.prosperity_level < steps.size():
+		var step: Dictionary = steps[p.prosperity_level]
+		var cost := int(step.get("cost_consumer_goods", 999))
+		if int(p.resources.get("consumer_goods", 0)) >= cost:
+			var bpr := Button.new()
+			bpr.text = "Aumenta Prosperità  (−%d CG → +%d VP, +%d money)" % [cost, int(step.get("vp", 0)), int(step.get("money", 0))]
+			bpr.pressed.connect(_aftermath_prosperity.bind(p))
+			vb.add_child(bpr)
+
+	var done := Button.new()
+	done.text = "Continua"
+	done.pressed.connect(func():
+		_aftermath_idx += 1
+		_close_popup()
+		_aftermath_player_step())
+	vb.add_child(done)
+
+
+## Scarta un Engage token per money (5 × Country alleate della Regione) — ROI (#6).
+func _aftermath_token_money(p: PlayerState, region: String) -> void:
+	if region not in p.engage_tokens:
+		return
+	p.engage_tokens.erase(region)
+	var n := _allied_count_in_region(p, region)
+	p.money += 5 * n
+	_aftermath_lines.append("%s: scarta Engage in %s → +%d money" % [p.power.to_upper(), region.replace("_", " "), 5 * n])
+	_layout_engage_tokens()
+	_show_aftermath_choices(p)
+
+
+## Scarta un Engage token per +2 Difesa/Country nella Regione, applicata al THREAT (#5).
+func _aftermath_token_defense(p: PlayerState, region: String) -> void:
+	if region not in p.engage_tokens:
+		return
+	p.engage_tokens.erase(region)
+	var n := _allied_count_in_region(p, region)
+	if not _threat_defense.has(region):
+		_threat_defense[region] = {}
+	_threat_defense[region][p.power] = int(_threat_defense[region].get(p.power, 0)) + 2 * n
+	_aftermath_lines.append("%s: scarta Engage in %s → +%d Difesa (THREAT)" % [p.power.to_upper(), region.replace("_", " "), 2 * n])
+	_layout_engage_tokens()
+	_show_aftermath_choices(p)
+
+
+## Increase Prosperity (opzionale, #7): avanza di 1 spendendo i Consumer Goods.
+func _aftermath_prosperity(p: PlayerState) -> void:
+	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
+	if GamePhases.increase_prosperity(p, steps):
+		_aftermath_lines.append("%s: Prosperità → liv. %d" % [p.power.to_upper(), p.prosperity_level])
+	_show_aftermath_choices(p)
+
+
+## Risolve THREAT (con le Difese da Engage token scartati) e lo Scoring, poi riepiloga.
+func _aftermath_resolve() -> void:
 	var mil_focus := {}
 	var player_powers := []
 	for p in gs.players:
@@ -3158,23 +3279,23 @@ func _run_aftermath() -> void:
 	var nato := Threat.nato_pairs(player_powers)
 	for rid in gs.regions:
 		var rd: Dictionary = gs.regions[rid]
-		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, {}, nato)
+		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, _threat_defense.get(rid, {}), nato)
 		for power in loss:
 			gs.add_vp(power, -int(loss[power]))
-			lines.append("%s: −%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
+			_aftermath_lines.append("%s: −%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
 
 	# Scoring delle Regioni nei round 3 e 6.
 	if gs.is_scoring_round():
 		var rs := GameRunner.score_all_regions(gs)
 		for power in rs:
 			gs.add_vp(power, int(rs[power]))
-		lines.append("Scoring Regioni: " + _vp_summary(rs))
+		_aftermath_lines.append("Scoring Regioni: " + _vp_summary(rs))
 		# Abilità speciali di scoring: USA (Global Superpower Status), Russia (Secured Sphere).
 		var sp := GameRunner.apply_power_special_scoring(gs)
 		if not sp.is_empty():
-			lines.append("Abilità speciali: " + _vp_summary(sp))
+			_aftermath_lines.append("Abilità speciali: " + _vp_summary(sp))
 
-	_show_summary(lines, func(): _next_round(), ai_art)
+	_show_summary(_aftermath_lines, func(): _next_round(), _aftermath_ai_art)
 
 
 ## Reveal Country Cards (Preparation): in ogni Regione ruota una carta — la più

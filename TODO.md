@@ -35,14 +35,17 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 > - **#21** Trade: +1 Diplomazia SOLO comprando da un altro giocatore (non dalla banca).
 >
 > ### ⏳ DA FARE — items UI-interattivi (scelte nel flusso UI / riprogettazioni UI)
-> Restano gli item che sono **scelte interattive nell'Aftermath** o **riprogettazioni UI**
-> (meritano una revisione visiva/UX); il motore è già pronto dove serve (es. THREAT/ROI
-> accettano già gli Engage-token scartati):
-> #5 (scarto Engage→+2 Difesa), #6 (scarto Engage→+5 money/Country), #7 (Increase
-> Prosperity a scelta), #9–#10 (Auto-Influence: 2 carte/round + money commercio
-> condizionato), #13 (spareggio ordine turno con starting money, bassa).
-> Più i 🔵 da playtest (Focus in Preparation, Aftermath interattivo,
-> Auto-Influence a video, carte prodotto multiple, Trade drag&drop).
+> Restano: #9–#10 (Auto-Influence: 2 carte/round + money commercio condizionato),
+> #13 (spareggio ordine turno con starting money, bassa).
+> Più i 🔵 da playtest (Focus in Preparation, Auto-Influence a video, carte prodotto
+> multiple, Trade drag&drop).
+>
+> ### ✅ FATTO 2026-06-22 (4° giro — Aftermath interattivo)
+> - **#7** Increase Prosperity ora è una **scelta** (bottone), non più automatica.
+> - **#6** scarto Engage token → **+5 money × Country** alleate della Regione (ROI).
+> - **#5** scarto Engage token → **+2 Difesa × Country** alleate, applicata al THREAT.
+> - L'Aftermath è ora una sequenza di popup per giocatore (scelte) + risoluzione
+>   THREAT/Scoring. Quota FDI del ROI resta automatica.
 >
 > ### ✅ FATTO 2026-06-22 (2° giro — Market/Research)
 > - **Schermata Research/Market leggibile** (bug playtest): carte dimensionate per stare
