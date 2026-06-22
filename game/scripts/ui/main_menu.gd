@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.50"
+const VERSION := "v0.7.51"
 const CHANGELOG := [
+	"v0.7.51 — INFLUENZA scelta SULLA MAPPA: giocando una carta che dà Influenza, il cassetto si chiude e si evidenziano le CASELLE valide direttamente sul tabellone (VERDE = permanente, VIOLA = temporanea) in tutte le Regioni; un solo click posa l'Influenza (scegli Regione e tipo di slot insieme). Niente più finestra di scelta. (L'Influenza dell'Engage resta col suo popup rapido, perché la Regione è già scelta col costo.)",
 	"v0.7.50 — ARMATE con DRAG&DROP: durante un Move ora TRASCINI i carri (immagini, non numeri). Niente più scelta della sorgente: trascini un carro dalla RISERVA su una Regione per schierarlo, da una Regione all'altra per spostarlo, o lo riporti sul vassoio RISERVA per farlo rientrare (gratis, annulla lo spostamento). Le Regioni sorgente (tue Armate) e destinazione valide sono evidenziate; valgono i costi e il limite del Move (5 money/carro). Il tap sorgente→destinazione tra Regioni resta come alternativa.",
 	"v0.7.49 — UI scelte più pulita: quando devi fare una SCELTA dopo aver giocato una carta (es. scegliere una nazione alleata sulla plancia) o durante il Commercio, la MANO si collassa da sola così non copre la plancia e le scelte. Per le scelte sulla MAPPA (Move, zona per l'Engage, ecc.) è già tutta la plancia a chiudersi. Finita la scelta, la mano riappare.",
 	"v0.7.48 — COMMERCIO con DRAG&DROP: ora puoi TRASCINARE il token di un prodotto lungo la sua resource track e RILASCIARLO su una casella valida (verso 0 vendi, verso 10 compri), invece di toccare. Compaiono le caselle valide come bersagli col denaro su ognuna. Il TAP resta come alternativa. (La sensazione del trascinamento è da confermare sul tuo dispositivo.)",
