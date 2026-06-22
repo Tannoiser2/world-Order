@@ -5,7 +5,10 @@ extends RefCounted
 ## oggetto passato esplicitamente).
 
 static var player_count: int = 2
-static var mode: String = "hotseat"   # "hotseat" | "online" (online: futuro)
+static var mode: String = "hotseat"   # "hotseat" | "online"
+## Sessione di rete attiva (lobby online): la board la prende per host/client.
+## È un Node tenuto in get_tree().root così sopravvive al cambio scena. null = locale.
+static var net: NetSession = null
 ## Potenze in gioco. In 2 giocatori il regolamento impone: una tra USA/EU e una
 ## tra Russia/China. Default coerente; la scelta esplicita verra' aggiunta dopo.
 static var powers: Array = ["usa", "china", "russia", "eu"]

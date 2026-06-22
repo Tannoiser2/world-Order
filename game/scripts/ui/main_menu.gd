@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.88"
+const VERSION := "v0.7.89"
 const CHANGELOG := [
+	"v0.7.89 - LOBBY LAN (multiplayer giocabile in rete locale): nel menu, scegliendo «Online (LAN)» compare la lobby. Un giocatore fa «Ospita (LAN)» (mostra il proprio IP da condividere) e gli altri «Unisciti» inserendo quell'IP; quando tutti sono collegati l'host preme «Avvia partita» e tutti entrano nella stessa partita. L'host arbitra (possiede lo stato) e a ogni mossa invia a ciascun client il proprio stato REDATTO (ognuno vede solo la propria mano); i client inviano le mosse all'host. La modalità Hot Seat resta invariata. Prossimo passo: rifinire il turno interattivo lato client e poi la versione via Internet (relay).",
 	"v0.7.88 - FIX IMPORTANTE sullo SCORING: per un bug (i numeri da JSON sono float e 'int in [float]' e' sempre falso in Godot) il controllo del round di punteggio era SEMPRE falso, quindi lo Scoring delle REGIONI non avveniva MAI, ne' al round 3 ne' al 6! Ora i round 3 e 6 segnano correttamente le maggioranze d'area delle Regioni. Inoltre, come da regolamento, ad OGNI round di punteggio (3 e 6) si segnano anche i 3 token Maggioranza (piu' money / armate sul board / Country alleate), prima conteggiati solo a fine partita.",
 	"v0.7.87 - CARTE AUTO-INFLUENZA visibili: nelle partite a 2-3 giocatori le 2 carte Auto-Influence delle potenze NEUTRALI ora si vedono sulla mappa, in alto vicino al titolo, e restano visibili per tutto il round (vengono rivelate a inizio round; l'effetto si applica in Aftermath come prima).",
 	"v0.7.86 - MULTIPLAYER: gli snapshot dell'host ora includono lo STATO DI INTERAZIONE (cosa attende il turno: scegli Regione, casella d'Influenza, ecc.), cosi' un client puo' essere pilotato dall'host e renderizzare gli highlight giusti durante il proprio turno. Base per il turno interattivo in rete. Ancora nulla di visibile in partita (manca la lobby).",
@@ -201,6 +202,15 @@ var _seat_powers: Array = []          # potenza scelta per seggio
 var _seats_box: VBoxContainer
 var _warn: Label
 
+# --- Lobby LAN (modalità Online) ---
+var _net: NetSession = null
+var _lobby_box: VBoxContainer
+var _lobby_status: Label
+var _players_list: VBoxContainer
+var _ip_edit: LineEdit
+var _host_btn: Button
+var _join_btn: Button
+
 
 func _ready() -> void:
 	var bg := TextureRect.new()
@@ -267,10 +277,14 @@ func _ready() -> void:
 	modes.add_child(hot)
 	_mode_buttons.append(hot)
 	var online := Button.new()
-	online.text = "Online (presto)"
-	online.disabled = true
+	online.text = "Online (LAN)"
+	online.toggle_mode = true
 	online.custom_minimum_size = Vector2(140, 40)
+	online.pressed.connect(_on_mode.bind("online"))
 	modes.add_child(online)
+	_mode_buttons.append(online)
+
+	_build_lobby(box)
 
 	var opts := Button.new()
 	opts.text = "Opzioni (prossimamente)"
@@ -361,7 +375,12 @@ func _validate() -> bool:
 
 func _on_mode(m: String) -> void:
 	_mode = m
-	_update_selection(_mode_buttons, 0)
+	_update_selection(_mode_buttons, ["hotseat", "online"].find(m))
+	_lobby_box.visible = (m == "online")
+	if m != "online":
+		# Tornando in Hot Seat si chiude la sessione di rete eventualmente aperta.
+		_free_net()
+		_reset_lobby_controls()
 
 
 func _on_play() -> void:
@@ -370,7 +389,157 @@ func _on_play() -> void:
 	GameConfig.player_count = _player_count
 	GameConfig.mode = _mode
 	GameConfig.powers = _seat_powers.duplicate()
+	if _mode == "online":
+		# In rete avvia SOLO l'host; i client entrano al segnale `started`.
+		if _net == null or not _net.is_host():
+			_warn.text = "Ospita una partita (i client partono quando avvii)."
+			return
+		if _net.lobby_players().size() < _player_count:
+			_warn.text = "Aspetta che si colleghino %d giocatori (ora %d)." % [_player_count, _net.lobby_players().size()]
+			return
+		GameConfig.net = _net
+		_net.start_game(_seat_powers.duplicate())
+		get_tree().change_scene_to_file("res://scenes/board.tscn")
+		return
 	get_tree().change_scene_to_file("res://scenes/board.tscn")
+
+
+# --- Lobby LAN ---
+
+## Costruisce il pannello lobby (nascosto finché non si sceglie la modalità Online):
+## Ospita (LAN) / Unisciti con IP, stato della connessione e lista dei giocatori.
+func _build_lobby(box: VBoxContainer) -> void:
+	_lobby_box = VBoxContainer.new()
+	_lobby_box.add_theme_constant_override("separation", 6)
+	_lobby_box.visible = false
+	box.add_child(_lobby_box)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	_lobby_box.add_child(row)
+
+	_host_btn = Button.new()
+	_host_btn.text = "Ospita (LAN)"
+	_host_btn.custom_minimum_size = Vector2(130, 36)
+	_host_btn.pressed.connect(_on_host)
+	row.add_child(_host_btn)
+
+	_ip_edit = LineEdit.new()
+	_ip_edit.placeholder_text = "IP host (es. 192.168.1.10)"
+	_ip_edit.custom_minimum_size = Vector2(200, 36)
+	row.add_child(_ip_edit)
+
+	_join_btn = Button.new()
+	_join_btn.text = "Unisciti"
+	_join_btn.custom_minimum_size = Vector2(110, 36)
+	_join_btn.pressed.connect(_on_join)
+	row.add_child(_join_btn)
+
+	_lobby_status = Label.new()
+	_lobby_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lobby_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lobby_status.custom_minimum_size = Vector2(440, 0)
+	_lobby_status.add_theme_color_override("font_color", Color(0.8, 0.92, 0.8))
+	_lobby_box.add_child(_lobby_status)
+
+	_players_list = VBoxContainer.new()
+	_players_list.add_theme_constant_override("separation", 2)
+	_lobby_box.add_child(_players_list)
+
+
+func _on_host() -> void:
+	_free_net()
+	_net = NetSession.new()
+	_net.name = "NetSession"
+	get_tree().root.add_child(_net)
+	var err := _net.host_lan()
+	if err != OK:
+		_lobby_status.text = "Impossibile ospitare (porta occupata?). Errore %d" % err
+		_free_net()
+		return
+	GameConfig.net = _net
+	_net.lobby_changed.connect(_on_lobby_changed)
+	_host_btn.disabled = true
+	_join_btn.disabled = true
+	_ip_edit.editable = false
+	_on_lobby_changed(_net.lobby_players())
+
+
+func _on_join() -> void:
+	var ip := _ip_edit.text.strip_edges()
+	if ip == "":
+		_lobby_status.text = "Inserisci l'IP dell'host."
+		return
+	_free_net()
+	_net = NetSession.new()
+	_net.name = "NetSession"
+	get_tree().root.add_child(_net)
+	var err := _net.join_lan(ip)
+	if err != OK:
+		_lobby_status.text = "Connessione fallita. Errore %d" % err
+		_free_net()
+		return
+	GameConfig.net = _net
+	_net.lobby_changed.connect(_on_lobby_changed)
+	_net.started.connect(_on_started)
+	_net.connection_failed.connect(func(): _lobby_status.text = "Connessione fallita.")
+	_host_btn.disabled = true
+	_join_btn.disabled = true
+	_ip_edit.editable = false
+	_lobby_status.text = "Connessione a %s… attendi che l'host avvii la partita." % ip
+
+
+## HOST e CLIENT: aggiorna la lista dei giocatori in lobby.
+func _on_lobby_changed(players: Array) -> void:
+	for c in _players_list.get_children():
+		c.queue_free()
+	for pl in players:
+		var l := Label.new()
+		l.text = "Seggio %d — %s" % [int((pl as Dictionary).get("seat", 0)), String((pl as Dictionary).get("name", ""))]
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_players_list.add_child(l)
+	if _net != null and _net.is_host():
+		_lobby_status.text = "In ascolto su %s:%d — condividi questo IP. Giocatori: %d (servono %d). Poi premi «Avvia partita»." % [
+			_local_ip(), NetSession.PORT_DEFAULT, players.size(), _player_count]
+
+
+## CLIENT: l'host ha avviato la partita -> entra nella scena di gioco.
+func _on_started(_seat: int, _powers: Array) -> void:
+	GameConfig.net = _net
+	GameConfig.mode = "online"
+	get_tree().change_scene_to_file("res://scenes/board.tscn")
+
+
+## Chiude e rimuove la sessione di rete corrente (se presente).
+func _free_net() -> void:
+	if _net != null:
+		_net.queue_free()
+		_net = null
+	GameConfig.net = null
+
+
+func _reset_lobby_controls() -> void:
+	if _host_btn != null:
+		_host_btn.disabled = false
+	if _join_btn != null:
+		_join_btn.disabled = false
+	if _ip_edit != null:
+		_ip_edit.editable = true
+	if _players_list != null:
+		for c in _players_list.get_children():
+			c.queue_free()
+	if _lobby_status != null:
+		_lobby_status.text = ""
+
+
+## Primo indirizzo IPv4 di LAN (non loopback / link-local): da mostrare ai client.
+func _local_ip() -> String:
+	for a in IP.get_local_addresses():
+		var s := String(a)
+		if s.count(".") == 3 and not s.begins_with("127.") and not s.begins_with("169.254."):
+			return s
+	return "127.0.0.1"
 
 
 # --- helper UI ---

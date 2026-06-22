@@ -193,7 +193,16 @@ Tutti compatibili con questa architettura ma rimandati.
   protocollo lobby/start + relay **comando -> host -> snapshot REDATTO al client**.
   `board_view.apply_command()` instradato: da CLIENT invia all'host, da HOST applica e
   ribroadcasta; `apply_remote_snapshot()` per i client. Test `verify_net` (loopback) OK.
-  - [ ] **Resta**: lobby UI nel menu (host/join, codice stanza/IP, scelta potenze);
-    sync dello stato di interazione (`awaiting`/pending_input) per pilotare il turno del
-    client; integrazione con il flusso scena.
+  - [x] v0.7.86: sync dello stato di INTERAZIONE (`_ui_snapshot`/`_apply_ui_snapshot`:
+    `awaiting`/`influence_pick`) nello snapshot, per pilotare il turno del client.
+  - [x] **v0.7.89 — LOBBY LAN nel menu**: modalità «Online (LAN)» con `Ospita`/`Unisciti`
+    (IP host mostrato via `IP.get_local_addresses`), lista giocatori, avvio dell'host.
+    `GameConfig.net` tiene la `NetSession` (Node in `root`, sopravvive al cambio scena);
+    `board_view._ready()` legge la sessione e fa da host (gioca + `_net_sync`) o client
+    (skip Preparazione, `apply_remote_snapshot`, comandi all'host via `_on_net_command`).
+    Test d'integrazione `verify_net_board` (due board via loopback): snapshot host->client,
+    redazione mano, comando client->host. OK.
+  - [ ] **Resta**: `produce`/`trade`/`move_army` nel command bus (servono per il turno
+    interattivo completo del client); test su DISPOSITIVI reali in LAN; **Step B**
+    (`SessionContext`); poi Internet (relay).
 - [ ] **Fase 3** — robustezza (riconnessione, AFK, relay per Internet)
