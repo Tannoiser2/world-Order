@@ -61,6 +61,11 @@ func _init() -> void:
 		var card_region := {"display_name": "Test Engage", "effect_ops": [{"op": "engage"}]}
 		ac.hand.append(card_region)
 		for c0 in ac.allied_countries: ac.exhausted[String(c0.get("id", ""))] = true  # niente popup sconto
+		# Prerequisito Engage (pag. 13): garantisci un alleato in central_asia (esaurito,
+		# così non apre il popup sconto); rimosso dopo il test.
+		var ca_ally := {"id": "country_ca_pre", "region": "central_asia", "value": 1}
+		ac.allied_countries.append(ca_ally)
+		ac.exhausted["country_ca_pre"] = true
 		board._plays_left = 9
 		board._play_card(card_region)
 		var aw_ok: bool = board.awaiting == "region"
@@ -71,6 +76,7 @@ func _init() -> void:
 		var slot_b1: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot perm/temp
 		if slot_b1: slot_b1.pressed.emit()
 		var inf_a: int = board.gs.regions["central_asia"]["track"].count(ac.power)
+		ac.allied_countries.erase(ca_ally)
 		var played_ok: bool = (card_region in ac.played) and not (card_region in ac.hand) and inf_a == inf_b + 1
 		print("[%s] risoluzione carta Engage (Influenza %d->%d, carta in scarti)" % ["OK" if played_ok else "FAIL", inf_b, inf_a])
 		if not played_ok: fails += 1
@@ -80,7 +86,12 @@ func _init() -> void:
 		var rid := gs_first_region(board)
 		var avail: Array = board.region_countries[rid]["available"]
 		var n_av: int = avail.size()
+		# Scegli una Country che non vieti l'alleanza alla potenza attiva (pag. 12).
 		var target: Dictionary = avail[0]
+		for cav in avail:
+			if ac.power not in (cav as Dictionary).get("no_relations_powers", []):
+				target = cav
+				break
 		var allied_b: int = ac.allied_countries.size()
 		var card_ir := {"display_name": "Test IR", "effect_ops": [{"op": "improve_relations"}]}
 		ac.hand.append(card_ir)
@@ -534,25 +545,33 @@ func _init() -> void:
 		if slot_bc: slot_bc.pressed.emit()
 
 		# Modifiers: carta Engage con sconto -1 Diplomacy per Armata schierata.
-		ac.resources["diplomacy"] = 20
+		var pmod2: PlayerState = board._active()
+		pmod2.resources["diplomacy"] = 20
 		var mreg := "central_asia"
-		board.gs.regions[mreg]["armies"][ac.power] = 3
+		board.gs.regions[mreg]["armies"][pmod2.power] = 3
+		# Prerequisito Engage (pag. 13): serve una Country alleata nella Regione. La
+		# aggiungo solo per questo test e la rimuovo dopo (niente sconto: la salto).
+		var pre_ally := {"id": "country_engage_pre", "region": mreg, "value": 1}
+		pmod2.allied_countries.append(pre_ally)
 		var raw_cost: int = int(board.gs.regions[mreg]["engage_cost"])
-		var diplo := ac.focus == WO.Focus.DIPLOMATIC
+		var diplo := pmod2.focus == WO.Focus.DIPLOMATIC
 		var expected_cost: int = Actions.engage_cost(raw_cost, [], diplo, 3)
-		var dip_pre: int = ac.resources["diplomacy"]
+		var dip_pre: int = pmod2.resources["diplomacy"]
 		var card_mod := {"display_name": "Engage scontato", "effect_ops": [{"op": "engage"}],
 			"effect_modifiers": ["engage_discount_per_army"]}
-		ac.hand.append(card_mod)
+		pmod2.hand.append(card_mod)
 		board._plays_left = 9
 		board._play_card(card_mod)
 		board._on_region_pressed(mreg)
+		var skip_b: Button = _find_button(board.popup_layer, "Salta (nessuno sconto)")
+		if skip_b: skip_b.pressed.emit()   # popup sconto: non esaurisco alleati
 		var slot_bm: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
 		if slot_bm: slot_bm.pressed.emit()
-		var spent: int = dip_pre - ac.resources["diplomacy"]
-		var mod_ok: bool = spent == expected_cost and (card_mod in ac.played)
+		var spent: int = dip_pre - pmod2.resources["diplomacy"]
+		var mod_ok: bool = spent == expected_cost and (card_mod in pmod2.played)
 		print("[%s] effect_modifier: Engage costa %d (sconto -3 per Armata)" % ["OK" if mod_ok else "FAIL", spent])
 		if not mod_ok: fails += 1
+		pmod2.allied_countries.erase(pre_ally)   # ripristina lo stato per i test successivi
 
 		# Research/Market: il mercato e' rifornito; l'acquisto consuma Research.
 		var mkt_full: bool = board.market_display.size() == board.MARKET_SLOTS

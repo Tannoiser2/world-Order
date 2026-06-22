@@ -371,6 +371,122 @@ static func run_all() -> Dictionary:
 	check.call("engage_discount senza modifier = 0",
 		Modifiers.engage_discount({}, gmod, "usa", "europe") == 0)
 
+	# --- 13. Audit regole↔meccanica (fix 2026-06-22) ---
+	# Item 14 — Trade: il bene da 20 è ARMATE; la Diplomazia non è commerciabile.
+	check.call("Trade: Export Armate = 20 cad. (2 = 40)",
+		Actions.export_gain([{"type": "armies", "qty": 2}]) == 40)
+	check.call("Trade: Diplomazia non esportabile (0)",
+		Actions.export_gain([{"type": "diplomacy", "qty": 3}]) == 0)
+	# Item 15 — Improve Relations: potenza vietata non può allearsi.
+	var gfix := GameSetup.new_game(["usa", "china"])
+	var ufix := gfix.player_by_power("usa")
+	ufix.resources["diplomacy"] = 10
+	var iran := {"id": "country_iran", "value": 2, "region": "middle_east_north_africa", "no_relations_powers": ["usa"]}
+	var allies_before: int = ufix.allied_countries.size()
+	check.call("Improve Relations: potenza vietata fallisce",
+		not Actions.execute_improve_relations(gfix, "usa", iran, []))
+	check.call("Improve Relations: nessun alleato aggiunto se vietato",
+		ufix.allied_countries.size() == allies_before)
+	# Item 16 — Engage: serve almeno 1 Country alleata nella Regione.
+	ufix.resources["diplomacy"] = 20
+	# USA non ha alleati in Africa (alleati iniziali: europe/east_asia/mena/americas).
+	check.call("Engage senza alleato nella Regione fallisce",
+		Actions.execute_engage(gfix, "usa", "africa", [], false, "temporary") == -1)
+	check.call("Engage con alleato (east_asia_pacific: Japan) riesce",
+		Actions.execute_engage(gfix, "usa", "east_asia_pacific", [], false, "temporary") >= 0)
+	# Item 17 — Invest una sola volta per Country.
+	ufix.money = 100
+	var inv_c := {"id": "country_inv", "value": 2, "invest_cost": 15, "region": "south_asia"}
+	ufix.exhausted["country_inv"] = false
+	Actions.execute_invest(gfix, "usa", inv_c, "temporary")
+	ufix.exhausted["country_inv"] = false   # torna ready, ma ha già un FDI
+	check.call("Invest: seconda volta sullo stesso Country fallisce",
+		Actions.execute_invest(gfix, "usa", inv_c, "temporary") == -1)
+	# Item 17 — Build a Base una sola volta per Country.
+	ufix.money = 100
+	ufix.armies_available = 4
+	var base_c := {"id": "country_base", "value": 2, "region": "middle_east_north_africa",
+		"has_base_symbol": true, "base_allowed_powers": ["usa"]}
+	ufix.exhausted["country_base"] = false
+	Actions.execute_build_base(gfix, "usa", base_c, 1, "temporary")
+	ufix.exhausted["country_base"] = false
+	check.call("Build a Base: seconda volta sullo stesso Country fallisce",
+		Actions.execute_build_base(gfix, "usa", base_c, 1, "temporary") == -1)
+	# Item 18 — Move: destinazione valida solo in zona di interesse o con Base.
+	var gmov := GameSetup.new_game(["russia", "usa"])
+	var rmov := gmov.player_by_power("russia")
+	check.call("Move: Europe (zona Russia) valida",
+		Actions.move_dest_valid(gmov, rmov, "europe"))
+	check.call("Move: Americas (fuori zona, no Base) NON valida",
+		not Actions.move_dest_valid(gmov, rmov, "americas"))
+	rmov.armies_available = 1
+	check.call("Move fuori zona fallisce", not Actions.execute_move(gmov, "russia", [{"region": "americas"}]))
+	# Item 20 — Produce/Diplomazia: l'eccesso oltre 10 va PERSO, non in money.
+	var pdip := PlayerState.new()
+	pdip.resources["diplomacy"] = 10
+	var of_dip := pdip.gain_resource("diplomacy", 3, 10)
+	check.call("Diplomazia oltre 10: eccesso perso (0 money)",
+		of_dip == 0 and pdip.money == 0 and pdip.resources["diplomacy"] == 10)
+	# Item 8 — NATO solo se entrambe le potenze sono in gioco.
+	check.call("NATO: assente senza EU", Threat.nato_pairs(["usa", "china"]) == [])
+	check.call("NATO: presente con USA+EU", Threat.nato_pairs(["usa", "eu", "russia"]) == [["usa", "eu"]])
+
+	# --- 13b. Abilità speciali nello scoring reale + bonus fine partita ---
+	# Item 1 — USA Global Superpower Status applicata: 2 Regioni di maggioranza → −5.
+	var gusa := GameSetup.new_game(["usa", "china"])
+	for rid in gusa.regions:
+		gusa.regions[rid]["track"] = InfluenceTrack.new([1], [4, 3, 2, 1])
+		gusa.regions[rid]["armies"] = {}
+	gusa.regions["americas"]["track"].add("usa", "permanent")
+	gusa.regions["europe"]["track"].add("usa", "permanent")
+	check.call("USA: Regioni con maggioranza Influenza = 2",
+		GameRunner.count_majority_influence_regions(gusa, "usa") == 2)
+	var usa_vp0: int = gusa.player_by_power("usa").victory_points
+	var sp_usa := GameRunner.apply_power_special_scoring(gusa)
+	check.call("USA: penalità −5 applicata allo scoring", int(sp_usa.get("usa", 0)) == -5
+		and gusa.player_by_power("usa").victory_points == usa_vp0 - 5)
+	# Item 1 — Russia Secured Sphere: 2 Regioni di zona con più Armate → +4.
+	var grus := GameSetup.new_game(["russia", "usa"])
+	for rid in grus.regions:
+		grus.regions[rid]["armies"] = {}
+	grus.regions["central_asia"]["armies"] = {"russia": 2, "usa": 1}
+	grus.regions["europe"]["armies"] = {"russia": 2}
+	check.call("Russia: Regioni di zona con più Armate = 2",
+		GameRunner.count_zone_most_armies_regions(grus, "russia") == 2)
+	check.call("Russia: Secured Sphere +4 applicata",
+		int(GameRunner.apply_power_special_scoring(grus).get("russia", 0)) == 4)
+	# Item 1/3/2 — China FDI Network + Strategic Asset (+2) + Executive Order (+3) a fine partita.
+	var gchn := GameSetup.new_game(["china", "usa"])
+	var chn := gchn.player_by_power("china")
+	chn.fdi_countries = []
+	for ac in chn.allied_countries:
+		chn.fdi_countries.append(String(ac.get("id", "")))   # 4 Paesi in 4 Regioni distinte
+	check.call("China: Regioni con FDI = 4", GameRunner.count_fdi_regions(gchn, "china") == 4)
+	var eb := GameRunner.apply_game_end_bonuses(gchn)
+	# china: FDI(4→3) + 2 Strategic Asset non usati (×2=4) + Executive Order (3) = 10.
+	check.call("China: fine partita = 3 (FDI) + 4 (SA) + 3 (Exec) = 10", int(eb.get("china", 0)) == 10)
+	# Item 2 — Executive Order usata e 0 Strategic Asset → nessun bonus.
+	var gex := GameSetup.new_game(["eu", "usa"])
+	var euex := gex.player_by_power("eu")
+	euex.executive_order_used = true
+	euex.strategic_assets.clear()
+	check.call("Executive Order usata + 0 SA → 0 bonus",
+		int(GameRunner.apply_game_end_bonuses(gex).get("eu", 0)) == 0)
+	# Item 4 — Spareggio vincitore: più Regioni col 1° bonus Maggioranza nel scoring finale.
+	var gwin := GameSetup.new_game(["usa", "china"])
+	for p in gwin.players:
+		p.victory_points = 50
+	for rid in gwin.regions:
+		gwin.regions[rid]["track"] = InfluenceTrack.new([1], [4, 3, 2, 1])
+		gwin.regions[rid]["armies"] = {}
+	gwin.regions["americas"]["track"].add("usa", "permanent")   # USA leader unico → 1° bonus
+	gwin.regions["europe"]["track"].add("usa", "permanent")
+	gwin.regions["south_asia"]["track"].add("china", "permanent")
+	var fm := GameRunner.first_majority_region_counts(gwin)
+	check.call("Spareggio: USA 2 / China 1 Regioni col 1° bonus",
+		int(fm.get("usa", 0)) == 2 and int(fm.get("china", 0)) == 1)
+	check.call("Spareggio vincitore (VP pari) = USA", GameRunner.winner(gwin) == "usa")
+
 	# --- 12. Simulazione end-to-end (integrazione) ---
 	var fin := GameRunner.run_game(["usa", "china", "russia", "eu"], 42)
 	check.call("partita completata: 6 round", fin.round == 6)

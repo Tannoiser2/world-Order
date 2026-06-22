@@ -3016,9 +3016,12 @@ func _run_aftermath() -> void:
 
 	# Resolve THREAT in ogni Regione.
 	var mil_focus := {}
+	var player_powers := []
 	for p in gs.players:
 		mil_focus[p.power] = (p.focus == WO.Focus.MILITARY)
-	var nato := [["usa", "eu"]]
+		player_powers.append(p.power)
+	# NATO (USA↔EU) solo se entrambe le potenze sono in gioco (pag. 19).
+	var nato := Threat.nato_pairs(player_powers)
 	for rid in gs.regions:
 		var rd: Dictionary = gs.regions[rid]
 		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, {}, nato)
@@ -3032,6 +3035,10 @@ func _run_aftermath() -> void:
 		for power in rs:
 			gs.add_vp(power, int(rs[power]))
 		lines.append("Scoring Regioni: " + _vp_summary(rs))
+		# Abilità speciali di scoring: USA (Global Superpower Status), Russia (Secured Sphere).
+		var sp := GameRunner.apply_power_special_scoring(gs)
+		if not sp.is_empty():
+			lines.append("Abilità speciali: " + _vp_summary(sp))
 
 	_show_summary(lines, func(): _next_round(), ai_art)
 
@@ -3077,13 +3084,24 @@ func _game_end() -> void:
 	var mt := GameRunner.score_majority_tokens(gs)
 	for power in mt:
 		gs.add_vp(power, int(mt[power]))
+	# Bonus di fine partita: China FDI, +2/Strategic Asset e +3/Executive Order non usati.
+	var eb := GameRunner.apply_game_end_bonuses(gs)
 	var ranking := gs.players.duplicate()
 	ranking.sort_custom(func(a, b): return a.victory_points > b.victory_points)
-	var lines: Array[String] = ["— FINE PARTITA —", "Token Maggioranza: " + _vp_summary(mt), ""]
+	var lines: Array[String] = ["— FINE PARTITA —", "Token Maggioranza: " + _vp_summary(mt)]
+	if not eb.is_empty():
+		lines.append("Bonus fine partita: " + _vp_summary(eb))
+	lines.append("")
 	for i in ranking.size():
 		lines.append("%d) %s — %d VP" % [i + 1, ranking[i].power.to_upper(), ranking[i].victory_points])
 	lines.append("")
-	lines.append("Vincitore: %s" % GameRunner.winner(gs).to_upper())
+	# Spareggi del regolamento (pag. 21); vittoria eventualmente condivisa.
+	var champs := GameRunner.winners(gs)
+	var champs_up := []
+	for w in champs:
+		champs_up.append(String(w).to_upper())
+	lines.append(("Vittoria condivisa: %s" % ", ".join(champs_up)) if champs.size() > 1
+		else "Vincitore: %s" % (champs_up[0] if champs_up.size() > 0 else "—"))
 	_show_summary(lines, func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
 	_after_change()
 

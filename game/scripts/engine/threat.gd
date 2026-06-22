@@ -3,6 +3,15 @@ extends RefCounted
 ## Risoluzione THREAT/Defense in una Regione (Aftermath, regolamento pag. 19).
 ## Logica validata contro gli Esempi 1 (Central Asia) e 2 (Europe) del regolamento.
 
+## Coppie NATO valide (USA↔EU si ignorano la THREAT a vicenda, pag. 19) limitate
+## alle potenze EFFETTIVAMENTE in gioco: la coppia vale solo se entrambe presenti.
+static func nato_pairs(player_powers: Array) -> Array:
+	var pairs := []
+	if "usa" in player_powers and "eu" in player_powers:
+		pairs.append(["usa", "eu"])
+	return pairs
+
+
 ## Calcola i VP persi da ciascun giocatore per la THREAT in una Regione.
 ## - zone: Array dei poteri la cui bandiera e' nella Regione (solo loro "controllano").
 ## - armies: Dictionary power -> numero di Armate nella Regione.
