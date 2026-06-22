@@ -78,6 +78,7 @@ var _trade_armies := 0                  # Armate vendute dalla riserva in questo
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _exhaust_ctx: Dictionary = {}       # scelta sconto attiva: {region, title, cb} (click sulle carte)
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
+var _produce_mode := false              # Produce attivo: si imposta sulla resource track della plancia
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1×/round)
@@ -2090,92 +2091,121 @@ func _producible_types(p: PlayerState) -> Array:
 	return out
 
 
+## Produce sulla PLANCIA (niente popup): tocchi le caselle valide sulla resource track
+## per impostare quanto produrre (entro la tua Produzione); le Armate con ± nella barra.
 func _open_produce_ui() -> void:
 	_produce_sel = {}
-	_render_produce_ui()
+	_produce_mode = true
+	drawer_open = true
+	drawer_power = _active().power
+	_refresh()
 
 
-func _produce_adjust(rt: String, delta: int) -> void:
-	var p := _active()
-	var cap := int(p.production.get(rt, 0))
-	var q := clampi(int(_produce_sel.get(rt, 0)) + delta, 0, cap)
-	if q == 0:
+func _produce_rerender() -> void:
+	if drawer_open:
+		_refresh_drawer_content()
+		_layout_ui()
+
+
+## Imposta quante unità di `rt` produrre (0..Produzione) toccando la casella sulla track.
+func _produce_set(rt: String, q: int) -> void:
+	var cap := int(_active().production.get(rt, 0))
+	var nq := clampi(q, 0, cap)
+	if nq <= 0:
 		_produce_sel.erase(rt)
 	else:
-		_produce_sel[rt] = q
-	_render_produce_ui()
+		_produce_sel[rt] = nq
+	_produce_rerender()
 
 
-## Breve testo dei requisiti primari di una risorsa secondaria (per unità).
-func _secondary_req_text(rt: String) -> String:
-	var req: Dictionary = Actions.SECONDARY_REQ.get(rt, {})
-	if req.is_empty():
-		return ""
-	var bits := []
-	for k in req:
-		bits.append("−%d %s" % [int(req[k]), RES_LABEL.get(k, k)])
-	return "  (%s /u)" % " ".join(bits)
-
-
-func _render_produce_ui() -> void:
-	for c in popup_layer.get_children():
-		c.queue_free()
-	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+## Armate da produrre (ognuna consuma 1 Materia Prima), regolate con ±.
+func _produce_armies_adjust(delta: int) -> void:
 	var p := _active()
-	var dim := ColorRect.new(); dim.color = Color(0, 0, 0, 0.6)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(center)
-	var panel := PanelContainer.new()
-	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
-	panel.add_theme_stylebox_override("panel", st)
-	center.add_child(panel)
-	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6)
-	panel.add_child(vb)
-	var head := Label.new()
-	head.text = "PRODUCE — scegli quante risorse generare da ogni traccia"
-	head.add_theme_font_size_override("font_size", _base_fs() + 2)
-	head.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
-	vb.add_child(head)
-	var note := Label.new()
-	note.text = "Primarie: gratis. Secondarie: consumano le primarie (prodotte prima)."
-	note.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 3))
-	note.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
-	vb.add_child(note)
-	var grid := GridContainer.new(); grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 14); grid.add_theme_constant_override("v_separation", 4)
-	vb.add_child(grid)
-	for rt in _producible_types(p):
-		var lab := Label.new()
-		lab.text = "%s (hai %d · prod %d)%s" % [RES_LABEL.get(rt, rt), int(p.resources.get(rt, 0) if rt != "armies" else p.armies_available), int(p.production.get(rt, 0)), _secondary_req_text(rt)]
-		lab.custom_minimum_size = Vector2(230, 0)
-		grid.add_child(lab)
-		grid.add_child(_produce_stepper(rt, int(p.production.get(rt, 0))))
-	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
-	vb.add_child(btns)
-	var ok := Button.new(); ok.text = "Conferma Produzione"; ok.pressed.connect(_produce_confirm)
-	btns.add_child(ok)
-	var cancel := Button.new(); cancel.text = "Annulla"
-	cancel.pressed.connect(func(): _close_popup(); _produce_sel = {}; _advance_play())
-	btns.add_child(cancel)
+	var cap := int(p.production.get("armies", 0))
+	var nq := clampi(int(_produce_sel.get("armies", 0)) + delta, 0, cap)
+	if nq <= 0:
+		_produce_sel.erase("armies")
+	else:
+		_produce_sel["armies"] = nq
+	_produce_rerender()
 
 
-func _produce_stepper(rt: String, cap: int) -> Control:
-	var box := HBoxContainer.new(); box.add_theme_constant_override("separation", 4)
-	var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 0)
-	minus.pressed.connect(_produce_adjust.bind(rt, -1))
-	box.add_child(minus)
-	var q := int(_produce_sel.get(rt, 0))
-	var lab := Label.new(); lab.text = "%d/%d" % [q, cap]; lab.custom_minimum_size = Vector2(46, 0)
-	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(lab)
-	var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(30, 0)
-	plus.disabled = q >= cap
-	plus.pressed.connect(_produce_adjust.bind(rt, 1))
-	box.add_child(plus)
-	return box
+## Overlay Produce sulla resource track: per ogni risorsa con Produzione, caselle dal
+## valore attuale fino a +Produzione (verso 10), col guadagno e l'eventuale costo.
+func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float) -> void:
+	for rt in RES_TOKENS:
+		var cap := int(p.production.get(rt, 0))
+		if cap <= 0:
+			continue
+		var cur := int(p.resources.get(rt, 0))
+		var hi := mini(10, cur + cap)
+		var staged := cur + int(_produce_sel.get(rt, 0))
+		var req: Dictionary = Actions.SECONDARY_REQ.get(rt, {})
+		for i in range(cur, hi + 1):
+			var slot := _resource_slot(i)
+			var d := ph * 0.135
+			var b := Button.new()
+			b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
+			b.offset_left = -d * 0.78; b.offset_right = d * 0.78; b.offset_top = -d * 0.55; b.offset_bottom = d * 0.55
+			b.add_theme_font_size_override("font_size", maxi(8, int(ph * 0.05)))
+			var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(3)
+			var k := i - cur
+			if i == cur:
+				sb.bg_color = Color(0.30, 0.30, 0.36, 0.92); b.text = "•"
+			else:
+				sb.bg_color = Color(0.16, 0.5, 0.28, 0.92)
+				b.text = "+%d" % k
+				if not req.is_empty():
+					var bits := []
+					for ck in req:
+						bits.append("−%d" % (int(req[ck]) * k))
+					b.text += " " + ",".join(bits)
+			if i == staged and i != cur:
+				sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4)
+			b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
+			b.pressed.connect(_produce_set.bind(rt, k))
+			area.add_child(b)
+
+
+## Barra del Produce (in cima al cassetto): riepilogo + Armate (±) + Conferma/Annulla.
+func _build_produce_banner(p: PlayerState) -> Control:
+	var bar := PanelContainer.new()
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.13, 0.10, 0.98)
+	st.set_corner_radius_all(8); st.set_content_margin_all(8)
+	bar.add_theme_stylebox_override("panel", st)
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8)
+	bar.add_child(hb)
+	var info := Label.new()
+	info.text = "PRODUCE — tocca le caselle sulla track (entro la tua Produzione)"
+	info.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
+	hb.add_child(info)
+	var arm_cap := int(p.production.get("armies", 0))
+	if arm_cap > 0:
+		var al := Label.new(); al.text = "Armate (−1 Materia cad.):"
+		hb.add_child(al)
+		var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 28)
+		minus.disabled = int(_produce_sel.get("armies", 0)) <= 0
+		minus.pressed.connect(_produce_armies_adjust.bind(-1))
+		hb.add_child(minus)
+		var cnt := Label.new(); cnt.text = "%d/%d" % [int(_produce_sel.get("armies", 0)), arm_cap]
+		cnt.custom_minimum_size = Vector2(40, 0); cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hb.add_child(cnt)
+		var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(30, 28)
+		plus.disabled = int(_produce_sel.get("armies", 0)) >= mini(arm_cap, int(p.resources.get("raw_materials", 0)))
+		plus.pressed.connect(_produce_armies_adjust.bind(1))
+		hb.add_child(plus)
+	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_produce_confirm)
+	hb.add_child(ok)
+	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_produce_cancel)
+	hb.add_child(cancel)
+	return bar
+
+
+func _produce_cancel() -> void:
+	_produce_sel = {}
+	_produce_mode = false
+	_status("Produzione annullata.")
+	_cancel_card()
 
 
 func _produce_confirm() -> void:
@@ -2202,8 +2232,8 @@ func _produce_confirm() -> void:
 			p.armies_available += 1
 			made_a += 1
 	if made_a > 0: summary.append("Armate +%d (riserva)" % made_a)
-	_close_popup()
 	_produce_sel = {}
+	_produce_mode = false
 	_status("Produzione: %s" % (", ".join(summary) if summary.size() > 0 else "niente"))
 	_refresh()
 	_advance_play()
@@ -2460,8 +2490,8 @@ func _on_power_tab(power: String) -> void:
 func _update_drawer_state() -> void:
 	if not drawer_open:
 		drawer_power = _active().power
-	if _trade_mode or not _exhaust_ctx.is_empty():
-		drawer_open = true   # Commercio / scelta sconto alleati: plancia aperta e interattiva
+	if _trade_mode or _produce_mode or not _exhaust_ctx.is_empty():
+		drawer_open = true   # Commercio / Produce / sconto alleati: plancia aperta e interattiva
 		drawer_power = _active().power
 	elif awaiting in AWAITING_MAP:
 		drawer_open = false   # serve toccare la mappa: chiudi la plancia
@@ -2554,6 +2584,8 @@ func _refresh_drawer_content() -> void:
 	# Commercio in corso: banner di controllo in cima (Δ money, sorgenti, Conferma/Annulla).
 	if _trade_mode and is_active:
 		drawer_content.add_child(_build_trade_banner(p))
+	if _produce_mode and is_active:
+		drawer_content.add_child(_build_produce_banner(p))
 
 	# Riga in colonne: plancia · nazioni amiche · commercio · strategic asset.
 	# Niente più etichette di testo: le sezioni si riconoscono dalle carte stesse.
@@ -2674,21 +2706,26 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# Durante il Commercio i prodotti commerciabili stanno alla posizione "staged"
 	# (quantità ± transazione in corso), così vedi il token muoversi verso 0/10.
 	var trading := is_active and _trade_mode
+	var producing := is_active and _produce_mode
 	var stack: Dictionary = {}
 	for res in RES_TOKENS:
 		var amt := int(p.resources.get(res, 0))
 		if trading and res in TRADE_RES:
 			amt = amt - int((_trade_sel.get("export", {}) as Dictionary).get(res, 0)) \
 				+ int((_trade_sel.get("import", {}) as Dictionary).get(res, 0))
+		elif producing:
+			amt = mini(10, amt + int(_produce_sel.get(res, 0)))   # token mostrato alla quantità prodotta
 		var slot := _resource_slot(amt)
 		var n := int(stack.get(amt, 0))
 		stack[amt] = n + 1
 		_add_token(area, res, slot.x, slot.y, pw, ph, n)
 	# Riserva Armate (pedine tank) in alto sulla plancia.
 	_add_reserve_armies(area, p, ph)
-	# Commercio: overlay interattivo sulla resource track della plancia.
+	# Commercio / Produzione: overlay interattivo sulla resource track della plancia.
 	if trading:
 		_add_trade_overlays(area, p, pw, ph)
+	elif producing:
+		_add_produce_overlays(area, p, pw, ph)
 	return view
 
 
@@ -3351,7 +3388,7 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# Durante una SCELTA (dopo aver giocato una carta: nazione alleata, ecc.) o durante
 	# il Commercio, la mano si COLLASSA da sola così non copre la plancia/le scelte.
 	# Per le scelte sulla MAPPA è già tutta la plancia a chiudersi (_update_drawer_state).
-	var auto_hide: bool = awaiting != "" or _trade_mode or not _exhaust_ctx.is_empty()
+	var auto_hide: bool = awaiting != "" or _trade_mode or _produce_mode or not _exhaust_ctx.is_empty()
 	var bar := Button.new()
 	bar.flat = true
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))

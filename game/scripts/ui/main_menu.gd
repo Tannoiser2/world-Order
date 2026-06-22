@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.59"
+const VERSION := "v0.7.60"
 const CHANGELOG := [
+	"v0.7.60 — PRODUCE sulla PLANCIA (niente popup): come il Commercio, ora imposti quanto produrre toccando le caselle sulla resource track (entro la tua Produzione). Le caselle mostrano il guadagno e, per le secondarie, il costo in primarie (es. «+2 −2,−2»); le Armate si producono con ± nella barra in cima (−1 Materia cad.). Conferma/Annulla in cima al cassetto.",
 	"v0.7.59 — FIX: annullare il COMMERCIO non consuma più la giocata del turno né scarta la carta. Prima «Annulla» nel Commercio chiudeva la carta (come se l'avessi giocata): ora la carta resta in mano e puoi giocarne un'altra.",
 	"v0.7.58 — SCONTO esaurendo alleati: ora si fa CLICCANDO le carte delle tue nazioni alleate della Regione direttamente sulla plancia (un click la attiva per lo sconto, un altro la annulla); la barra in alto mostra lo sconto in tempo reale (−N Dip) con «Conferma sconto» / «Salta». Niente più popup.",
 	"v0.7.57 — SCELTE nella BARRA in alto (niente più popup sopra la board): le scelte a opzioni (es. quante Armate spostare, scegli una risorsa/bersaglio) ora compaiono come BOTTONI chiari in una barra subito sotto l'HUD, che spinge giù la mappa senza coprirla. UI pulita.",
