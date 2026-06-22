@@ -15,6 +15,7 @@
     "kind": "money"
    },
    "effect_text": "Build a Base in an allied Country.",
+   "effect_text_it": "Build a Base in una Country alleata.",
    "effect_ops": [
     {
      "op": "build_base"
@@ -33,6 +34,7 @@
     "kind": "money"
    },
    "effect_text": "Get a Growth Card or Produce 3 resource types.",
+   "effect_text_it": "Get a Growth Card oppure Produce 3 tipi di risorsa.",
    "effect_ops": [
     {
      "op": "choice",
@@ -64,6 +66,7 @@
     "kind": "diplomacy"
    },
    "effect_text": "Engage in a Region.",
+   "effect_text_it": "Engage in una Regione.",
    "effect_ops": [
     {
      "op": "engage"
@@ -82,6 +85,7 @@
     "kind": "money"
    },
    "effect_text": "Invest in an allied Country.",
+   "effect_text_it": "Invest in una Country alleata.",
    "effect_ops": [
     {
      "op": "invest"
@@ -100,6 +104,7 @@
     "kind": "money"
    },
    "effect_text": "Improve Relations with a Country on the board.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -118,6 +123,7 @@
     "kind": "money"
    },
    "effect_text": "Trade.",
+   "effect_text_it": "Trade.",
    "effect_ops": [
     {
      "op": "trade"
@@ -137,6 +143,7 @@
     "kind": "money"
    },
    "effect_text": "Build a Base in an allied Country. Then, gain 1 Army.",
+   "effect_text_it": "Build a Base in una Country alleata. Poi, guadagna 1 Armata.",
    "effect_ops": [
     {
      "op": "build_base"
@@ -160,6 +167,7 @@
     "kind": "money"
    },
    "effect_text": "Trade. You can count either Energy or Raw Materials symbols in your allied Countries twice.",
+   "effect_text_it": "Trade. Puoi contare due volte i simboli di Energia oppure di Materie Prime nelle tue Country alleate.",
    "effect_ops": [
     {
      "op": "trade"
@@ -181,6 +189,7 @@
     "kind": "money"
    },
    "effect_text": "Gain 1 Army. You can then Move up to 2 Armies.",
+   "effect_text_it": "Guadagna 1 Armata. Puoi poi Move fino a 2 Armate.",
    "effect_ops": [
     {
      "op": "gain_armies",
@@ -204,6 +213,7 @@
     "kind": "money"
    },
    "effect_text": "Trade.",
+   "effect_text_it": "Trade.",
    "effect_ops": [
     {
      "op": "trade"
@@ -222,6 +232,7 @@
     "kind": "money"
    },
    "effect_text": "Get a Growth Card or Produce 3 resource types.",
+   "effect_text_it": "Get a Growth Card oppure Produce 3 tipi di risorsa.",
    "effect_ops": [
     {
      "op": "choice",
@@ -253,6 +264,7 @@
     "kind": "money"
    },
    "effect_text": "Improve Relations with a Country on the board.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone.",
    "effect_ops": [
     {
      "op": "improve_relations"

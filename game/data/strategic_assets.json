@@ -9,6 +9,7 @@
    "art": "strategic_asset/strategic_asset_000.jpg",
    "starting_vp": 2,
    "effect_text": "Gain 20 money. Then, Get a Growth Card. For every Services required, you can spend 10 money instead.",
+   "effect_text_it": "Guadagna 20 money. Poi, esegui Get a Growth Card. Per ogni Servizi richiesto, puoi spendere 10 money al suo posto.",
    "effect_ops": [
     {
      "op": "gain_money",
@@ -29,6 +30,7 @@
    "art": "strategic_asset/strategic_asset_001.jpg",
    "starting_vp": 4,
    "effect_text": "Choose a Region other than Europe. Trade, considering that Region's available Countries on the board as allied Countries. If you Exported at least 1 Consumer Goods and 1 Services to that Region's Countries, add 1 Influence there.",
+   "effect_text_it": "Scegli una Regione diversa dall'Europa. Esegui Trade, considerando le Country disponibili di quella Regione sul tabellone come Country alleate. Se hai Esportato almeno 1 Beni di Consumo e 1 Servizi alle Country di quella Regione, aggiungi 1 Influenza lì.",
    "effect_ops": [
     {
      "op": "trade"
@@ -62,6 +64,7 @@
    "art": "strategic_asset/strategic_asset_002.jpg",
    "starting_vp": 5,
    "effect_text": "Improve Relations with a Country in Europe. You can spend 2 Diplomacy more to add 1 permanent Influence to Europe, even if there is no available slot.",
+   "effect_text_it": "Esegui Improve Relations con una Country in Europa. Puoi spendere 2 Diplomazia in più per aggiungere 1 Influenza permanente all'Europa, anche se non c'è uno slot disponibile.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -79,6 +82,7 @@
    "art": "strategic_asset/strategic_asset_003.jpg",
    "starting_vp": 1,
    "effect_text": "Engage in Europe, Middle East-North Africa, or Central Asia (even if you don't have any allied Countries from that Region). You can then spend 10 money and Engage in 1 of the other 2 Regions as well.",
+   "effect_text_it": "Esegui Engage in Europa, Medio Oriente-Nord Africa o Asia Centrale (anche se non hai nessuna Country alleata di quella Regione). Puoi poi spendere 10 money ed eseguire Engage anche in 1 delle altre 2 Regioni.",
    "effect_ops": [
     {
      "op": "engage"
@@ -114,6 +118,7 @@
    "art": "strategic_asset/strategic_asset_004.jpg",
    "starting_vp": 3,
    "effect_text": "Spend 2 Diplomacy and 10 money to place 2 Armies from the supply on either Europe, Middle East-North Africa, or Central Asia (even if you don't have a Base there), and add 1 permanent Influence to that Region, even if there is no available slot.",
+   "effect_text_it": "Spendi 2 Diplomazia e 10 money per piazzare 2 Armate dalla riserva su Europa, Medio Oriente-Nord Africa o Asia Centrale (anche se non hai una Base lì), e aggiungi 1 Influenza permanente a quella Regione, anche se non c'è uno slot disponibile.",
    "effect_ops": [
     {
      "op": "spend",
@@ -142,6 +147,7 @@
    "art": "strategic_asset/strategic_asset_005.jpg",
    "starting_vp": 4,
    "effect_text": "Sell 2 Armies for 20 money in total to add 1 Influence to a Region of your choice.",
+   "effect_text_it": "Vendi 2 Armate per 20 money in totale per aggiungere 1 Influenza a una Regione a tua scelta.",
    "effect_ops": [
     {
      "op": "sell_armies",
@@ -161,6 +167,7 @@
    "art": "strategic_asset/strategic_asset_006.jpg",
    "starting_vp": 1,
    "effect_text": "Choose up to 2 Regions other than Central Asia. Move 2 Armies to each of them, spending 5 money more per Army moved. Then, add 1 Influence to each of those Regions.",
+   "effect_text_it": "Scegli fino a 2 Regioni diverse dall'Asia Centrale. Esegui Move di 2 Armate verso ciascuna di esse, spendendo 5 money in più per ogni Armata mossa. Poi, aggiungi 1 Influenza a ciascuna di quelle Regioni.",
    "effect_ops": [
     {
      "op": "move_to_regions",
@@ -187,6 +194,7 @@
    "art": "strategic_asset/strategic_asset_007.jpg",
    "starting_vp": 2,
    "effect_text": "Produce 2 resource types. Then, Get a Growth Card.",
+   "effect_text_it": "Esegui Produce di 2 tipi di risorsa. Poi, esegui Get a Growth Card.",
    "effect_ops": [
     {
      "op": "produce",
@@ -204,6 +212,7 @@
    "art": "strategic_asset/strategic_asset_008.jpg",
    "starting_vp": 2,
    "effect_text": "Spend up to 20 money. For every 10 money spent, gain 3 Diplomacy. Then, Engage in a Region, even if you don't have any allied Countries from that Region.",
+   "effect_text_it": "Spendi fino a 20 money. Per ogni 10 money spesi, guadagna 3 Diplomazia. Poi, esegui Engage in una Regione, anche se non hai nessuna Country alleata di quella Regione.",
    "effect_ops": [
     {
      "op": "spend_for_gain",
@@ -230,6 +239,7 @@
    "art": "strategic_asset/strategic_asset_009.jpg",
    "starting_vp": 3,
    "effect_text": "Move 2 Armies to either Europe, Middle East-North Africa, or Central Asia (even if you don't have a Base there) to add 1 permanent Influence to that Region, even if there is no available slot. Then, gain 2 Diplomacy.",
+   "effect_text_it": "Esegui Move di 2 Armate verso Europa, Medio Oriente-Nord Africa o Asia Centrale (anche se non hai una Base lì) per aggiungere 1 Influenza permanente a quella Regione, anche se non c'è uno slot disponibile. Poi, guadagna 2 Diplomazia.",
    "effect_ops": [
     {
      "op": "move_free",
@@ -258,6 +268,7 @@
    "art": "strategic_asset/strategic_asset_010.jpg",
    "starting_vp": 5,
    "effect_text": "Spend 1 Diplomacy to Move up to 2 Armies to Central Asia for free and add 1 permanent Influence to that Region, even if there is no available slot.",
+   "effect_text_it": "Spendi 1 Diplomazia per eseguire Move di fino a 2 Armate verso l'Asia Centrale gratuitamente e aggiungi 1 Influenza permanente a quella Regione, anche se non c'è uno slot disponibile.",
    "effect_ops": [
     {
      "op": "spend",
@@ -281,6 +292,7 @@
    "art": "strategic_asset/strategic_asset_011.jpg",
    "starting_vp": 4,
    "effect_text": "Sell 2 Armies for 20 money in total to add 1 Influence to a Region of your choice.",
+   "effect_text_it": "Vendi 2 Armate per 20 money in totale per aggiungere 1 Influenza a una Regione a tua scelta.",
    "effect_ops": [
     {
      "op": "sell_armies",
@@ -300,6 +312,7 @@
    "art": "strategic_asset/strategic_asset_012.jpg",
    "starting_vp": 2,
    "effect_text": "Choose any 2 Regions. Trade using only those Regions' allied Countries and available Countries on the board, counting each Energy symbol twice. In each Region to which you Exported at least 4 Energy, add 1 Influence.",
+   "effect_text_it": "Scegli 2 Regioni qualsiasi. Esegui Trade usando solo le Country alleate di quelle Regioni e le Country disponibili sul tabellone, contando ogni simbolo Energia due volte. In ogni Regione a cui hai Esportato almeno 4 Energia, aggiungi 1 Influenza.",
    "effect_ops": [
     {
      "op": "trade"
@@ -317,6 +330,7 @@
    "art": "strategic_asset/strategic_asset_013.jpg",
    "starting_vp": 4,
    "effect_text": "Choose a Region. Spend 1 Services to Reset 1 of your temporary Influence in that Region, and then add 1 Influence there.",
+   "effect_text_it": "Scegli una Regione. Spendi 1 Servizi per Resettare 1 della tua Influenza temporanea in quella Regione, e poi aggiungi 1 Influenza lì.",
    "effect_ops": [
     {
      "op": "spend",
@@ -338,6 +352,7 @@
    "art": "strategic_asset/strategic_asset_014.jpg",
    "starting_vp": 1,
    "effect_text": "Spend 20 money to place 1 Army from the supply on Europe, Middle East-North Africa, Africa (even if you don't have a Base there), or Central Asia, and add 1 Influence to that Region. You can repeat this process once more, choosing a different Region.",
+   "effect_text_it": "Spendi 20 money per piazzare 1 Armata dalla riserva su Europa, Medio Oriente-Nord Africa, Africa (anche se non hai una Base lì) o Asia Centrale, e aggiungi 1 Influenza a quella Regione. Puoi ripetere questo processo un'altra volta, scegliendo una Regione diversa.",
    "effect_ops": [
     {
      "op": "repeat",
@@ -372,6 +387,7 @@
    "art": "strategic_asset/strategic_asset_015.jpg",
    "starting_vp": 5,
    "effect_text": "Move 1 to 3 Armies to East Asia-Pacific to add 1 permanent Influence to the Region, even if there is no available slot.",
+   "effect_text_it": "Esegui Move di 1 a 3 Armate verso Asia Orientale-Pacifico per aggiungere 1 Influenza permanente alla Regione, anche se non c'è uno slot disponibile.",
    "effect_ops": [
     {
      "op": "move_free",
@@ -392,6 +408,7 @@
    "art": "strategic_asset/strategic_asset_016.jpg",
    "starting_vp": 2,
    "effect_text": "Spend 30 money to add 1 Influence to 2 of the following Regions: Americas, Africa, and South Asia. Russia can then spend 20 money (or as much as it has if it has less) to add 1 Influence to the third Region.",
+   "effect_text_it": "Spendi 30 money per aggiungere 1 Influenza a 2 delle seguenti Regioni: Americhe, Africa e Asia Meridionale. La Russia può poi spendere 20 money (o quanti ne ha se ne ha di meno) per aggiungere 1 Influenza alla terza Regione.",
    "effect_ops": [
     {
      "op": "spend",
@@ -417,6 +434,7 @@
    "art": "strategic_asset/strategic_asset_017.jpg",
    "starting_vp": 1,
    "effect_text": "Invest in an allied Country. You can also Invest in an additional allied Country from another Region, spending 10 money more.",
+   "effect_text_it": "Esegui Invest in una Country alleata. Puoi anche eseguire Invest in una Country alleata aggiuntiva di un'altra Regione, spendendo 10 money in più.",
    "effect_ops": [
     {
      "op": "invest"
@@ -451,6 +469,7 @@
    "art": "strategic_asset/strategic_asset_018.jpg",
    "starting_vp": 3,
    "effect_text": "Improve Relations with a Country in Middle East-North Africa, Central Asia, South Asia, or East Asia-Pacific. You can then either Invest in that Country, Build a Base in that Country (if able), or Engage in its Region.",
+   "effect_text_it": "Esegui Improve Relations con una Country in Medio Oriente-Nord Africa, Asia Centrale, Asia Meridionale o Asia Orientale-Pacifico. Puoi poi eseguire Invest in quella Country, Build a Base in quella Country (se possibile), oppure Engage nella sua Regione.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -484,6 +503,7 @@
    "art": "strategic_asset/strategic_asset_019.jpg",
    "starting_vp": 2,
    "effect_text": "Spend 10 money / 20 money to increase 2 / 3 of your Productions by 1, and gain 3 VP. Then, Play another card.",
+   "effect_text_it": "Spendi 10 money / 20 money per aumentare di 1 due / tre delle tue Produzioni, e guadagna 3 VP. Poi, gioca un'altra carta.",
    "effect_ops": [
     {
      "op": "choice",
