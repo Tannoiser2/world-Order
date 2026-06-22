@@ -178,7 +178,11 @@ Tutti compatibili con questa architettura ma rimandati.
 
 ## 11. Stato di avanzamento
 - [x] **Fase 0a** — serializzazione `GameState`/`PlayerState`/`InfluenceTrack` + `state_for_seat` (v0.7.75, +9 test)
-- [ ] **Fase 0b** — command bus locale (Step A–B)
+- [~] **Fase 0b — Step A** — command bus locale per `choose_focus`/`play_card`/`end_turn`
+  (v0.7.76): modulo `GameCommands` (catalogo + costruttori + `valid_shape`),
+  `board_view.apply_command()` con gating per seggio, test `verify_commands`.
+  **Resta da fare**: estendere il catalogo a `trade`/`produce`/sotto-scelte/aftermath,
+  poi **Step B** (estrarre `SessionContext`, spostarci `awaiting`/`playing_card`/temp).
 - [ ] **Fase 1** — trasporto + lobby (Step C)
 - [ ] **Fase 2** — sincronizzazione (Step D)
 - [ ] **Fase 3** — robustezza (Step E)
