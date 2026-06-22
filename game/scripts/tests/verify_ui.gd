@@ -710,7 +710,7 @@ func _init() -> void:
 		if not res12_ok: fails += 1
 		pres.allied_countries.erase(ally12)
 
-		# Growth: acquisto della prossima Growth (livello 1) spendendo risorse.
+		# Growth: acquisto della prossima Growth (azione "Get a Growth Card", non Research).
 		var ag: Array = board._available_growth(ac)
 		if ag.size() > 0:
 			var gcard: Dictionary = ag[0]
@@ -718,10 +718,10 @@ func _init() -> void:
 			for rt in ac.resources: ac.resources[rt] = 10
 			var vp_pre: int = ac.victory_points
 			var growth_pre: int = ac.growth_cards.size()
-			board._buy_growth(gcard)
+			board._buy_growth_action(gcard, board._next_growth_level(ac))
 			var g_ok: bool = ac.growth_cards.size() == growth_pre + 1 \
 				and ac.victory_points == vp_pre + int(gcard.get("victory_points", 0))
-			print("[%s] acquisto Growth: carta acquisita (+%d VP)" % ["OK" if g_ok else "FAIL", int(gcard.get("victory_points", 0))])
+			print("[%s] acquisto Growth (azione): carta acquisita (+%d VP)" % ["OK" if g_ok else "FAIL", int(gcard.get("victory_points", 0))])
 			if not g_ok: fails += 1
 
 		# Return on Investments (1° passo Aftermath): +2 money per FDI × valore Paese.

@@ -3215,7 +3215,7 @@ func _show_research() -> void:
 	var mrow := _card_row()
 	vb.add_child(mrow)
 	var nm: int = maxi(market_display.size(), 1)
-	var mcard_w: float = clampf((content_w - 8.0 * (nm - 1)) / nm, 64.0, 132.0)
+	var mcard_w: float = clampf((content_w - 8.0 * (nm - 1)) / nm, 56.0, 104.0)
 	var mcard_h: float = mcard_w / 0.72
 	for card in market_display:
 		var cost := int(card.get("market_cost", 0))
@@ -3230,6 +3230,7 @@ func _show_research() -> void:
 		vb.add_child(reshuffle)
 
 	# --- #12: esaurisci Country alleate per aggiungere il loro valore al Research ---
+	# Mostrate come CARTE reali (immagine + "+N R" sotto), come nel Market.
 	var allies := _research_ready_allies(p)
 	if not allies.is_empty():
 		vb.add_child(_section("Esaurisci una Country alleata per +Research (= suo valore):"))
@@ -3237,27 +3238,14 @@ func _show_research() -> void:
 		aflow.add_theme_constant_override("h_separation", 6)
 		aflow.add_theme_constant_override("v_separation", 6)
 		vb.add_child(aflow)
+		var na: int = maxi(allies.size(), 1)
+		var acard_w: float = clampf((content_w - 6.0 * (na - 1)) / na, 64.0, 104.0)
+		var acard_h: float = acard_w / 0.71
 		for c in allies:
-			var ab := Button.new()
-			ab.text = "%s  +%d R" % [c.get("display_name", "?"), int(c.get("value", 0))]
-			ab.pressed.connect(_research_exhaust_ally.bind(c))
-			aflow.add_child(ab)
+			aflow.add_child(_market_card_sized(c, "+%d R" % int(c.get("value", 0)), false, acard_w, acard_h, _research_exhaust_ally.bind(c)))
 
-	# --- Growth: carte LARGHE (landscape) dimensionate per la riga ---
-	vb.add_child(_section("Growth (livello %d, spendi risorse):" % _next_growth_level(p)))
-	var ag := _available_growth(p)
-	if ag.is_empty():
-		var none := Label.new()
-		none.text = "  (nessuna Growth di questo livello)"
-		vb.add_child(none)
-	else:
-		var grow := _card_row()
-		vb.add_child(grow)
-		var ng: int = maxi(ag.size(), 1)
-		var gcard_w: float = clampf((content_w - 10.0 * (ng - 1)) / ng, 120.0, 240.0)
-		var gcard_h: float = gcard_w / 1.54
-		for card in ag:
-			grow.add_child(_market_card_sized(card, "%s  +%d VP" % [_cost_text(card.get("cost", {})), int(card.get("victory_points", 0))], not p.has_resources(card.get("cost", {})), gcard_w, gcard_h, _buy_growth.bind(card)))
+	# Niente Growth qui: le Growth card si comprano con l'azione "Get a Growth Card"
+	# durante la fase di Azione, non nel passo Research.
 
 	var done := Button.new()
 	done.text = "Continua"
@@ -3315,14 +3303,6 @@ func _market_reshuffle_3() -> void:
 	_status("Market: scartate le 3 carte più a destra (−2 Research).")
 	_after_change()
 	_show_research()
-
-
-func _buy_growth(card: Dictionary) -> void:
-	var p := _active()
-	if Actions.execute_get_growth(p, card, _next_growth_level(p)):
-		_status("Get a Growth Card: %s (+%d VP)." % [card.get("display_name", ""), int(card.get("victory_points", 0))])
-		_after_change()
-		_show_research()
 
 
 func _section(text: String) -> Label:
@@ -3708,6 +3688,7 @@ func _market_card_sized(card: Dictionary, cost_text: String, disabled: bool, w: 
 		b.modulate = Color(0.5, 0.5, 0.55)
 	var tr := TextureRect.new()
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # ignora la dimensione nativa enorme dell'arte
 	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var art: String = card.get("art", "")
