@@ -73,8 +73,7 @@ func _init() -> void:
 		if not aw_ok: fails += 1
 		var inf_b: int = board.gs.regions["central_asia"]["track"].count(ac.power)
 		board._on_region_pressed("central_asia")
-		var slot_b1: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot perm/temp
-		if slot_b1: slot_b1.pressed.emit()
+		board._on_influence_cell("central_asia", "temporary")  # scelta slot SULLA MAPPA
 		var inf_a: int = board.gs.regions["central_asia"]["track"].count(ac.power)
 		ac.allied_countries.erase(ca_ally)
 		var played_ok: bool = (card_region in ac.played) and not (card_region in ac.hand) and inf_a == inf_b + 1
@@ -125,8 +124,7 @@ func _init() -> void:
 		board._exhaust_sel = {"ally_disc": true}
 		var ok_btn: Button = _find_button(board.popup_layer, "Conferma")
 		if ok_btn: ok_btn.pressed.emit()
-		var slot_b2: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
-		if slot_b2: slot_b2.pressed.emit()
+		board._on_influence_cell("europe", "temporary")  # scelta slot SULLA MAPPA
 		var spent2: int = dip_pre2 - pdsc.resources["diplomacy"]
 		var expected2: int = Actions.engage_cost(base_cost, [3], pdsc.focus == WO.Focus.DIPLOMATIC, 0)
 		var disc_ok: bool = ok_btn != null and spent2 == expected2 and bool(pdsc.exhausted.get("ally_disc", false)) \
@@ -147,8 +145,7 @@ func _init() -> void:
 		print("[%s] play carta Invest -> attende una Country alleata" % ["OK" if inv_await else "FAIL"])
 		if not inv_await: fails += 1
 		board._on_allied_pressed(ally)
-		var slot_b3: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
-		if slot_b3: slot_b3.pressed.emit()
+		board._on_influence_cell(String(ally.get("region", "")), "temporary")  # scelta slot SULLA MAPPA
 		var inv_ok: bool = ac.money < money_pre and (card_inv in ac.played) and board.awaiting == ""
 		print("[%s] Invest da Country alleata: spesa money, carta in scarti" % ["OK" if inv_ok else "FAIL"])
 		if not inv_ok: fails += 1
@@ -169,8 +166,7 @@ func _init() -> void:
 		board._plays_left = 9
 		board._play_card(card_bb)
 		board._on_allied_pressed(bb_country)
-		var slot_bb: Button = _find_button(board.popup_layer, "Temporanea")
-		if slot_bb: slot_bb.pressed.emit()
+		board._on_influence_cell("africa", "temporary")  # scelta slot SULLA MAPPA → poi popup Armate
 		var n2_btn: Button = _find_button(board.popup_layer, "2 Armata/e")   # scelgo 2 Armate
 		if n2_btn: n2_btn.pressed.emit()
 		var bb_region_post: int = int((board.gs.regions["africa"]["armies"] as Dictionary).get(pbb.power, 0))
@@ -182,20 +178,20 @@ func _init() -> void:
 		if not bb_ok: fails += 1
 		pbb.allied_countries.erase(bb_country)
 
-		# Scelta slot Influenza (Engage): con permanente libero il giocatore sceglie (popup);
-		# sennò temporaneo.
+		# Scelta slot Influenza SULLA MAPPA: con permanente libero il giocatore sceglie la
+		# casella (clic), sennò va diretto in temporaneo.
 		var trk2: InfluenceTrack = board.gs.regions["americas"]["track"]
 		for i in range(trk2.perm.size()): trk2.perm[i] = null     # libera i permanenti
 		var got := {"v": ""}
-		board._pick_slot("americas", func(s): got["v"] = s)
-		var pbtn: Button = _find_button(board.popup_layer, "Permanente")
-		if pbtn: pbtn.pressed.emit()
-		var perm_ok: bool = got["v"] == "permanent"
+		board._pick_slot("americas", func(s): got["v"] = s)        # apre la scelta sulla mappa
+		var cell_ok: bool = board.awaiting == "influence_cell" and board._count_influence_cells() > 0
+		board._on_influence_cell("americas", "permanent")          # clic casella permanente
+		var perm_ok: bool = got["v"] == "permanent" and cell_ok
 		for i in range(trk2.perm.size()): trk2.perm[i] = "local"  # tutti permanenti pieni
 		got["v"] = ""
-		board._pick_slot("americas", func(s): got["v"] = s)        # nessun popup → temporaneo
+		board._pick_slot("americas", func(s): got["v"] = s)        # nessun perm libero → temporaneo
 		var temp_ok: bool = got["v"] == "temporary"
-		print("[%s] Scelta slot Influenza (Engage): permanente se libero, altrimenti temporaneo" % ["OK" if perm_ok and temp_ok else "FAIL"])
+		print("[%s] Scelta slot Influenza sulla mappa: permanente se libero, altrimenti temporaneo" % ["OK" if perm_ok and temp_ok else "FAIL"])
 		if not (perm_ok and temp_ok): fails += 1
 
 		# add_influence sulla mappa: un click su una casella valida posa l'Influenza
@@ -725,8 +721,7 @@ func _init() -> void:
 		print("[%s] interazione mappa: il cassetto si richiude da solo" % ["OK" if auto_closed else "FAIL"])
 		if not auto_closed: fails += 1
 		board._on_region_pressed("south_asia")  # risolve e chiude la carta
-		var slot_bc: Button = _find_button(board.popup_layer, "Temporanea")
-		if slot_bc: slot_bc.pressed.emit()
+		board._on_influence_cell("south_asia", "temporary")  # scelta slot SULLA MAPPA
 
 		# Modifiers: carta Engage con sconto -1 Diplomacy per Armata schierata.
 		var pmod2: PlayerState = board._active()
@@ -749,8 +744,7 @@ func _init() -> void:
 		board._on_region_pressed(mreg)
 		var skip_b: Button = _find_button(board.popup_layer, "Salta (nessuno sconto)")
 		if skip_b: skip_b.pressed.emit()   # popup sconto: non esaurisco alleati
-		var slot_bm: Button = _find_button(board.popup_layer, "Temporanea")  # scelta slot
-		if slot_bm: slot_bm.pressed.emit()
+		board._on_influence_cell(mreg, "temporary")  # scelta slot SULLA MAPPA
 		var spent: int = dip_pre - pmod2.resources["diplomacy"]
 		var mod_ok: bool = spent == expected_cost and (card_mod in pmod2.played)
 		print("[%s] effect_modifier: Engage costa %d (sconto -3 per Armata)" % ["OK" if mod_ok else "FAIL", spent])

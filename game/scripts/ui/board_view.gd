@@ -1129,26 +1129,15 @@ func _resolve_region_op(region: String) -> void:
 	_advance_play()
 
 
-## Slot dove mettere l'Influenza (usato da Engage): se c'è un permanente libero il
-## giocatore SCEGLIE (regolamento: "you can choose which of the available types of
-## slots to use"), altrimenti va in temporaneo. cb riceve "permanent" o "temporary".
+## Slot dove mettere l'Influenza (Engage / Invest / Build a Base): la scelta si fa
+## SULLA MAPPA (caselle evidenziate, verde = permanente, viola = temporanea), come per
+## add_influence. Se non c'è un permanente libero va diretta in temporaneo. cb riceve
+## "permanent" o "temporary".
 func _pick_slot(region: String, cb: Callable) -> void:
-	var track: InfluenceTrack = gs.regions[region]["track"]
-	var perm_val := -1
-	for i in track.perm.size():
-		if track.perm[i] == null:
-			perm_val = track.perm_values[i]; break
-	if perm_val < 0:
-		cb.call("temporary")     # nessuno slot permanente libero
+	if _next_free_perm_pos(region).is_empty():
+		cb.call("temporary")     # nessuno slot permanente libero: niente scelta
 		return
-	var temp_val := 0
-	for i in track.temp.size():
-		if track.temp[i] == null:
-			temp_val = track.temp_values[i]; break
-	_show_popup("Influenza in %s: quale slot?" % region.replace("_", " "), [
-		{"label": "Permanente  (+%d VP, resta)" % perm_val, "value": "permanent"},
-		{"label": "Temporanea  (+%d VP)" % temp_val, "value": "temporary"},
-	], cb)
+	_begin_influence_pick([region], "", func(_r: String, slot: String): cb.call(slot))
 
 
 ## Coordinata normalizzata della PROSSIMA casella Influenza permanente libera della
