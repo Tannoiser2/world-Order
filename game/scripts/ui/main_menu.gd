@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.84"
+const VERSION := "v0.7.85"
 const CHANGELOG := [
+	"v0.7.85 - MULTIPLAYER (nucleo di rete): aggiunto il modulo NetSession host-authoritative con trasporto WebSocket (per la LAN ora, Internet poi con un relay) e un trasporto 'loopback' per i test. Il protocollo gestisce lobby, avvio e l'inoltro comando -> host -> snapshot REDATTO al client (ogni giocatore vede solo la propria mano). Nulla di visibile in partita ancora: manca la lobby nel menu e la sincronizzazione del turno interattivo (prossimi passi). +7 test di rete.",
 	"v0.7.84 - Anteprima carte e regole del turno: la TRADUZIONE italiana ora appare SOVRAPPOSTA alla parte bassa della carta ingrandita (come a tradurre la carta stessa, copre l'inglese), dopo ~1 secondo che si sta fermi col mouse, con carattere piu' piccolo. Inoltre NON si puo' piu' premere 'Fine turno' senza aver prima giocato (o passato con la Moneta +10) una carta. Annullare un'azione NON brucia il turno: la carta resta in mano e puoi sceglierne un'altra (gia' corretto).",
 	"v0.7.83 - AUDIT effetti carte: alcune carte multi-effetto risolvevano solo una parte. Corretti 4 effetti che erano no-op silenziosi: 'gain_money_per_fdi' (Return on Investment: +money per ogni FDI), 'repeat' (Private Military Corporations: ora ripete davvero il blocco con i suoi piazzamenti), 'spend_for_gain' (Main UN Funding Contributor: scegli quanto money spendere per il guadagno), 'research_free' (Minimize Bureaucracy: prendi gratis una carta Market e giocala subito). +3 test motore.",
 	"v0.7.82 - AREE delle Regioni ricalibrate: i riquadri di evidenziazione e piazzamento (dove si droppano i Carri durante Move, si scelgono le Regioni per Engage, ecc.) erano enormi e si SOVRAPPONEVANO. Ora usano le 7 aree precise della guida posizioni: piu' piccole, una per Regione, senza piu' sovrapposizioni.",

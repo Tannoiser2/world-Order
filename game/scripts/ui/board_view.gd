@@ -35,6 +35,8 @@ var active_seat := 0
 ## _command_log li registra (utile per test/replay e, in futuro, per la rete).
 var _cmd_seq := 0
 var _command_log: Array = []
+## Sessione di rete (multiplayer). null = partita locale/hot-seat (comportamento invariato).
+var net: NetSession = null
 var board_rect: TextureRect
 var overlay: Control
 var card_layer: Control            # carte nazione nelle aree designate
@@ -3937,6 +3939,11 @@ func apply_command(cmd: Dictionary) -> bool:
 	if not GameCommands.valid_shape(cmd):
 		push_warning("Comando malformato ignorato: %s" % cmd)
 		return false
+	# RETE: da CLIENT non si applica in locale: si INVIA il comando all'host (autorità),
+	# che lo applichera' e ribroadcastera' lo stato. Da host/hot-seat si prosegue normalmente.
+	if net != null and net.is_client():
+		net.send_command(cmd)
+		return true
 	# GATING: il comando deve venire dal seggio che PUÒ agire ora (vedi _acting_seat):
 	# Azione/Preparazione/Research -> giocatore di turno; Aftermath -> giocatore Aftermath.
 	var acting := _acting_seat()
@@ -4009,7 +4016,18 @@ func apply_command(cmd: Dictionary) -> bool:
 		_:
 			return false
 	_command_log.append(cmd)
+	# RETE: l'HOST, dopo aver applicato, ribroadcasta a ogni client lo stato redatto.
+	if net != null and net.is_host():
+		net.broadcast_snapshots(func(seat: int): return gs.state_for_seat(seat))
 	return true
+
+
+## CLIENT: rende lo stato (redatto) ricevuto dall'host. Ricostruisce gs e ridisegna.
+func apply_remote_snapshot(state: Dictionary) -> void:
+	if state.is_empty():
+		return
+	gs = GameState.from_dict(state)
+	_refresh()
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
