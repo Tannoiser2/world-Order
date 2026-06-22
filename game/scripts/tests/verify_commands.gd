@@ -184,6 +184,36 @@ func _init() -> void:
 	check.call("apply_ui_snapshot: ripristina influence_pick",
 		(board._influence_pick.get("regions", []) as Array).size() == 2)
 
+	# 12) Azioni a payload pieno: produce / trade / move_army / move_finish.
+	check.call("produce shape ok", GameCommands.valid_shape(GameCommands.produce(0, 1, {"energy": 2})))
+	check.call("produce shape: sel non-dict rifiutato",
+		GameCommands.valid_shape(GameCommands.make("produce", 0, 1, {})) == false)
+	check.call("trade shape ok",
+		GameCommands.valid_shape(GameCommands.trade(0, 1, {"energy": 2}, {"food": 1}, {"food": "reserve"}, 0)))
+	check.call("trade shape: armies non-int rifiutato",
+		GameCommands.valid_shape(GameCommands.make("trade", 0, 1, {"export": {}, "import": {}, "import_src": {}, "armies": "x"})) == false)
+	check.call("move_army shape ok", GameCommands.valid_shape(GameCommands.move_army(0, 1, "_reserve", "europe")))
+	check.call("move_army shape: dest vuota rifiutata",
+		GameCommands.valid_shape(GameCommands.move_army(0, 1, "europe", "")) == false)
+	check.call("move_finish shape ok", GameCommands.valid_shape(GameCommands.move_finish(0, 1)))
+	# Gating per stato: produce/trade rifiutati se la rispettiva modalità non è attiva.
+	board._produce_mode = false
+	board._trade_mode = false
+	board.awaiting = ""
+	check.call("produce rifiutato fuori dalla modalità Produce",
+		board.apply_command(GameCommands.produce(board.active_seat, board._next_seq(), {"energy": 1})) == false)
+	check.call("move_army rifiutato fuori dalla fase Move",
+		board.apply_command(GameCommands.move_army(board.active_seat, board._next_seq(), "_reserve", "europe")) == false)
+	# move_ctx: round-trip nello snapshot di interazione (per pilotare il client nel Move).
+	board._move_ctx = {"free": false, "max": 3, "min": 1, "moved": 1, "source": "europe", "allowed": [], "exclude": []}
+	var snap_mc: Dictionary = board._ui_snapshot()
+	check.call("ui_snapshot: cattura move_ctx", int(snap_mc.get("move_ctx", {}).get("max", 0)) == 3)
+	board._move_ctx = {}
+	board._apply_ui_snapshot(snap_mc)
+	check.call("apply_ui_snapshot: ripristina move_ctx",
+		int(board._move_ctx.get("max", 0)) == 3 and String(board._move_ctx.get("source", "")) == "europe")
+	board._move_ctx = {}
+
 	print("Verifica command bus: %s" % ("OK" if cnt["fails"] == 0 else "FALLITA (%d)" % cnt["fails"]))
 	board.queue_free()
 	await process_frame

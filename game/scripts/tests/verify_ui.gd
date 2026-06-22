@@ -275,7 +275,7 @@ func _init() -> void:
 		var ret_ok: bool = board.gs.regions["europe"]["armies"][pret.power] == 1 \
 			and pret.armies_available == 1 and pret.money == 30 \
 			and int(board._move_ctx.get("moved", 0)) == 0
-		board._finish_move()
+		board._cmd_move_finish()
 		print("[%s] Move drag&drop: rientro in Riserva (gratis, moved=0)" % ["OK" if ret_ok else "FAIL"])
 		if not ret_ok: fails += 1
 
@@ -290,7 +290,7 @@ func _init() -> void:
 		board._play_card(card_prod)                       # apre il Produce sulla plancia (no popup)
 		var prod_mode: bool = board._produce_mode and board.drawer_open
 		board._produce_sel = {"energy": 2, "consumer_goods": 1, "armies": 1}
-		board._produce_confirm()
+		board._cmd_produce()
 		# energy 5 +2 -1(CG) = 6 ; rawmat 5 -1(CG) -1(armata) = 3 ; CG +1 ; riserva +1
 		var prod_ok: bool = prod_mode and not board._produce_mode and ppr.resources["energy"] == 6 and ppr.resources["raw_materials"] == 3 \
 			and ppr.resources["consumer_goods"] == 1 and ppr.armies_available == 1 and board.playing_card.is_empty()
@@ -373,7 +373,7 @@ func _init() -> void:
 		board._trade_adjust("food", "import", 1)     # importo 1 Cibo
 		var en_pre: int = pt.resources["energy"]
 		var money_t0: int = pt.money
-		board._trade_confirm()
+		board._cmd_trade()
 		var trade_ok: bool = exp_cap == 2 and imp_cap == 1 \
 			and pt.resources["energy"] == en_pre - 2 \
 			and pt.resources["food"] == 1 \
@@ -428,7 +428,7 @@ func _init() -> void:
 		var arm_delta_ok: bool = board._trade_delta() == 60 and board._trade_export_used() == 1
 		board._trade_armies_adjust(5)            # oltre la riserva → limitato a 4
 		var arm_cap_ok: bool = board._trade_armies == 4
-		board._trade_confirm()
+		board._cmd_trade()
 		var arm_sell_ok: bool = par.armies_available == 0 and par.money == 80
 		print("[%s] Trade #14: vendita Armate dalla riserva (20 cad., cap riserva)" % ["OK" if (arm_delta_ok and arm_cap_ok and arm_sell_ok) else "FAIL"])
 		if not (arm_delta_ok and arm_cap_ok and arm_sell_ok): fails += 1
@@ -477,7 +477,7 @@ func _init() -> void:
 			board._trade_pick_src("services", seller2_pw)                       # scelgo il venditore
 			var picked_cap: int = board._trade_import_cap_sel(psrc, "services") # = 2 alleate + 1 venditore = 3
 			board._trade_set_target("services", 1)                             # compra 1 (viene dal venditore)
-			board._trade_confirm()
+			board._cmd_trade()
 			var src_ok: bool = def_src == "reserve" and picked_cap == 3 and seller2.money == s2_money0 + 10
 			print("[%s] Trade: scelta venditore via bandierina (compra dal giocatore scelto)" % ["OK" if src_ok else "FAIL"])
 			if not src_ok: fails += 1
@@ -502,14 +502,14 @@ func _init() -> void:
 				board._open_trade_ui()
 				board._trade_pick_src("energy", sell3_pw)
 				board._trade_set_target("energy", 2)   # parziale (2 di 3)
-				board._trade_confirm()
+				board._cmd_trade()
 				var partial_ok: bool = pd.resources["energy"] == 2 and pd.resources["diplomacy"] == 0
 				pd.resources["energy"] = 0; pd.resources["diplomacy"] = 0
 				board._commerce_flipped = {}
 				board._open_trade_ui()
 				board._trade_pick_src("energy", sell3_pw)
 				board._trade_set_target("energy", 3)   # intera carta (3 di 3)
-				board._trade_confirm()
+				board._cmd_trade()
 				var full_ok: bool = pd.resources["energy"] == 3 and pd.resources["diplomacy"] == 1
 				print("[%s] Diplomazia carta da 3: +1 solo comprando tutte e 3 (Russia)" % ["OK" if (partial_ok and full_ok) else "FAIL"])
 				if not (partial_ok and full_ok): fails += 1
@@ -672,7 +672,7 @@ func _init() -> void:
 			board._trade_adjust("consumer_goods", "import", 1)
 			var b_money_pre: int = buyer.money
 			var dip_buyer_pre: int = buyer.resources["diplomacy"]
-			board._trade_confirm()
+			board._cmd_trade()
 			var cost: int = Actions.IMPORT_COST["consumer_goods"]
 			var p2p_ok: bool = src.size() == 1 and String(src[0]["src"]) == seller_power \
 				and seller.money == cost \
@@ -1032,7 +1032,7 @@ func _init() -> void:
 	bn._open_trade_ui()
 	bn._trade_pick_src("energy", "russia")
 	bn._trade_set_target("energy", 2)   # compra 2 energia dalla Russia (neutrale)
-	bn._trade_confirm()
+	bn._cmd_trade()
 	var neutral_ok: bool = has_russia \
 		and chn.resources["energy"] == 2 \
 		and chn.resources["diplomacy"] == 0 \
@@ -1059,7 +1059,7 @@ func _init() -> void:
 	bm._play_card(mcard)
 	bm._region_do_drop(Vector2.ZERO, {"move_src": "_reserve"}, "europe")
 	bm._region_do_drop(Vector2.ZERO, {"move_src": "_reserve"}, "americas")
-	bm._finish_move()
+	bm._cmd_move_finish()
 	await process_frame
 	var stray_bars := 0
 	for ch in bm.popup_layer.get_children():
