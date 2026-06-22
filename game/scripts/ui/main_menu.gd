@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.36"
+const VERSION := "v0.7.37"
 const CHANGELOG := [
+	"v0.7.37 — AUTO-INFLUENCE completo (partite a 2-3 giocatori): ora le potenze neutrali applicano DUE carte Auto-Influence per round (prima una sola), elencate nel riepilogo di fine round con dove piazzano Influenza/Armate. Il money del commercio (10) ora è CONDIZIONATO: una potenza neutrale lo dà a un giocatore solo se quel giocatore ha una Commerce card a faccia in su (che viene girata); se le ha già girate tutte, niente money.",
 	"v0.7.36 — AFTERMATH ora INTERATTIVO: invece di applicare tutto in automatico, ogni giocatore ha un popup di scelte. L'INCREASE PROSPERITY è opzionale (decidi tu se spendere i Consumer Goods per avanzare). Puoi SCARTARE i tuoi Engage token per ottenere +5 money per Country alleata della Regione (Return on Investments) OPPURE +2 Difesa per Country alleata, applicata al THREAT di quella Regione. La quota FDI del Return on Investments resta automatica.",
 	"v0.7.35 — L'anteprima ingrandita (flyover) delle carte al passaggio del mouse è ora ANCORATA A DESTRA e più contenuta: prima compariva grande al centro e copriva la board e i testi delle scelte nei popup.",
 	"v0.7.34 — Research: ora puoi ESAURIRE le Country alleate (ancora ready) per aggiungere il loro valore ai punti Research, da spendere nel Market (come da regolamento: es. Singapore +2, Tajikistan +1). I pulsanti compaiono nella schermata Research.",

@@ -341,14 +341,14 @@ static func run_all() -> Dictionary:
 		"russia": {"region": "central_asia", "army": true, "trade_with": "china"},
 		"eu": {"region": "europe", "army": false, "trade_with": null}}}
 	var ru_before: int = gai.regions["central_asia"]["track"].count("russia")
-	var china_money_before: int = gai.player_by_power("china").money
-	GamePhases.add_auto_influence(gai, ai_card, ["usa", "china"])
+	var tps := GamePhases.add_auto_influence(gai, ai_card, ["usa", "china"])
 	check.call("Auto-Influence: +1 Influenza Russia in Central Asia",
 		gai.regions["central_asia"]["track"].count("russia") == ru_before + 1)
 	check.call("Auto-Influence: +1 Armata Russia in Central Asia",
 		int(gai.regions["central_asia"]["armies"].get("russia", 0)) == 1)
-	check.call("Auto-Influence: China guadagna 10 money (trade flag)",
-		gai.player_by_power("china").money == china_money_before + 10)
+	# Il money del commercio è ora a carico del chiamante: l'engine ritorna i
+	# giocatori 'trade_with' (qui China, indicata dalla riga di Russia).
+	check.call("Auto-Influence: trade_with ritorna China", "china" in tps)
 
 	# --- 11b. Modifiers: sconti condizionali (effect_modifiers) ---
 	var mods := Modifiers.parse(["improve_discount:1", "engage_discount_per_army",

@@ -34,11 +34,17 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 > - **#20** Produce: la Diplomazia in eccesso (>10) va **persa**, non in money.
 > - **#21** Trade: +1 Diplomazia SOLO comprando da un altro giocatore (non dalla banca).
 >
-> ### ⏳ DA FARE — items UI-interattivi (scelte nel flusso UI / riprogettazioni UI)
-> Restano: #9–#10 (Auto-Influence: 2 carte/round + money commercio condizionato),
-> #13 (spareggio ordine turno con starting money, bassa).
-> Più i 🔵 da playtest (Focus in Preparation, Auto-Influence a video, carte prodotto
-> multiple, Trade drag&drop).
+> ### ⏳ DA FARE
+> Resta: #13 (spareggio ordine turno con starting money, bassa).
+> Più i 🔵 da playtest (Focus in Preparation, carte prodotto multiple, Trade drag&drop).
+>
+> ### ✅ FATTO 2026-06-22 (5° giro — Auto-Influence completo)
+> - **#9** ora si applicano **2 carte Auto-Influence per round** (non 1).
+> - **#10** il money del commercio (10) è **condizionato**: la potenza neutrale lo dà
+>   a un giocatore solo se quel giocatore ha una **Commerce card a faccia in su**,
+>   che viene girata; se sono tutte girate, niente money (`_flip_one_commerce`).
+> - Le piazzazioni di Influenza/Armate di entrambe le carte sono elencate nel
+>   riepilogo di fine round (🔵 Auto-Influence a video, di base).
 >
 > ### ✅ FATTO 2026-06-22 (4° giro — Aftermath interattivo)
 > - **#7** Increase Prosperity ora è una **scelta** (bottone), non più automatica.
