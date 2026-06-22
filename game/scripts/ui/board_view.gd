@@ -2909,9 +2909,11 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 			b.add_theme_font_size_override("font_size", maxi(9, int(d * 0.5)))
 			b.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4) if active_here else Color(0.7, 0.85, 1.0))
 		b.pressed.connect(_trade_cycle_select.bind(group.duplicate()))
-		# Drag: trascina il prodotto attivo della casella (o il primo se nessuno è attivo).
-		var drag_res := _trade_active_res if active_here else String(group[0])
-		b.set_drag_forwarding(_trade_drag_begin.bind(drag_res), Callable(), Callable())
+		# Drag SOLO se la casella ha un unico prodotto: con più prodotti il drag (su touch
+		# parte anche da un tocco breve) "ruberebbe" il tap e il CICLO non scatterebbe mai.
+		# Con più prodotti si usa il tap per ciclare/selezionare, poi le caselle valide.
+		if group.size() == 1:
+			b.set_drag_forwarding(_trade_drag_begin.bind(String(group[0])), Callable(), Callable())
 		area.add_child(b)
 	# Nessun prodotto selezionato: ci si ferma agli anelli di selezione.
 	if _trade_active_res == "":
