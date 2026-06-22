@@ -4,8 +4,10 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.30"
+const VERSION := "v0.7.32"
 const CHANGELOG := [
+	"v0.7.32 — Regole allineate al regolamento (audit). Le ABILITÀ SPECIALI delle potenze ora contano davvero nello scoring: USA penalità se ha la maggioranza di Influenza in meno di 4 Regioni, Russia +VP per ogni Regione di zona con più Armate, Cina VP per le Regioni con FDI. A fine partita: +2 VP per ogni Strategic Asset non usato e +3 per l'Executive Order non usata. Spareggio del vincitore corretto (1° bonus Maggioranza → più cubi Influenza → vittoria condivisa). Azioni corrette: nel Trade il bene da 20 sono le Armate (la Diplomazia non si commercia) e la +1 Diplomazia si ha solo comprando da un altro giocatore; Engage richiede una Country alleata nella Regione; Invest/Build a Base una sola volta per Paese; Move solo in zona d'interesse o dove hai una Base; Build a Base muove fino al valore del Paese (non più 1 fisso); la Diplomazia in eccesso (>10) va persa. NATO USA↔EU validata sulle potenze in gioco.",
+	"v0.7.31 — Plance ricalibrate dai template utente: i segnalini di Produzione, Prodotti, Prosperità e Focus sono ora centrati sulle caselle stampate di tutte e 4 le potenze (USA, EU, Russia, Cina), con la posizione del tracciato Materie Prime specifica per potenza.",
 	"v0.7.30 — Tolto il flyover (anteprima ingrandita) sulle carte nazione sul tabellone: si leggono zoomando la mappa. Corretto lo sfarfallio quando si trascina la mappa ingrandita: su un asse dove la mappa è più piccola della viewport ora viene centrata stabilmente invece di rimbalzare.",
 	"v0.7.29 — Bugfix: dopo aver spostato i carri, «Fine spostamento» (e quindi «Fine turno») non bloccano più la partita. Le barre di spostamento non si accumulano più nascoste sul tabellone.",
 	"v0.7.28 — Classifica maggioranza rifinita: bandiere più piccole, distanziate e posate sulla riga dei numeri (non coprono più i box temporanei); i PV accanto a ogni bandiera. Le Regioni che non segnano ancora (permanenti non tutti pieni) mostrano la classifica provvisoria in trasparenza.",
