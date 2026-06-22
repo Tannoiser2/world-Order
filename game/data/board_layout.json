@@ -92,7 +92,7 @@
     ]
   },
   "influence_slots": {
-    "_comment": "Centri normalizzati [x,y]. 'permanent' = riga COLORATA superiore (dove va il cubo: i quadrati colorati di partenza; gli slot non iniziali sono estrapolati sulla stessa riga). 'temporary' = caselle numerate sotto la linea. Rilevati a pixel dai template utente.",
+    "_comment": "Centri normalizzati [x,y]. 'permanent' = riga COLORATA superiore (dove va il cubo: i quadrati colorati di partenza; gli slot non iniziali sono estrapolati sulla stessa riga). 'temporary' = caselle numerate sotto la linea. Rilevati a pixel dai template utente. | permanent_fill: caselle '1-1-1' (ciano) per l'Influenza permanente AGGIUNTA in gioco; permanent: caselle colorate in alto per l'Influenza INIZIALE (di setup).",
     "europe": {
       "permanent": [
         [
@@ -129,6 +129,24 @@
           0.4121,
           0.1964
         ]
+      ],
+      "permanent_fill": [
+        [
+          0.3295,
+          0.1614
+        ],
+        [
+          0.3568,
+          0.1614
+        ],
+        [
+          0.3837,
+          0.1614
+        ],
+        [
+          0.4118,
+          0.1612
+        ]
       ]
     },
     "central_asia": {
@@ -159,6 +177,16 @@
           0.7435,
           0.1964
         ]
+      ],
+      "permanent_fill": [
+        [
+          0.69,
+          0.1604
+        ],
+        [
+          0.7173,
+          0.1604
+        ]
       ]
     },
     "americas": {
@@ -188,6 +216,16 @@
         [
           0.2212,
           0.7284
+        ]
+      ],
+      "permanent_fill": [
+        [
+          0.167,
+          0.6935
+        ],
+        [
+          0.1943,
+          0.6935
         ]
       ]
     },
@@ -227,6 +265,20 @@
           0.434,
           0.5014
         ]
+      ],
+      "permanent_fill": [
+        [
+          0.3532,
+          0.4651
+        ],
+        [
+          0.3805,
+          0.4651
+        ],
+        [
+          0.4073,
+          0.4654
+        ]
       ]
     },
     "africa": {
@@ -257,6 +309,16 @@
           0.4394,
           0.6563
         ]
+      ],
+      "permanent_fill": [
+        [
+          0.3859,
+          0.6209
+        ],
+        [
+          0.4132,
+          0.6209
+        ]
       ]
     },
     "south_asia": {
@@ -286,6 +348,16 @@
         [
           0.7435,
           0.6563
+        ]
+      ],
+      "permanent_fill": [
+        [
+          0.6891,
+          0.6207
+        ],
+        [
+          0.7164,
+          0.6207
         ]
       ]
     },
@@ -320,6 +392,20 @@
         [
           0.9258,
           0.6563
+        ]
+      ],
+      "permanent_fill": [
+        [
+          0.8591,
+          0.6209
+        ],
+        [
+          0.8864,
+          0.6209
+        ],
+        [
+          0.9132,
+          0.6207
         ]
       ]
     }

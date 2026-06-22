@@ -268,27 +268,58 @@ func _layout_influence_cubes() -> void:
 		var track: InfluenceTrack = gs.regions[region].get("track")
 		if track == null:
 			continue
-		_place_slot_cubes(track.perm, conf.get("permanent", []), s)
+		# Influenza permanente: i primi K cubi (quelli INIZIALI di setup) restano sulle
+		# caselle colorate in alto (conf.permanent); quelli AGGIUNTI in gioco vanno sulle
+		# caselle permanenti vere sotto (conf.permanent_fill). K = influenze iniziali permanenti.
+		var k := _starting_perm_count(region)
+		_place_perm_cubes(track.perm, conf.get("permanent", []), conf.get("permanent_fill", []), k, s)
 		_place_slot_cubes(track.temp, conf.get("temporary", []), s)
+
+
+## Numero di Influenze INIZIALI permanenti (di setup) della Regione (dai dati board).
+func _starting_perm_count(region: String) -> int:
+	for r in gs.board_data.get("regions", []):
+		if String(r.get("region", "")) == region:
+			var k := 0
+			for si in r.get("starting_influence", []):
+				if String(si.get("slot", "permanent")) == "permanent":
+					k += 1
+			return k
+	return 0
+
+
+## Posa i cubi permanenti: i primi `k` (iniziali) su `initial_coords` (riga colorata),
+## i successivi (aggiunti in gioco) su `fill_coords` (riga permanente sotto).
+func _place_perm_cubes(owners: Array, initial_coords: Array, fill_coords: Array, k: int, s: float) -> void:
+	for i in owners.size():
+		var owner: Variant = owners[i]
+		if owner == null:
+			continue
+		var coords: Array = initial_coords if i < k else fill_coords
+		var idx: int = i if i < k else i - k
+		if idx < coords.size():
+			_draw_cube(coords[idx], owner, s)
 
 
 func _place_slot_cubes(owners: Array, coords: Array, s: float) -> void:
 	for i in owners.size():
-		var owner: Variant = owners[i]
-		if owner == null or i >= coords.size():
+		if owners[i] == null or i >= coords.size():
 			continue
-		var pos: Array = coords[i]
-		var cube := Panel.new()
-		cube.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cube.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
-		cube.size = Vector2(s, s)
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
-		sb.border_color = Color(0, 0, 0, 0.9)
-		sb.set_border_width_all(maxi(1, int(s * 0.14)))
-		sb.set_corner_radius_all(int(s * 0.18))
-		cube.add_theme_stylebox_override("panel", sb)
-		overlay.add_child(cube)
+		_draw_cube(coords[i], owners[i], s)
+
+
+func _draw_cube(pos: Array, owner: Variant, s: float) -> void:
+	var cube := Panel.new()
+	cube.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cube.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
+	cube.size = Vector2(s, s)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
+	sb.border_color = Color(0, 0, 0, 0.9)
+	sb.set_border_width_all(maxi(1, int(s * 0.14)))
+	sb.set_corner_radius_all(int(s * 0.18))
+	cube.add_theme_stylebox_override("panel", sb)
+	overlay.add_child(cube)
 
 
 ## --- Segnalini sul tabellone: VP (traccia perimetrale) e ordine di turno ---
