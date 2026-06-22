@@ -511,6 +511,9 @@ func _make_region_button(region: String) -> Button:
 	# lasciano passare il drag così puoi trascinare/pannare la mappa anche da zoomata.
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP if awaiting_region else Control.MOUSE_FILTER_IGNORE
 	btn.pressed.connect(_on_region_pressed.bind(region))
+	# Durante un Move la Regione è anche un DROP TARGET del drag&drop dei carri.
+	if awaiting == "move":
+		btn.set_drag_forwarding(Callable(), _region_can_drop.bind(region), _region_do_drop.bind(region))
 	# Zona Regione: invisibile di default (il tabellone mostra già nome ed Eng);
 	# si evidenzia solo quando devi SCEGLIERE una Regione. Durante un Move il colore
 	# indica il ruolo: verde = sorgente possibile, giallo = sorgente scelta, blu = destinazione.
@@ -560,7 +563,14 @@ func _layout_army_badges() -> void:
 			tank.texture = load("res://assets/armies/%s.png" % owner)
 			tank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tank.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			# Durante un Move i TUOI carri si possono TRASCINARE (drag source); altrimenti
+			# sono solo decorativi e lasciano passare il mouse (pan/zoom della mappa).
+			if awaiting == "move" and owner == _active().power:
+				tank.mouse_filter = Control.MOUSE_FILTER_STOP
+				tank.set_drag_forwarding(_army_drag_data.bind(region), Callable(), Callable())
+				tank.tooltip_text = "Trascina un carro (verso una Regione o sulla Riserva)"
+			else:
+				tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tank.position = Vector2(x, y)
 			tank.size = Vector2(bw, h)
 			overlay.add_child(tank)
@@ -1285,23 +1295,23 @@ func _move_valid_dest(region: String) -> bool:
 	return region != c.get("source", null)
 
 
-## Ruolo di una Regione durante un Move (per evidenziarla): sorgente possibile,
-## destinazione valida, o sorgente già scelta.
+## Ruolo di una Regione durante un Move (per evidenziarla): sorgente possibile
+## (tue Armate, trascinabili), destinazione valida, o sorgente già scelta (tap).
 func _move_role(region: String) -> String:
 	var c := _move_ctx
-	if c.get("source", null) == null:
-		return "source" if int((gs.regions[region]["armies"] as Dictionary).get(_active().power, 0)) > 0 else ""
-	if region == c["source"]:
-		return "selected"
-	return "dest" if _move_valid_dest(region) else ""
-
-
-func _move_pick_reserve() -> void:
-	if _active().armies_available <= 0:
-		_status("Riserva vuota.")
-		return
-	_move_ctx["source"] = "_reserve"
-	_refresh_move_ui()
+	var has_mine: bool = int((gs.regions[region]["armies"] as Dictionary).get(_active().power, 0)) > 0
+	# Flusso TAP: una sorgente è già stata scelta toccandola.
+	if c.get("source", null) != null:
+		if region == c["source"]:
+			return "selected"
+		return "dest" if _move_valid_dest(region) else ""
+	# Drag&drop: evidenzia SEMPRE le sorgenti (tue Armate) e le destinazioni valide,
+	# così sai da dove trascinare e dove rilasciare senza prima scegliere la sorgente.
+	if has_mine:
+		return "source"
+	if int(c.get("moved", 0)) < int(c.get("max", 1)) and _move_valid_dest(region):
+		return "dest"
+	return ""
 
 
 func _on_move_region(region: String) -> void:
@@ -1370,43 +1380,136 @@ func _finish_move() -> void:
 	_advance_play()
 
 
+# --- Move via DRAG&DROP (input dell'azione Move): trascini i carri tra Riserva e
+# Regioni. Costo/max/validità identici al tap; rientro in Riserva = annulla (gratis,
+# non conta nel max). Le bind() di set_drag_forwarding aggiungono gli argomenti IN CODA. ---
+
+## Anteprima (carro) mostrata sotto il dito durante il trascinamento.
+func _army_drag_preview() -> Control:
+	var prev := TextureRect.new()
+	var h := board_native.y * 0.05
+	prev.texture = load("res://assets/armies/%s.png" % _active().power)
+	prev.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	prev.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	prev.custom_minimum_size = Vector2(h * 2.0, h); prev.size = Vector2(h * 2.0, h)
+	return prev
+
+## Drag da un'Armata schierata in `region` (solo se è tua e c'è almeno un carro).
+func _army_drag_data(_at: Vector2, region: String) -> Variant:
+	if awaiting != "move" or int((gs.regions[region]["armies"] as Dictionary).get(_active().power, 0)) <= 0:
+		return null
+	set_drag_preview(_army_drag_preview())
+	return {"move_src": region}
+
+## Drag da un carro della Riserva.
+func _reserve_drag_data(_at: Vector2) -> Variant:
+	if awaiting != "move" or _active().armies_available <= 0:
+		return null
+	set_drag_preview(_army_drag_preview())
+	return {"move_src": "_reserve"}
+
+## Drop su una Regione: schiera/sposta 1 Armata lì (rispetta max/validità, paga il costo).
+func _region_can_drop(_at: Vector2, data: Variant, region: String) -> bool:
+	if not (data is Dictionary and (data as Dictionary).has("move_src")):
+		return false
+	if int(_move_ctx.get("moved", 0)) >= int(_move_ctx.get("max", 1)):
+		return false
+	if String((data as Dictionary)["move_src"]) == region:
+		return false
+	return _move_valid_dest(region)
+
+func _region_do_drop(_at: Vector2, data: Variant, region: String) -> void:
+	_move_ctx["source"] = String((data as Dictionary)["move_src"])
+	_do_move_step(region)   # gestisce costo, trasferimento, moved++, cap e fine
+
+## Drop sul vassoio Riserva: riporta 1 Armata dalla Regione alla Riserva (gratis,
+## non conta nel max — annulla lo spostamento).
+func _reserve_can_drop(_at: Vector2, data: Variant) -> bool:
+	return data is Dictionary and String((data as Dictionary).get("move_src", "_reserve")) != "_reserve"
+
+func _reserve_do_drop(_at: Vector2, data: Variant) -> void:
+	var src := String((data as Dictionary)["move_src"])
+	var p := _active()
+	var sa: Dictionary = gs.regions[src]["armies"]
+	if int(sa.get(p.power, 0)) <= 0:
+		return
+	sa[p.power] = int(sa.get(p.power, 0)) - 1
+	p.armies_available += 1
+	_move_ctx["moved"] = maxi(0, int(_move_ctx.get("moved", 0)) - 1)
+	_status("Armata: %s → Riserva (rientro)." % src.replace("_", " "))
+	_refresh_move_ui()
+
+
 ## Ridisegna mappa, barra Move e messaggio di stato in base allo stato corrente.
 func _refresh_move_ui() -> void:
 	_layout_overlays()
 	_refresh_move_bar()
 	var c := _move_ctx
-	if c.get("source", null) == null:
-		_status("Sposta Armate (%d/%d): scegli la SORGENTE — «Riserva» o una Regione con tue Armate." % [int(c["moved"]), int(c["max"])])
-	else:
-		var s: Variant = c["source"]
-		var sname := "Riserva" if String(s) == "_reserve" else String(s).replace("_", " ")
-		_status("Sorgente: %s. Tocca la Regione di DESTINAZIONE (o ri-tocca la sorgente per annullare)." % sname)
+	_status("Sposta Armate (%d/%d): TRASCINA un carro dalla Riserva o da una Regione su una Regione di destinazione; trascinalo sulla Riserva per farlo rientrare." % [int(c["moved"]), int(c["max"])])
 
 
-## Barra flottante del Move: pulsante Riserva (sorgente) + Fine spostamento.
+## Barra flottante del Move: vassoio RISERVA (carro trascinabile + drop per i rientri)
+## e «Fine spostamento». Niente più scelta della sorgente: si trascina direttamente.
 func _refresh_move_bar() -> void:
 	_hide_move_bar()
 	var p := _active()
 	var c := _move_ctx
-	var bar := HBoxContainer.new()
+	var bar := PanelContainer.new()
 	bar.name = "MoveBar"
 	bar.set_meta("move_bar", true)
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_theme_constant_override("separation", 8)
-	bar.position = Vector2(size.x * 0.5 - 170, size.y * 0.15)
-	var res := Button.new()
-	res.text = "Riserva (%d)%s" % [p.armies_available, "  (scelta)" if c.get("source", null) == "_reserve" else ""]
-	res.disabled = p.armies_available <= 0
-	res.add_theme_font_size_override("font_size", _base_fs() + 1)
-	res.pressed.connect(_move_pick_reserve)
-	bar.add_child(res)
+	var st := StyleBoxFlat.new(); st.bg_color = Color(0.10, 0.12, 0.16, 0.96)
+	st.set_corner_radius_all(8); st.set_content_margin_all(8)
+	bar.add_theme_stylebox_override("panel", st)
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 10)
+	bar.add_child(hb)
+	var info := Label.new()
+	info.text = "Sposta Armate  %d/%d" % [int(c.get("moved", 0)), int(c["max"])]
+	info.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
+	info.add_theme_font_size_override("font_size", _base_fs() + 1)
+	hb.add_child(info)
+	hb.add_child(_move_reserve_tray(p))
 	var done := Button.new()
 	done.text = "Fine spostamento"
 	done.add_theme_font_size_override("font_size", _base_fs() + 1)
 	done.pressed.connect(_finish_move)
-	bar.add_child(done)
+	hb.add_child(done)
+	bar.position = Vector2(size.x * 0.5 - 240, size.y * 0.12)
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popup_layer.add_child(bar)
+
+
+## Vassoio Riserva del Move: un carro TRASCINABILE (schiera dalla riserva) che è anche
+## DROP TARGET (trascinaci un carro per farlo rientrare). Mostra "×N".
+func _move_reserve_tray(p: PlayerState) -> Control:
+	var tray := Panel.new()
+	tray.custom_minimum_size = Vector2(118, 40)
+	tray.mouse_filter = Control.MOUSE_FILTER_STOP
+	var ts := StyleBoxFlat.new(); ts.bg_color = Color(0.18, 0.20, 0.25, 0.96)
+	ts.set_corner_radius_all(6); ts.set_border_width_all(2); ts.border_color = Color(0.45, 0.8, 1.0, 0.7)
+	tray.add_theme_stylebox_override("panel", ts)
+	tray.tooltip_text = "Riserva: trascina un carro sulla mappa per schierarlo; trascinaci un carro per farlo rientrare"
+	# Drag source (schiera dalla riserva) + drop target (rientro in riserva).
+	tray.set_drag_forwarding(_reserve_drag_data, _reserve_can_drop, _reserve_do_drop)
+	var hb := HBoxContainer.new()
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hb.add_theme_constant_override("separation", 4)
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	tray.add_child(hb)
+	if p.armies_available > 0:
+		var tank := TextureRect.new()
+		tank.texture = load("res://assets/armies/%s.png" % p.power)
+		tank.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tank.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tank.custom_minimum_size = Vector2(48, 26)
+		hb.add_child(tank)
+	var lbl := Label.new()
+	lbl.text = "Riserva ×%d" % p.armies_available
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	hb.add_child(lbl)
+	return tray
 
 
 func _hide_move_bar() -> void:

@@ -1,0 +1,24 @@
+extends SceneTree
+## Screenshot dello stato Move (drag&drop): Regioni evidenziate (sorgenti/destinazioni)
+## + vassoio Riserva. Uso: xvfb-run godot --path game --script res://scripts/tests/shot_move.gd -- <out.png>
+
+func _initialize() -> void:
+	var args := OS.get_cmdline_user_args()
+	var out: String = args[0] if args.size() > 0 else "/tmp/move.png"
+	var board: Node = load("res://scenes/board.tscn").instantiate()
+	get_root().add_child(board)
+	for _i in range(6):
+		await process_frame
+	board.active_seat = board.gs.turn_order[0]
+	var p = board._active()
+	p.armies_available = 4
+	board.gs.regions["europe"]["armies"][p.power] = 2
+	board.gs.regions["africa"]["armies"][p.power] = 1
+	board._begin_move({"op": "move", "max": 3})
+	for _i in range(10):
+		await process_frame
+	await create_timer(0.3).timeout
+	var img: Image = get_root().get_texture().get_image()
+	img.save_png(out)
+	print("saved ", out, " ", img.get_size())
+	quit()
