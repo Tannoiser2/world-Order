@@ -286,12 +286,12 @@ func _init() -> void:
 		var card_prod := {"display_name": "Prod", "effect_ops": [{"op": "produce"}]}
 		ppr.hand.append(card_prod)
 		board._plays_left = 9
-		board._play_card(card_prod)                       # apre la UI Produce
-		var prod_popup: bool = board.popup_layer.get_child_count() > 0
+		board._play_card(card_prod)                       # apre il Produce sulla plancia (no popup)
+		var prod_mode: bool = board._produce_mode and board.drawer_open
 		board._produce_sel = {"energy": 2, "consumer_goods": 1, "armies": 1}
 		board._produce_confirm()
 		# energy 5 +2 -1(CG) = 6 ; rawmat 5 -1(CG) -1(armata) = 3 ; CG +1 ; riserva +1
-		var prod_ok: bool = prod_popup and ppr.resources["energy"] == 6 and ppr.resources["raw_materials"] == 3 \
+		var prod_ok: bool = prod_mode and not board._produce_mode and ppr.resources["energy"] == 6 and ppr.resources["raw_materials"] == 3 \
 			and ppr.resources["consumer_goods"] == 1 and ppr.armies_available == 1 and board.playing_card.is_empty()
 		print("[%s] Produce multi-traccia: +2 Energia, +1 Beni, +1 Armata in riserva" % ["OK" if prod_ok else "FAIL"])
 		if not prod_ok: fails += 1
