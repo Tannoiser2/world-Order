@@ -559,7 +559,7 @@ func _make_region_button(region: String) -> Button:
 	# Le Regioni catturano il mouse SOLO quando devi sceglierne una; altrimenti
 	# lasciano passare il drag così puoi trascinare/pannare la mappa anche da zoomata.
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP if awaiting_region else Control.MOUSE_FILTER_IGNORE
-	btn.pressed.connect(_on_region_pressed.bind(region))
+	btn.pressed.connect(_cmd_pick_region.bind(region))
 	# Durante un Move la Regione è anche un DROP TARGET del drag&drop dei carri.
 	if awaiting == "move":
 		btn.set_drag_forwarding(Callable(), _region_can_drop.bind(region), _region_do_drop.bind(region))
@@ -1316,7 +1316,7 @@ func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
 	b.add_theme_stylebox_override("pressed", hv)
 	b.tooltip_text = "Influenza %s in %s" % ["permanente" if slot == "permanent" else "temporanea", region.replace("_", " ")]
 	b.set_meta("influence_cell", {"region": region, "slot": slot})
-	b.pressed.connect(_on_influence_cell.bind(region, slot))
+	b.pressed.connect(_cmd_pick_influence_cell.bind(region, slot))
 	overlay.add_child(b)
 
 
@@ -3379,7 +3379,7 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 			or (ex_this and bool(_exhaust_sel.get(cid, false)))
 		var dim: bool = (is_active and awaiting == "allied_country" and not (cn in elig)) \
 			or (ex_active and not ex_this)
-		var on_press: Callable = _on_exhaust_toggle.bind(cn) if ex_this else Callable()
+		var on_press: Callable = _cmd_exhaust_ally.bind(cn) if ex_this else Callable()
 		var clickable: bool = (is_active and not dim) or ex_this
 		var sz := Vector2(cw, ch)
 		var stack := _ally_stack(cn, cards.size(), sz, highlight, clickable, spent, on_press)
@@ -3422,7 +3422,7 @@ func _apply_exhausted(card: Control, sz: Vector2) -> void:
 ## sfalsate; un badge xN indica quante sono (più simboli = più Export/Import).
 ## exhausted=true -> la nazione è esaurita (grigia/ruotata).
 func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool, exhausted := false, on_press := Callable()) -> Control:
-	var handler: Callable = on_press if on_press.is_valid() else _on_allied_pressed.bind(cn)
+	var handler: Callable = on_press if on_press.is_valid() else _cmd_pick_allied_country.bind(cn)
 	if count <= 1:
 		var single := _country_card_button(cn, sz, highlight)
 		single.disabled = not clickable
@@ -3576,7 +3576,7 @@ func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 			var b := Button.new()
 			b.text = "Usata" if _ongoing_used(p.power, tag) else "Usa"
 			b.disabled = _ongoing_used(p.power, tag) or not playing_card.is_empty()
-			b.pressed.connect(_use_ongoing.bind(tag))
+			b.pressed.connect(_cmd_use_ongoing.bind(tag))
 			row.add_child(b)
 		drawer_content.add_child(row)
 
@@ -3802,10 +3802,35 @@ func apply_command(cmd: Dictionary) -> bool:
 			_play_card(p.hand[idx])
 		"end_turn":
 			_end_turn()
+		"use_ongoing":
+			_use_ongoing(String(a["tag"]))
+		"pick_region":
+			_on_region_pressed(String(a["region"]))
+		"pick_influence_cell":
+			_on_influence_cell(String(a["region"]), String(a["slot"]))
+		"pick_allied_country":
+			var cn := _ally_by_id(String(a["country_id"]))
+			if cn.is_empty():
+				return false
+			_on_allied_pressed(cn)
+		"exhaust_ally":
+			var cn2 := _ally_by_id(String(a["country_id"]))
+			if cn2.is_empty():
+				return false
+			_on_exhaust_toggle(cn2)
 		_:
 			return false
 	_command_log.append(cmd)
 	return true
+
+
+## Risolve un country_id nella carta nazione alleata del giocatore attivo (i comandi
+## riferiscono i Paesi per id stabile, non per riferimento all'oggetto).
+func _ally_by_id(id: String) -> Dictionary:
+	for c in _active().allied_countries:
+		if String((c as Dictionary).get("id", "")) == id:
+			return c
+	return {}
 
 
 func _next_seq() -> int:
@@ -3828,6 +3853,26 @@ func _cmd_play_card(card: Dictionary) -> void:
 	if idx < 0:
 		return
 	apply_command(GameCommands.play_card(active_seat, _next_seq(), idx))
+
+
+func _cmd_use_ongoing(tag: String) -> void:
+	apply_command(GameCommands.use_ongoing(active_seat, _next_seq(), tag))
+
+
+func _cmd_pick_region(region: String) -> void:
+	apply_command(GameCommands.pick_region(active_seat, _next_seq(), region))
+
+
+func _cmd_pick_influence_cell(region: String, slot: String) -> void:
+	apply_command(GameCommands.pick_influence_cell(active_seat, _next_seq(), region, slot))
+
+
+func _cmd_pick_allied_country(cn: Dictionary) -> void:
+	apply_command(GameCommands.pick_allied_country(active_seat, _next_seq(), String(cn.get("id", ""))))
+
+
+func _cmd_exhaust_ally(cn: Dictionary) -> void:
+	apply_command(GameCommands.exhaust_ally(active_seat, _next_seq(), String(cn.get("id", ""))))
 
 
 func _end_turn() -> void:

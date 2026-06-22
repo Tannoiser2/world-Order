@@ -178,11 +178,15 @@ Tutti compatibili con questa architettura ma rimandati.
 
 ## 11. Stato di avanzamento
 - [x] **Fase 0a** — serializzazione `GameState`/`PlayerState`/`InfluenceTrack` + `state_for_seat` (v0.7.75, +9 test)
-- [~] **Fase 0b — Step A** — command bus locale per `choose_focus`/`play_card`/`end_turn`
-  (v0.7.76): modulo `GameCommands` (catalogo + costruttori + `valid_shape`),
-  `board_view.apply_command()` con gating per seggio, test `verify_commands`.
-  **Resta da fare**: estendere il catalogo a `trade`/`produce`/sotto-scelte/aftermath,
-  poi **Step B** (estrarre `SessionContext`, spostarci `awaiting`/`playing_card`/temp).
+- [~] **Fase 0b — Step A** — command bus locale (modulo `GameCommands` +
+  `board_view.apply_command()` con gating per seggio + `verify_commands`).
+  - [x] v0.7.76: `choose_focus`, `play_card`, `end_turn`
+  - [x] v0.7.77: `use_ongoing` e sotto-scelte di Azione — `pick_region`,
+    `pick_influence_cell`, `pick_allied_country`, `exhaust_ally`
+  - [ ] **Resta**: `produce` e `trade` (comandi a payload pieno con la selezione),
+    `move_army` (drag&drop), `buy_growth`/`buy_market`, `pass_turn`/`play_strategic_asset`,
+    e i comandi **Aftermath** (gating per fase simultanea, non per `active_seat`).
+  - [ ] **Step B**: estrarre `SessionContext` e spostarci `awaiting`/`playing_card`/temp.
 - [ ] **Fase 1** — trasporto + lobby (Step C)
 - [ ] **Fase 2** — sincronizzazione (Step D)
 - [ ] **Fase 3** — robustezza (Step E)

@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.76"
+const VERSION := "v0.7.77"
 const CHANGELOG := [
+	"v0.7.77 - Multiplayer (passo 3): il COMMAND BUS ora copre anche le scelte sulla mappa e in plancia - clic su una Regione, clic su una cella d'Influenza, scelta di una nazione alleata (Invest/Build), attivazione abilita' continuative e sconto 'esaurisci alleato'. Tutto continua a funzionare come prima in partita; cambia solo che questi input passano per il punto unico (validati e pronti per la rete).",
 	"v0.7.76 - Multiplayer (passo 2): introdotto il COMMAND BUS. Gli input di gioco 'scegli Focus', 'gioca carta' e 'fine turno' ora passano per un unico punto (apply_command) con validazione di forma e controllo del turno, invece di agire direttamente. E' invisibile in partita (stesso comportamento di prima), ma e' il meccanismo che permettera' di spedire le mosse via rete. Nuovo modulo GameCommands + test dedicato (verify_commands).",
 	"v0.7.75 - Lavori preparatori per il GIOCO IN RETE (multiplayer): lo stato della partita ora si puo' SERIALIZZARE (snapshot completo: giocatori, regioni/influenza, market) e ricostruire identico, e c'e' la REDAZIONE per giocatore (ogni client vedra' la propria mano intera e quelle avversarie solo come numero). Nessun cambiamento visibile in partita: e' la base su cui costruiremo il multiplayer in LAN. +9 test motore (133 totali).",
 	"v0.7.74 - Layout ancora piu' arioso: la MAPPA viene allineata a DESTRA e lo spazio 'grigio' che lasciava ai lati viene RECUPERATO per la colonna BOARD, ora un po' piu' larga (board, plancia e carte si adattano e crescono). Le carte ALLEATE sono un po' piu' piccole: ne entrano almeno 7 per riga. Le pile di carte uguali (xN) ora si sfalsano verso il BASSO, cosi' si vede la PRODUZIONE della carta sotto invece del solo bordo superiore.",

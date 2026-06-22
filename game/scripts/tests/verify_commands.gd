@@ -70,6 +70,30 @@ func _init() -> void:
 	check.call("play_card indice fuori range rifiutato",
 		board.apply_command(GameCommands.play_card(board.active_seat, board._next_seq(), 999)) == false)
 
+	# 6) Sotto-scelte + use_ongoing: forma, gating, nessun effetto fuori contesto.
+	board.playing_card = {}
+	board.awaiting = ""
+	check.call("pick_region shape ok", GameCommands.valid_shape(GameCommands.pick_region(0, 1, "europe")))
+	check.call("pick_region shape: region vuota rifiutata",
+		GameCommands.valid_shape(GameCommands.pick_region(0, 1, "")) == false)
+	check.call("pick_influence_cell shape: slot valido",
+		GameCommands.valid_shape(GameCommands.pick_influence_cell(0, 1, "europe", "permanent")))
+	check.call("pick_influence_cell shape: slot non valido rifiutato",
+		GameCommands.valid_shape(GameCommands.pick_influence_cell(0, 1, "europe", "boh")) == false)
+	check.call("use_ongoing shape: tag vuoto rifiutato",
+		GameCommands.valid_shape(GameCommands.use_ongoing(0, 1, "")) == false)
+	check.call("exhaust_ally shape ok",
+		GameCommands.valid_shape(GameCommands.exhaust_ally(0, 1, "country_x")))
+	# pick_region senza carta in gioco: accettata dal bus ma SENZA effetto (come la UI).
+	var pw: String = board._active().power
+	var inf_before: int = board.gs.regions["europe"]["track"].count(pw)
+	var ok_pr: bool = board.apply_command(GameCommands.pick_region(board.active_seat, board._next_seq(), "europe"))
+	var inf_after: int = board.gs.regions["europe"]["track"].count(pw)
+	check.call("pick_region accettata dal seggio attivo", ok_pr)
+	check.call("pick_region senza carta: nessuna Influenza aggiunta", inf_after == inf_before)
+	check.call("pick_region fuori turno rifiutata",
+		board.apply_command(GameCommands.pick_region((board.active_seat + 1) % n, board._next_seq(), "europe")) == false)
+
 	print("Verifica command bus: %s" % ("OK" if fails == 0 else "FALLITA (%d)" % fails))
 	board.queue_free()
 	await process_frame
