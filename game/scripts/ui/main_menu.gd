@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.43"
+const VERSION := "v0.7.44"
 const CHANGELOG := [
+	"v0.7.44 — Schermata RESEARCH ripulita: il Market è ora una SOLA fila di carte alla giusta dimensione (niente più carte enormi che sforavano). Tolte le carte GROWTH da qui: non si comprano nella Research ma con l'azione «Get a Growth Card» nella fase di Azione. Sotto al Market restano le opzioni per esaurire le Country alleate (+Research = loro valore).",
 	"v0.7.43 — Commercio (2-3 giocatori): ora puoi comprare anche dalle POTENZE NEUTRALI (es. la Cina compra Energia dalla Russia): compaiono le loro bandierine tra le sorgenti e si gira la loro Commerce card come al solito, pagando la banca — ma NON guadagni la +1 Diplomazia (solo comprando da un vero giocatore). Confermato che non puoi comprare e vendere la stessa risorsa nello stesso Commercio.",
 	"v0.7.42 — Plancia del giocatore più ALTA (usa lo spazio verticale del cassetto: si legge meglio). Le carte prodotto (Commerce) ora stanno tutte in una riga larga esattamente quanto la carta Trade Deals sopra: con più carte (Russia 3) diventano più piccole, restando allineate.",
 	"v0.7.41 — Fix Influenza permanente: i cubi AGGIUNTI in gioco ora vanno sulle vere caselle permanenti (la riga «1 1 1 1» sotto), non più ammucchiati sulle caselle colorate del setup. Le Influenze INIZIALI restano correttamente sulle caselle colorate in alto. Coordinate prese dalla guida (box celesti) per tutte e 7 le Regioni.",
