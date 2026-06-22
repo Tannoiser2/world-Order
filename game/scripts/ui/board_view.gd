@@ -62,6 +62,7 @@ var hand_collapsed := false      # mano collassabile (per non coprire la plancia
 var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
+var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
 var tab_bg: Panel                   # sfondo solido della barra linguette
 var drawer_open := false
 var drawer_power := ""              # potenza la cui plancia è mostrata nel cassetto
@@ -1295,9 +1296,9 @@ func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
 	b.size = Vector2(s, s)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.25, 1.0, 0.45, 0.62) if slot == "permanent" else Color(1.0, 0.4, 1.0, 0.62)
-	sb.border_color = Color(1, 1, 1, 1)
-	sb.set_border_width_all(maxi(3, int(s * 0.22)))
-	sb.set_corner_radius_all(int(s * 0.22))
+	sb.border_color = Color(1, 1, 1, 0.95)
+	sb.set_border_width_all(maxi(1, int(s * 0.08)))   # cornice SOTTILE
+	sb.set_corner_radius_all(int(s * 0.20))
 	var hv := sb.duplicate()
 	hv.bg_color = Color(0.3, 1.0, 0.55, 0.85) if slot == "permanent" else Color(1.0, 0.5, 1.0, 0.85)
 	b.add_theme_stylebox_override("normal", sb)
@@ -2436,6 +2437,8 @@ func _build_hud() -> void:
 	cst.border_color = Color(0.95, 0.8, 0.3, 0.8); cst.set_border_width_all(0); cst.border_width_bottom = 2
 	choice_bar.add_theme_stylebox_override("panel", cst)
 	choice_bar.visible = false
+	choice_bar.clip_contents = true             # niente trabocco sulla mappa/board
+	choice_bar.theme = Theme.new()              # font dedicato (più piccolo) per la barra scelte
 	add_child(choice_bar)
 	var cmargin := MarginContainer.new()
 	cmargin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2516,6 +2519,14 @@ func _build_drawer() -> void:
 		tab_bar.add_child(b)
 	drawer_power = _active().power
 
+	# Tasto 'Fine turno' FISSO in basso a destra (più comodo dell'angolo in alto): sta
+	# sopra tutto (z alto) e viene posizionato in _layout_ui.
+	end_turn_btn = Button.new()
+	end_turn_btn.text = "Fine turno"
+	end_turn_btn.z_index = 50
+	end_turn_btn.pressed.connect(_end_turn)
+	add_child(end_turn_btn)
+
 	# Pannello MANO a tutta larghezza, in basso (sopra le linguette). Si SOVRAPPONE sia
 	# alla mappa sia alla board quando è aperto (overlay), così non comprime le carte.
 	hand_panel = Panel.new()
@@ -2566,24 +2577,34 @@ func _layout_ui() -> void:
 	ui_theme.default_font_size = _base_fs()
 	if status_label:
 		status_label.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 4))
-	var hud_h := clampf(h * 0.11, 40, 86)
+	# Barra scelte: font DEDICATO più piccolo, così il testo si adatta alla larghezza.
+	if choice_bar and choice_bar.theme:
+		choice_bar.theme.default_font_size = _choice_fs()
+	# HUD ad ALTEZZA FISSA: la riga (round/potenza/Fine turno) + la riga di stato SOLO
+	# quando serve. Quando la barra scelte è visibile, la riga di stato si nasconde e
+	# l'HUD si compatta (niente più spazio vuoto, niente doppione con la barra sotto).
+	var status_vis: bool = status_label != null and not (choice_bar and choice_bar.visible)
+	if status_label:
+		status_label.visible = status_vis
+	var hud_h := clampf((_base_fs() + 14.0) + (_base_fs() + 6.0 if status_vis else 0.0), 34, 92)
 	top_hud.position = Vector2.ZERO
 	top_hud.size = Vector2(w, hud_h)
-	# Niente DOPPIONE di informazioni: quando la barra scelte è visibile (riga 3) la
-	# riga di stato (riga 2) si nasconde - il contesto è già nella barra scelte.
-	if status_label:
-		status_label.visible = not (choice_bar and choice_bar.visible)
-	# Barra scelte SOTTO l'HUD (quando attiva): sposta giù l'inizio della mappa.
+	# Barra scelte SOTTO l'HUD: altezza FISSA per ~2 righe (clip_contents evita il trabocco).
 	var choice_h := 0.0
 	if choice_bar and choice_bar.visible:
-		choice_h = clampf(h * 0.075, 40, 60)
+		choice_h = clampf(_choice_fs() * 2.0 + 22.0, 40.0, 74.0)
 		choice_bar.position = Vector2(0, hud_h)
 		choice_bar.size = Vector2(w, choice_h)
 	var tab_h := clampf(h * 0.08, 34, 64)
 	tab_bg.position = Vector2(0, h - tab_h)
 	tab_bg.size = Vector2(w, tab_h)
+	# 'Fine turno' FISSO in basso a destra (comodo); le linguette occupano lo spazio a sinistra.
+	var et_w := clampf(w * 0.15, 96.0, 180.0)
+	if end_turn_btn:
+		end_turn_btn.position = Vector2(w - et_w - 4, h - tab_h + 3)
+		end_turn_btn.size = Vector2(et_w, tab_h - 6)
 	tab_bar.position = Vector2(4, h - tab_h + 2)
-	tab_bar.size = Vector2(w - 8, tab_h - 4)
+	tab_bar.size = Vector2(w - et_w - 16, tab_h - 4)
 	# NUOVO LAYOUT: pannello BOARD a SINISTRA, mappa a DESTRA (finestra separata, sempre
 	# visibile). Così zoomando la mappa la board non si ingrandisce e non serve collassarla.
 	# In basso si riserva una barra MANO (sopra le linguette); aperta, la mano si espande
@@ -2624,6 +2645,12 @@ func _layout_ui() -> void:
 ## Dimensione font base proporzionale all'altezza del device.
 func _base_fs() -> int:
 	return clampi(int(size.y * 0.026), 11, 26)
+
+
+## Font (più piccolo) della BARRA SCELTE: così testo e bottoni si adattano alla larghezza
+## senza traboccare su più righe.
+func _choice_fs() -> int:
+	return clampi(int(size.y * 0.020), 10, 17)
 
 
 func _on_power_tab(power: String) -> void:
@@ -2687,15 +2714,10 @@ func _refresh_hud(p: PlayerState) -> void:
 	turn.add_theme_constant_override("outline_size", 3)
 	hud_box.add_child(turn)
 	hud_box.add_child(_money_widget(p.money))
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hud_box.add_child(spacer)
-	var endt := Button.new()
-	endt.text = 'Fine turno'
-	# In Preparazione si sceglie il Focus (barra in alto): 'Fine turno' è disattivato.
-	endt.disabled = game_over or not playing_card.is_empty() or _ui_phase == "Preparazione"
-	endt.pressed.connect(_end_turn)
-	hud_box.add_child(endt)
+	# Il tasto 'Fine turno' NON sta più nell'HUD (angolo alto-destra scomodo): è un tasto
+	# fisso in BASSO a destra (vedi end_turn_btn in _layout_ui). Qui ne aggiorno lo stato.
+	if end_turn_btn:
+		end_turn_btn.disabled = game_over or not playing_card.is_empty() or _ui_phase != "Azione"
 
 
 ## Maniglie: una per potenza, colorate; > = a chi tocca, ▼ = cassetto aperto.
@@ -3067,7 +3089,7 @@ func _show_trade_bar(p: PlayerState) -> void:
 		# Selezione del prodotto SULLA CASELLA (si tocca/trascina il token sulla plancia;
 		# se due prodotti stanno sulla stessa casella, ri-toccando si CICLA tra loro).
 		var hint := Label.new()
-		hint.text = "- tocca un prodotto sulla plancia (ri-tocca la stessa casella per cambiare prodotto); poi scegli da CHI comprare"
+		hint.text = "- tocca un prodotto sulla plancia, poi scegli da chi comprare"
 		hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
 		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(hint)
@@ -3741,8 +3763,7 @@ func _turn_hint() -> String:
 	var p := _active()
 	if _plays_left <= 0:
 		return "%s: turno esaurito - premi 'Fine turno'." % p.power.to_upper()
-	var focus_txt := ", oppure scegli un Focus sulla plancia" if int(_focus_round.get(p.power, -1)) != gs.round else ""
-	return "> Tocca a %s: gioca una carta dalla mano%s, poi 'Fine turno'." % [p.power.to_upper(), focus_txt]
+	return "Tocca a %s: gioca una carta dalla mano, poi 'Fine turno'." % p.power.to_upper()
 
 
 ## Carte giocabili nel turno: 1 di base, +1 al primo turno del round con

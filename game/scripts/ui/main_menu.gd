@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.72"
+const VERSION := "v0.7.73"
 const CHANGELOG := [
+	"v0.7.73 - Barra in alto RICALIBRATA: l'HUD si compatta (niente piu' spazio vuoto ne' doppioni con la riga sotto) e la BARRA SCELTE ha altezza FISSA con testo piu' piccolo, cosi' non sconfina piu' sulla mappa/board. Il tasto 'Fine turno' non e' piu' nell'angolo in alto a destra (scomodo, a volte tagliato): ora e' un tasto fisso in BASSO a destra, accanto alle linguette. Corretto il testo del turno (non si sceglie il Focus durante l'azione). Cornice delle caselle Influenza piu' sottile.",
 	"v0.7.72 - Pannello board riorganizzato: in alto la PLANCIA con la carta COMMERCIO a fianco (allineata in alto) e le carte PRODOTTO subito SOTTO la carta Commercio (piu' piccole, riga larga quanto la carta). Sotto, le carte nazione ALLEATE in una fila (almeno 6 per riga, le altre vanno a capo); piu' sotto ancora le carte CRESCITA quando acquistate.",
 	"v0.7.71 - RESEARCH come BOARD MERCATO: niente piu' popup che copre tutto. Durante la Research, al posto della mappa (a destra) compare il MERCATO (carte Market + 'Cambia Market' + le tue Country alleate da esaurire per +Research), mentre la tua board resta visibile a sinistra. Inoltre nel pannello board le carte PRODOTTO ora stanno a DESTRA della carta Commercio sulla stessa riga (sopra le carte alleate).",
 	"v0.7.70 - NUOVO LAYOUT piu' ergonomico: la BOARD del giocatore e' ora una finestra SEPARATA a SINISTRA, sempre visibile, e la MAPPA sta a DESTRA - zoomando la mappa la board non si ingrandisce e non serve piu' collassarla. Nel pannello board, in colonna: plancia, poi carta Commercio + carte prodotto, poi carte nazione alleate, poi carte crescita. La MANO resta a tutta larghezza in basso: aperta si sovrappone a mappa e board (non comprime le carte), collassata e' una barra sottile. Le linguette in basso scelgono quale board guardare (sempre visibile).",
