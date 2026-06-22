@@ -36,10 +36,8 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 >
 > ### ⏳ DA FARE
 > Resta: #13 (spareggio ordine turno con starting money, bassa).
-> Più i 🔵 da playtest (Focus in Preparation) e:
+> Più:
 > - **Trade: drag&drop** vero (trascinare i token) — iterazione 2, sopra al tap.
-> - **Trade: vendita Armate** dalla riserva (20 cad., non sulla resource track) — #14
->   lato vendita-riserva, non ancora nella UI Commercio.
 > - **Commerce cards: composizione per-carta** da confermare (ora ogni carta = tutti i
 >   prodotti della potenza; se EU/Russia hanno carte "splittate" è solo da editare il
 >   dato `commerce_cards` in `data/trade_deals.json`).
@@ -107,7 +105,7 @@ Audit regolamento↔codice completo (3 aree: azioni, setup/fasi, aftermath/scori
 13. _(Bassa)_ **Spareggio ordine di turno**: a setup usa la money *corrente* invece della *starting money* (pag. 9 punto 19). Per i round 2+ la money corrente è corretta (pag. 11).
 
 #### Le 8 Azioni — CRITICHE/ALTE
-14. **Trade: il bene di valore 20 è ARMATE, non Diplomazia** (pag. 13). `EXPORT_GAIN` mappa il 20 su `"diplomacy"` ed esclude le Armate; la Diplomazia **non** è commerciabile. Mancante anche la vendita di Armate (solo dalla plancia, 20 cad., non importabili). UI Trade (`TRADE_RES`) esclude le Armate.
+14. ✅ (v0.7.45 vendita Armate) **Trade: il bene di valore 20 è ARMATE, non Diplomazia** (pag. 13). `EXPORT_GAIN` mappa il 20 sulle Armate; la Diplomazia **non** è commerciabile. La **vendita di Armate** dalla riserva (20 cad., non importabili) è ora nel banner Commercio: riga "Vendi Armate (riserva N)" con ± (occupa uno slot Export).
 15. **Improve Relations: restrizione "potenza vietata" non applicata** (pag. 12). I Country hanno `no_relations_powers` ma non viene mai usato (es. USA non può allearsi con l'Iran).
 16. **Engage: manca il prerequisito** "almeno 1 Country alleata nella Regione" (pag. 13). `execute_engage` non lo controlla.
 17. **Invest / Build a Base: limite "una volta per Country" non applicato** (pag. 14/15). Bloccano solo su `exhausted`; con un `ready_country` si può investire/costruire di nuovo sullo stesso Paese. `fdi_countries`/`bases` non usati come guardia.
@@ -126,7 +124,7 @@ Audit regolamento↔codice completo (3 aree: azioni, setup/fasi, aftermath/scori
 - [ ] UX dopo Move: cassetto resta chiuso.
 
 ### 🔵 Da playtest utente (2026-06-21)
-- [ ] **Market/Research: carte ENORMI e sovrapposte, illeggibili.** Nel popup Research il Market e le Growth hanno immagini troppo grandi che coprono il testo e si accavallano. Ridimensionare/impaginare a griglia leggibile (vedi screenshot).
+- [x] **Market/Research: carte ENORMI e sovrapposte, illeggibili.** ✅ (v0.7.44) Market ora una sola fila alla giusta dimensione (`expand_mode = EXPAND_IGNORE_SIZE` mancante in `_market_card_sized`). Le Growth tolte dalla Research (si comprano con l'azione "Get a Growth Card"). Country alleate esauribili mostrate come carte reali con "+N R".
 - [ ] **Fase di PREPARATION: manca la scelta del FOCUS e le sue azioni.** Durante la preparazione non c'è la scelta del Focus (Domestic/Diplomatic/Military) né le azioni conseguenti (ready Country + produzione del tipo del Focus). Il changelog la dava come fatta (v0.7.12/0.7.19): verificare se è regredita o non è esposta nel flusso UI.
 - [ ] **Fase di AFTERMATH troppo automatizzata + manca l'Increase Prosperity.** La fase conseguenze è tutta automatica; va resa interattiva dove il regolamento prevede scelte, e in particolare **manca l'incremento di Prosperità** (collegare ↔ audit punto 7: Increase Prosperity deve essere una scelta del giocatore, non forzata).
 - [ ] **Mancano le carte Auto-Influence delle potenze NON giocanti** (a video). Le potenze neutrali non mostrano/applicano l'Auto-Influence (collegare ↔ audit punti 9–10: vanno 2 carte per round, money commercio condizionato).

@@ -71,6 +71,7 @@ var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, imp
 var _trade_import_src: Dictionary = {}  # R -> sorgente d'import scelta ("bank" o power)
 var _trade_mode := false                # Commercio attivo: la resource track della plancia è interattiva
 var _trade_active_res := ""             # risorsa selezionata di cui si stanno mostrando le caselle valide
+var _trade_armies := 0                  # Armate vendute dalla riserva in questo Commercio (#14, 20 cad.)
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
@@ -1642,7 +1643,13 @@ func _trade_delta() -> int:
 		d += int(Actions.EXPORT_GAIN.get(R, 0)) * int(_trade_sel["export"][R])
 	for R in (_trade_sel.get("import", {}) as Dictionary):
 		d -= int(Actions.IMPORT_COST.get(R, 0)) * int(_trade_sel["import"][R])
+	d += int(Actions.EXPORT_GAIN.get("armies", 20)) * _trade_armies   # #14: vendita Armate
 	return d
+
+
+## Slot Export occupati = risorse esportate + 1 se stai vendendo Armate (#14).
+func _trade_export_used() -> int:
+	return (_trade_sel.get("export", {}) as Dictionary).size() + (1 if _trade_armies > 0 else 0)
 
 
 ## Avvia il Commercio: niente popup — si lavora sulla resource track della PLANCIA
@@ -1652,6 +1659,7 @@ func _open_trade_ui() -> void:
 	_trade_sel = {"export": {}, "import": {}}
 	_trade_import_src = {}
 	_trade_active_res = ""
+	_trade_armies = 0
 	_trade_mode = true
 	drawer_open = true
 	drawer_power = _active().power
@@ -1709,12 +1717,25 @@ func _trade_adjust(R: String, kind: String, delta: int) -> void:
 	var newq := clampi(int(sel.get(R, 0)) + delta, 0, cap)
 	if newq > 0 and other.has(R):
 		return  # una risorsa in una sola transazione (export O import)
-	if newq > 0 and not sel.has(R) and sel.size() >= maxT:
+	var used := _trade_export_used() if kind == "export" else sel.size()
+	if newq > 0 and not sel.has(R) and used >= maxT:
 		return  # superato il numero di transazioni della Trade Deals card
 	if newq == 0:
 		sel.erase(R)
 	else:
 		sel[R] = newq
+	_trade_rerender()
+
+
+## Regola quante Armate vendere dalla riserva (#14). Aggiungerne occupa uno slot
+## Export se non se ne stanno già vendendo.
+func _trade_armies_adjust(delta: int) -> void:
+	var p := _active()
+	var ex_max := int(_trade_deal(p.power).get("exports", 2))
+	var newq := clampi(_trade_armies + delta, 0, p.armies_available)
+	if newq > 0 and _trade_armies == 0 and (_trade_sel.get("export", {}) as Dictionary).size() >= ex_max:
+		return  # nessuno slot Export libero per le Armate
+	_trade_armies = newq
 	_trade_rerender()
 
 
@@ -1725,6 +1746,11 @@ func _trade_confirm() -> void:
 		var q := int(_trade_sel["export"][R])
 		p.resources[R] = int(p.resources.get(R, 0)) - q
 		p.money += int(Actions.EXPORT_GAIN.get(R, 0)) * q
+	# #14: vendita Armate dalla riserva (20 cad., non importabili).
+	if _trade_armies > 0:
+		var na := mini(_trade_armies, p.armies_available)
+		p.armies_available -= na
+		p.money += int(Actions.EXPORT_GAIN.get("armies", 20)) * na
 	var from_players := 0
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
@@ -1748,12 +1774,16 @@ func _trade_confirm() -> void:
 	# un import qualsiasi dalla banca/potenze neutrali.
 	if from_players > 0:
 		p.gain_resource("diplomacy", 1, 0)
+	var sold_armies := _trade_armies
 	_trade_sel = {}
 	_trade_import_src = {}
+	_trade_armies = 0
 	_trade_mode = false
 	_trade_active_res = ""
 	if from_players > 0:
 		_status("Commercio completato (%d unità comprate da altri giocatori)." % from_players)
+	elif sold_armies > 0:
+		_status("Commercio completato (vendute %d Armate)." % sold_armies)
 	else:
 		_status("Commercio completato.")
 	_refresh()
@@ -1764,6 +1794,7 @@ func _trade_confirm() -> void:
 func _trade_cancel() -> void:
 	_trade_sel = {}
 	_trade_import_src = {}
+	_trade_armies = 0
 	_trade_mode = false
 	_trade_active_res = ""
 	_status("Commercio annullato.")
@@ -1785,7 +1816,7 @@ func _trade_set_target(R: String, target: int) -> void:
 	var im_max := int(_trade_deal(p.power).get("imports", 2))
 	if target < qty:
 		var sell := mini(qty - target, _trade_export_cap(p, R))
-		if sell > 0 and exp.size() < ex_max:
+		if sell > 0 and _trade_export_used() < ex_max:
 			exp[R] = sell
 	elif target > qty:
 		var buy := mini(target - qty, _trade_import_cap_sel(p, R))
@@ -2435,11 +2466,13 @@ func _build_trade_banner(p: PlayerState) -> Control:
 	var st := StyleBoxFlat.new(); st.bg_color = Color(0.10, 0.12, 0.16, 0.98)
 	st.set_corner_radius_all(8); st.set_content_margin_all(8)
 	bar.add_theme_stylebox_override("panel", st)
+	var vbox := VBoxContainer.new(); vbox.add_theme_constant_override("separation", 6)
+	bar.add_child(vbox)
 	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8)
-	bar.add_child(hb)
+	vbox.add_child(hb)
 	var info := Label.new()
 	info.text = "COMMERCIO  ·  Δ %+d money  ·  Exp %d/%d Imp %d/%d" % [_trade_delta(),
-		(_trade_sel.get("export", {}) as Dictionary).size(), int(td.get("exports", 2)),
+		_trade_export_used(), int(td.get("exports", 2)),
 		(_trade_sel.get("import", {}) as Dictionary).size(), int(td.get("imports", 2))]
 	info.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
 	hb.add_child(info)
@@ -2465,7 +2498,42 @@ func _build_trade_banner(p: PlayerState) -> Control:
 	hb.add_child(ok)
 	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_trade_cancel)
 	hb.add_child(cancel)
+	# Riga 2 (#14): vendita Armate dalla riserva — 20 money cad., non importabili.
+	if p.armies_available > 0 or _trade_armies > 0:
+		vbox.add_child(_trade_armies_row(p, int(td.get("exports", 2))))
 	return bar
+
+
+## Riga "Vendi Armate" del banner Commercio: ± per scegliere quante Armate vendere
+## dalla riserva (20 money cad.). Occupa uno slot Export (#14).
+func _trade_armies_row(p: PlayerState, ex_max: int) -> Control:
+	var row := HBoxContainer.new(); row.add_theme_constant_override("separation", 6)
+	var lbl := Label.new()
+	lbl.text = "Vendi Armate (riserva %d) — 20 money cad.:" % p.armies_available
+	lbl.add_theme_color_override("font_color", Color(0.85, 0.8, 0.6))
+	row.add_child(lbl)
+	var minus := Button.new(); minus.text = "−"; minus.custom_minimum_size = Vector2(30, 28)
+	minus.disabled = _trade_armies <= 0
+	minus.pressed.connect(_trade_armies_adjust.bind(-1))
+	row.add_child(minus)
+	var cnt := Label.new(); cnt.text = "%d" % _trade_armies
+	cnt.custom_minimum_size = Vector2(28, 0); cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(cnt)
+	# Aggiungere Armate richiede uno slot Export libero (se non ne stai già vendendo).
+	var slot_full: bool = _trade_armies == 0 and (_trade_sel.get("export", {}) as Dictionary).size() >= ex_max
+	var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(30, 28)
+	plus.disabled = _trade_armies >= p.armies_available or slot_full
+	plus.pressed.connect(_trade_armies_adjust.bind(1))
+	row.add_child(plus)
+	if _trade_armies > 0:
+		var g := Label.new(); g.text = "= +%d money" % (20 * _trade_armies)
+		g.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
+		row.add_child(g)
+	elif slot_full:
+		var w := Label.new(); w.text = "(slot Export pieni)"
+		w.add_theme_color_override("font_color", Color(0.75, 0.6, 0.6))
+		row.add_child(w)
+	return row
 
 
 ## Bottone-bandierina di una sorgente d'import (banca o potenza) nel banner Commercio.

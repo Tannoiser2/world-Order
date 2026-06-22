@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.44"
+const VERSION := "v0.7.45"
 const CHANGELOG := [
+	"v0.7.45 — COMMERCIO: ora puoi VENDERE le ARMATE dalla riserva (20 money cad.). Nel banner Commercio compare la riga «Vendi Armate (riserva N)» con − / + per scegliere quante venderne; il Δ money si aggiorna e la vendita occupa uno slot Export (come una risorsa). Le Armate NON sono importabili (puoi solo venderle). Completa la regola del Trade (il bene da 20 sono le Armate, non la Diplomazia).",
 	"v0.7.44 — Schermata RESEARCH ripulita: il Market è ora una SOLA fila di carte alla giusta dimensione (niente più carte enormi che sforavano). Tolte le carte GROWTH da qui: non si comprano nella Research ma con l'azione «Get a Growth Card» nella fase di Azione. Le Country alleate esauribili (+Research = loro valore) sono ora mostrate come CARTE reali, con «+N R» sotto, nello stesso stile del Market.",
 	"v0.7.43 — Commercio (2-3 giocatori): ora puoi comprare anche dalle POTENZE NEUTRALI (es. la Cina compra Energia dalla Russia): compaiono le loro bandierine tra le sorgenti e si gira la loro Commerce card come al solito, pagando la banca — ma NON guadagni la +1 Diplomazia (solo comprando da un vero giocatore). Confermato che non puoi comprare e vendere la stessa risorsa nello stesso Commercio.",
 	"v0.7.42 — Plancia del giocatore più ALTA (usa lo spazio verticale del cassetto: si legge meglio). Le carte prodotto (Commerce) ora stanno tutte in una riga larga esattamente quanto la carta Trade Deals sopra: con più carte (Russia 3) diventano più piccole, restando allineate.",

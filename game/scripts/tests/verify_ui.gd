@@ -367,6 +367,26 @@ func _init() -> void:
 		ptt.allied_countries = saved_allies
 		board.trade_deals = saved_td
 
+		# Trade #14: vendita Armate dalla riserva (20 money cad., occupa uno slot Export).
+		var par: PlayerState = board._active()
+		var sv_allies_a: Array = par.allied_countries
+		var sv_td_a: Dictionary = board.trade_deals
+		par.allied_countries = []
+		board.trade_deals = {"cards": [{"power": par.power, "exports": 2, "imports": 2, "import_from": {}}]}
+		par.armies_available = 4
+		par.money = 0
+		board._open_trade_ui()
+		board._trade_armies_adjust(3)            # vendi 3 Armate → +60, 1 slot Export
+		var arm_delta_ok: bool = board._trade_delta() == 60 and board._trade_export_used() == 1
+		board._trade_armies_adjust(5)            # oltre la riserva → limitato a 4
+		var arm_cap_ok: bool = board._trade_armies == 4
+		board._trade_confirm()
+		var arm_sell_ok: bool = par.armies_available == 0 and par.money == 80
+		print("[%s] Trade #14: vendita Armate dalla riserva (20 cad., cap riserva)" % ["OK" if (arm_delta_ok and arm_cap_ok and arm_sell_ok) else "FAIL"])
+		if not (arm_delta_ok and arm_cap_ok and arm_sell_ok): fails += 1
+		par.allied_countries = sv_allies_a
+		board.trade_deals = sv_td_a
+
 		# Trade: scelta della SORGENTE d'import via bandierina (banca vs altro giocatore).
 		var psrc: PlayerState = board._active()
 		var seller2_pw := "russia" if psrc.power != "russia" else "china"
