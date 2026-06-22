@@ -87,13 +87,16 @@ static func buy_market_card(p: PlayerState, card: Dictionary, available_research
 	return cost
 
 
-## Add Auto-Influence (regolamento pag. 18, solo 2-3 giocatori): applica una
+## Add Auto-Influence (regolamento pag. 18, solo 2-3 giocatori): applica UNA
 ## carta Auto-Influence. Per ogni potenza NON controllata da un giocatore,
 ## aggiunge Influenza (slot permanente se disponibile, altrimenti temporaneo)
-## e un'Armata se indicato. Se la bandiera 'trade_with' e' di un giocatore,
-## quel giocatore guadagna 10 money.
-static func add_auto_influence(gs: GameState, ai_card: Dictionary, player_powers: Array) -> void:
+## e un'Armata se indicato. Ritorna la lista dei giocatori indicati da una
+## bandiera 'trade_with': il loro "commercio" (girare una Commerce card a faccia
+## in su per +10 money) è gestito dal chiamante, perché dipende dallo stato delle
+## Commerce card (che vive nella UI).
+static func add_auto_influence(gs: GameState, ai_card: Dictionary, player_powers: Array) -> Array:
 	var rows: Dictionary = ai_card.get("rows", {})
+	var trade_players := []
 	for power in rows:
 		var row: Dictionary = rows[power]
 		if power not in player_powers:
@@ -107,8 +110,8 @@ static func add_auto_influence(gs: GameState, ai_card: Dictionary, player_powers
 					a[power] = int(a.get(power, 0)) + 1
 		var tw: Variant = row.get("trade_with", null)
 		if tw != null and String(tw) in player_powers:
-			var tp := gs.player_by_power(String(tw))
-			if tp: tp.money += 10
+			trade_players.append(String(tw))
+	return trade_players
 
 
 ## Increase Prosperity (Aftermath): spende Consumer Goods e avanza di 1 spazio.

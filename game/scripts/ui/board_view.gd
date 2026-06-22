@@ -3104,34 +3104,60 @@ func _cost_text(cost: Dictionary) -> String:
 ## Add Auto-Influence: con meno di 4 giocatori, le potenze NEUTRALI piazzano
 ## Influenza/Armate da una carta Auto-Influence (così contano per scoring e
 ## maggioranze). Aggiunge le righe al riepilogo e ritorna l'art della carta.
+## Gira una Commerce card a faccia in su del giocatore (una risorsa offerta non
+## ancora usata nel round) e ritorna true (→ +10 money, pag. 18). False se sono
+## tutte già girate.
+func _flip_one_commerce(power: String) -> bool:
+	var offered: Array = trade_deals.get("commerce_offered", {}).get(power, [])
+	if not _commerce_flipped.has(power):
+		_commerce_flipped[power] = []
+	var flipped: Array = _commerce_flipped[power]
+	for r in offered:
+		if r not in flipped:
+			flipped.append(r)
+			return true
+	return false
+
+
 func _apply_auto_influence(lines: Array) -> String:
 	var player_powers := []
 	for p in gs.players:
 		player_powers.append(p.power)
 	if player_powers.size() >= 4:
 		return ""   # tutte le potenze sono controllate da giocatori
-	if _auto_inf_deck.is_empty():
-		_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
-		_auto_inf_deck.shuffle()
-	if _auto_inf_deck.is_empty():
-		return ""
-	var card: Dictionary = _auto_inf_deck.pop_back()
-	GamePhases.add_auto_influence(gs, card, player_powers)
 	lines.append("— Auto-Influence (potenze neutrali) —")
-	var rows: Dictionary = card.get("rows", {})
-	for power in rows:
-		if power in player_powers:
-			continue
-		var row: Dictionary = rows[power]
-		var txt := "%s: +Influenza in %s" % [power.to_upper(), String(row.get("region", "")).replace("_", " ")]
-		if bool(row.get("army", false)):
-			txt += " · +1 Armata"
-		lines.append(txt)
-	for power in rows:
-		var tw: Variant = rows[power].get("trade_with", null)
-		if tw != null and String(tw) in player_powers:
-			lines.append("%s: +10 money (commercio con %s)" % [String(tw).to_upper(), String(power).to_upper()])
-	return String(card.get("art", ""))
+	var first_art := ""
+	# Si applicano DUE carte Auto-Influence per round (pag. 18), una alla volta.
+	for _i in 2:
+		if _auto_inf_deck.is_empty():
+			_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
+			_auto_inf_deck.shuffle()
+		if _auto_inf_deck.is_empty():
+			break
+		var card: Dictionary = _auto_inf_deck.pop_back()
+		if first_art == "":
+			first_art = String(card.get("art", ""))
+		var trade_players: Array = GamePhases.add_auto_influence(gs, card, player_powers)
+		var rows: Dictionary = card.get("rows", {})
+		for power in rows:
+			if power in player_powers:
+				continue
+			var row: Dictionary = rows[power]
+			var txt := "%s: +Influenza in %s" % [power.to_upper(), String(row.get("region", "")).replace("_", " ")]
+			if bool(row.get("army", false)):
+				txt += " · +1 Armata"
+			lines.append(txt)
+		# Money del commercio (pag. 18): solo se il giocatore ha una Commerce card a
+		# faccia in su, che viene girata; altrimenti niente.
+		for tw in trade_players:
+			if _flip_one_commerce(String(tw)):
+				var tp := gs.player_by_power(String(tw))
+				if tp:
+					tp.money += 10
+				lines.append("%s: +10 money (Commerce card girata)" % String(tw).to_upper())
+			else:
+				lines.append("%s: nessun money (Commerce card tutte girate)" % String(tw).to_upper())
+	return first_art
 
 
 ## Numero di Country alleate del giocatore nella Regione (per i bonus da Engage token).

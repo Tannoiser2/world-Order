@@ -756,6 +756,36 @@ func _init() -> void:
 		"OK" if game_ok else "FAIL", b2.gs.round, win, safety])
 	if not game_ok: fails += 1
 
+	# #9/#10 Auto-Influence: 2 carte/round + money commercio condizionato (board 2 giocatori).
+	var saved_ai_powers: Array = GameConfig.powers
+	GameConfig.powers = ["usa", "china"]
+	var bai: Node = load("res://scenes/board.tscn").instantiate()
+	get_root().add_child(bai)
+	await process_frame
+	# #10 — _flip_one_commerce: gira finché ci sono Commerce a faccia in su (russia ne offre 2).
+	bai._commerce_flipped = {}
+	var f1: bool = bai._flip_one_commerce("russia")   # energy → true
+	var f2: bool = bai._flip_one_commerce("russia")   # raw_materials → true
+	var f3: bool = bai._flip_one_commerce("russia")   # tutte girate → false
+	var flip_ok: bool = f1 and f2 and not f3
+	# #9 — applica 2 carte (deck di 2); #10 — China incassa 10 (1 trade_with, 1 Commerce).
+	bai._commerce_flipped = {}
+	bai._auto_inf_deck = [
+		{"art": "y", "rows": {"russia": {"region": "africa", "army": false, "trade_with": null},
+			"eu": {"region": "south_asia", "army": false, "trade_with": null}}},
+		{"art": "x", "rows": {"russia": {"region": "central_asia", "army": false, "trade_with": "china"},
+			"eu": {"region": "europe", "army": false, "trade_with": null}}}]
+	var china_m0: int = bai.gs.player_by_power("china").money
+	var ai_lines: Array = []
+	bai._apply_auto_influence(ai_lines)
+	var two_cards: bool = bai._auto_inf_deck.is_empty()
+	var money10: bool = bai.gs.player_by_power("china").money == china_m0 + 10
+	var ai_ok: bool = flip_ok and two_cards and money10
+	print("[%s] Auto-Influence #9/#10: 2 carte applicate + commercio condizionato (China +10)" % ["OK" if ai_ok else "FAIL"])
+	if not ai_ok: fails += 1
+	bai.queue_free()
+	GameConfig.powers = saved_ai_powers
+
 	# Regressione Move: dopo "Fine spostamento" non devono restare barre su
 	# popup_layer. I duplicati (rinominati da Godot quando il queue_free differito
 	# lasciava la vecchia barra in scena) si accumulavano e bloccavano _end_turn
