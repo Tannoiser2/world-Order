@@ -26,6 +26,7 @@ func _init() -> void:
 	else:
 		var board := board_packed.instantiate()
 		get_root().add_child(board)
+		board._begin_action_phase()   # esci dalla PREPARAZIONE guidata (Focus): test in fase Azione
 		await process_frame
 		await process_frame
 		var n := 0   # conta solo i bottoni-Regione (l'overlay ha anche i segnalini)
@@ -691,6 +692,7 @@ func _init() -> void:
 		var draw_ok: bool = po.hand.size() == 7
 		print("[%s] ongoing extra_draw_per_round: pesca 7 (6+1)" % ["OK" if draw_ok else "FAIL"])
 		if not draw_ok: fails += 1
+		board._begin_action_phase()   # _next_round entra in PREPARAZIONE: torna in Azione per i test seguenti
 
 		# Drawer plancia: la scheda della potenza la apre/chiude (toggle) e mostra
 		# la mano del giocatore di turno; l'interazione con la mappa la richiude.
@@ -906,6 +908,12 @@ func _init() -> void:
 	var safety := 0
 	while not b2.game_over and safety < 400:
 		safety += 1
+		# PREPARAZIONE: ogni giocatore sceglie il Focus (Domestic) e salta il boost.
+		if b2._ui_phase == "Preparazione":
+			b2._prep_choose_focus(0)   # applica ready+produce, mostra la barra "boost"
+			b2._prep_advance()         # salta l'aumento Produzione, prossimo giocatore
+			await process_frame
+			continue
 		# "Continua" può stare nel popup (riepiloghi) o nella barra scelte (Aftermath su mappa).
 		var cont: Button = _find_button(b2.popup_layer, "Continua")
 		if cont == null:
@@ -991,6 +999,7 @@ func _init() -> void:
 	# -> partita congelata. _hide_move_bar ora li rimuove via metadata.
 	var bm: Node = load("res://scenes/board.tscn").instantiate()
 	get_root().add_child(bm)
+	bm._begin_action_phase()   # esci dalla PREPARAZIONE guidata
 	await process_frame
 	var seat0: int = bm.active_seat
 	var mp: PlayerState = bm._active()

@@ -9,6 +9,7 @@ func _initialize() -> void:
 	get_root().add_child(board)
 	for _i in range(6):
 		await process_frame
+	board._begin_action_phase()              # esci dalla PREPARAZIONE guidata
 	board.active_seat = board.gs.turn_order[0]
 	board.drawer_open = true
 	board.drawer_power = board._active().power
