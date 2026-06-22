@@ -2289,7 +2289,8 @@ const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 
 ## Altezza della plancia: limiti proporzionali + tetto assoluto (no plancia gigante).
 func _plancia_height() -> float:
-	return minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.36), 340.0)
+	# Più alta (usa lo spazio verticale del cassetto): si legge meglio.
+	return minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.50), 520.0)
 
 
 func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
@@ -2766,15 +2767,20 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 	if cards.is_empty() or art == "":
 		return
 	var flipped: Array = _commerce_flipped.get(p.power, [])
-	var pcw: float = cardw * 0.66
-	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", 4)
+	# Le carte prodotto stanno TUTTE in una riga larga quanto la carta Trade Deals
+	# sopra: più carte ci sono (Russia 3), più piccole diventano.
+	var n: int = cards.size()
+	var sep := 3.0
+	var pcw: float = (cardw - sep * float(maxi(n - 1, 0))) / float(maxi(n, 1))
+	var pcsz := Vector2(pcw, pcw / 0.65)
+	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", int(sep))
 	col.add_child(prow)
 	for i in cards.size():
-		var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, Vector2(pcw, pcw / 0.65), false)
+		var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, pcsz, false)
 		pcard.focus_mode = Control.FOCUS_NONE
 		var used: bool = i in flipped
 		if used:
-			_apply_exhausted(pcard, Vector2(pcw, pcw / 0.65))
+			_apply_exhausted(pcard, pcsz)
 		var prods := []
 		for res in (cards[i] as Array):
 			prods.append(RES_LABEL.get(res, res))
