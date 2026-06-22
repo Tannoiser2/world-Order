@@ -76,6 +76,7 @@ var _trade_mode := false                # Commercio attivo: la resource track de
 var _trade_active_res := ""             # risorsa selezionata di cui si stanno mostrando le caselle valide
 var _trade_armies := 0                  # Armate vendute dalla riserva in questo Commercio (#14, 20 cad.)
 var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per lo sconto
+var _exhaust_ctx: Dictionary = {}       # scelta sconto attiva: {region, title, cb} (click sulle carte)
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
@@ -1303,68 +1304,77 @@ func _exhaustable_allies(region: String) -> Array:
 ## Apre un popup per scegliere quali nazioni amiche della Regione esaurire e
 ## scontare il costo. cb riceve le nazioni scelte (le esaurisce chi risolve, solo
 ## se l'azione va a buon fine). Senza candidati, chiama subito cb([]).
+## Sconto esaurendo alleati: si fa CLICCANDO le carte alleate della Regione nella
+## plancia (un click le attiva per lo sconto, un altro le annulla). La barra in alto
+## mostra lo sconto e «Conferma» / «Salta». Senza candidati, chiama subito cb([]).
 func _pick_exhaust_discount(region: String, title: String, cb: Callable) -> void:
-	var elig := _exhaustable_allies(region)
-	if elig.is_empty():
+	if _exhaustable_allies(region).is_empty():
 		cb.call([])
 		return
 	_exhaust_sel = {}
-	_render_exhaust_ui(region, elig, title, cb)
+	_exhaust_ctx = {"region": region, "title": title, "cb": cb}
+	drawer_open = true
+	drawer_power = _active().power
+	_refresh()
+	_show_exhaust_choice_bar()
 
 
-func _render_exhaust_ui(region: String, elig: Array, title: String, cb: Callable) -> void:
-	for c in popup_layer.get_children():
-		c.queue_free()
-	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	var dim := ColorRect.new(); dim.color = Color(0, 0, 0, 0.55)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(center)
-	var panel := PanelContainer.new()
-	var st := StyleBoxFlat.new(); st.bg_color = Color(0.08, 0.10, 0.14, 0.99); st.set_corner_radius_all(10); st.set_content_margin_all(14)
-	panel.add_theme_stylebox_override("panel", st)
-	center.add_child(panel)
-	var vb := VBoxContainer.new(); vb.add_theme_constant_override("separation", 6); vb.custom_minimum_size = Vector2(340, 0)
-	panel.add_child(vb)
+## Barra scelte per lo sconto: testo con lo sconto corrente + Conferma/Salta.
+func _show_exhaust_choice_bar() -> void:
+	_clear_choice_bar()
+	if _exhaust_ctx.is_empty():
+		return
+	var region := String(_exhaust_ctx["region"])
 	var discount := 0
-	for c in elig:
-		if bool(_exhaust_sel.get(c.get("id", ""), false)):
+	for c in _exhaustable_allies(region):
+		if bool(_exhaust_sel.get(String(c.get("id", "")), false)):
 			discount += int(c.get("value", 0))
-	var head := Label.new()
-	head.text = "%s\nEsaurisci alleati della Regione per scontare:  −%d Dip" % [title, discount]
-	head.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
-	vb.add_child(head)
-	for c in elig:
-		var id := String(c.get("id", ""))
-		var on := bool(_exhaust_sel.get(id, false))
-		var b := Button.new()
-		b.toggle_mode = true
-		b.button_pressed = on
-		b.text = "%s %s (valore %d)" % ["[x]" if on else "[  ]", c.get("display_name", "?"), int(c.get("value", 0))]
-		b.pressed.connect(func():
-			_exhaust_sel[id] = not bool(_exhaust_sel.get(id, false))
-			_render_exhaust_ui(region, elig, title, cb))
-		vb.add_child(b)
-	var btns := HBoxContainer.new(); btns.add_theme_constant_override("separation", 10)
-	vb.add_child(btns)
-	var ok := Button.new(); ok.text = "Conferma"
-	ok.pressed.connect(func():
-		var chosen := []
-		for c in elig:
-			if bool(_exhaust_sel.get(c.get("id", ""), false)):
-				chosen.append(c)
-		_exhaust_sel = {}
-		_close_popup()
-		cb.call(chosen))
-	btns.add_child(ok)
+	var lab := Label.new()
+	lab.text = "%s — tocca le tue nazioni alleate della Regione per scontare:  −%d Dip" % [String(_exhaust_ctx.get("title", "")), discount]
+	lab.add_theme_color_override("font_color", Color(0.95, 0.9, 0.6))
+	lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(lab)
+	var ok := Button.new(); ok.text = "Conferma sconto"
+	ok.add_theme_font_size_override("font_size", _base_fs() + 1)
+	ok.pressed.connect(_exhaust_confirm)
+	choice_flow.add_child(ok)
 	var skip := Button.new(); skip.text = "Salta (nessuno sconto)"
-	skip.pressed.connect(func():
-		_exhaust_sel = {}
-		_close_popup()
-		cb.call([]))
-	btns.add_child(skip)
+	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
+	skip.pressed.connect(_exhaust_skip)
+	choice_flow.add_child(skip)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Toggle di una nazione alleata per lo sconto (click sulla carta).
+func _on_exhaust_toggle(cn: Dictionary) -> void:
+	var id := String(cn.get("id", ""))
+	_exhaust_sel[id] = not bool(_exhaust_sel.get(id, false))
+	_refresh()                  # ridisegna le carte (evidenziazione)
+	_show_exhaust_choice_bar()  # aggiorna lo sconto in alto
+
+
+func _exhaust_confirm() -> void:
+	var region := String(_exhaust_ctx.get("region", ""))
+	var cb: Variant = _exhaust_ctx.get("cb")
+	var chosen := []
+	for c in _exhaustable_allies(region):
+		if bool(_exhaust_sel.get(String(c.get("id", "")), false)):
+			chosen.append(c)
+	_exhaust_ctx = {}
+	_exhaust_sel = {}
+	_clear_choice_bar()
+	if cb is Callable and (cb as Callable).is_valid():
+		(cb as Callable).call(chosen)
+
+
+func _exhaust_skip() -> void:
+	var cb: Variant = _exhaust_ctx.get("cb")
+	_exhaust_ctx = {}
+	_exhaust_sel = {}
+	_clear_choice_bar()
+	if cb is Callable and (cb as Callable).is_valid():
+		(cb as Callable).call([])
 
 
 # --- Move: spostamento libero delle Armate (riserva → Regione e tra Regioni) ---
@@ -2449,8 +2459,8 @@ func _on_power_tab(power: String) -> void:
 func _update_drawer_state() -> void:
 	if not drawer_open:
 		drawer_power = _active().power
-	if _trade_mode:
-		drawer_open = true   # durante il Commercio la plancia resta aperta e interattiva
+	if _trade_mode or not _exhaust_ctx.is_empty():
+		drawer_open = true   # Commercio / scelta sconto alleati: plancia aperta e interattiva
 		drawer_power = _active().power
 	elif awaiting in AWAITING_MAP:
 		drawer_open = false   # serve toccare la mappa: chiudi la plancia
@@ -2992,6 +3002,9 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(col)
 	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
+	# Modalità SCONTO: le nazioni alleate della Regione si toccano per attivare lo sconto.
+	var ex_active: bool = (not _exhaust_ctx.is_empty()) and is_active
+	var ex_elig: Array = _exhaustable_allies(String(_exhaust_ctx.get("region", ""))) if ex_active else []
 	# Raggruppa le carte per nazione (id) preservando l'ordine: ogni gruppo è una pila.
 	var groups: Array = []
 	var index := {}
@@ -3013,12 +3026,17 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	for g in groups:
 		var cards: Array = g["cards"]
 		var cn: Dictionary = cards[0]
-		var spent := bool(p.exhausted.get(String(cn.get("id", "")), false))
-		var highlight: bool = is_active and awaiting == "allied_country" and (cn in elig)
-		var dim: bool = is_active and awaiting == "allied_country" and not (cn in elig)
-		var sz := Vector2(ch * 0.70, ch)
-		var stack := _ally_stack(cn, cards.size(), sz, highlight, is_active and not dim, spent)
 		var cid := String(cn.get("id", ""))
+		var spent := bool(p.exhausted.get(cid, false))
+		var ex_this: bool = ex_active and (cn in ex_elig)
+		var highlight: bool = (is_active and awaiting == "allied_country" and (cn in elig)) \
+			or (ex_this and bool(_exhaust_sel.get(cid, false)))
+		var dim: bool = (is_active and awaiting == "allied_country" and not (cn in elig)) \
+			or (ex_active and not ex_this)
+		var on_press: Callable = _on_exhaust_toggle.bind(cn) if ex_this else Callable()
+		var clickable: bool = (is_active and not dim) or ex_this
+		var sz := Vector2(ch * 0.70, ch)
+		var stack := _ally_stack(cn, cards.size(), sz, highlight, clickable, spent, on_press)
 		_overlay_country_markers(stack, sz, cid in p.fdi_countries, cid in p.bases)
 		grid.add_child(stack)
 
@@ -3057,14 +3075,15 @@ func _apply_exhausted(card: Control, sz: Vector2) -> void:
 ## Pila di carte della stessa nazione: le copie in più stanno dietro, leggermente
 ## sfalsate; un badge ×N indica quante sono (più simboli = più Export/Import).
 ## exhausted=true → la nazione è esaurita (grigia/ruotata).
-func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool, exhausted := false) -> Control:
+func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool, exhausted := false, on_press := Callable()) -> Control:
+	var handler: Callable = on_press if on_press.is_valid() else _on_allied_pressed.bind(cn)
 	if count <= 1:
 		var single := _country_card_button(cn, sz, highlight)
 		single.disabled = not clickable
 		if exhausted:
 			_apply_exhausted(single, sz)
 		if clickable:
-			single.pressed.connect(_on_allied_pressed.bind(cn))
+			single.pressed.connect(handler)
 		return single
 	var off := minf(10.0, sz.x * 0.18)
 	var holder := Control.new()
@@ -3085,7 +3104,7 @@ func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, click
 	if exhausted:
 		_apply_exhausted(front, sz)
 	if clickable:
-		front.pressed.connect(_on_allied_pressed.bind(cn))
+		front.pressed.connect(handler)
 	holder.add_child(front)
 	# Badge ×N.
 	var badge := Label.new()
@@ -3331,7 +3350,7 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# Durante una SCELTA (dopo aver giocato una carta: nazione alleata, ecc.) o durante
 	# il Commercio, la mano si COLLASSA da sola così non copre la plancia/le scelte.
 	# Per le scelte sulla MAPPA è già tutta la plancia a chiudersi (_update_drawer_state).
-	var auto_hide: bool = awaiting != "" or _trade_mode
+	var auto_hide: bool = awaiting != "" or _trade_mode or not _exhaust_ctx.is_empty()
 	var bar := Button.new()
 	bar.flat = true
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
