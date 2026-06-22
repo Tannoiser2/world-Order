@@ -1619,8 +1619,8 @@ func _import_sources(p: PlayerState, R: String) -> Array:
 	for other in (td.get("import_from", {}) as Dictionary):
 		if not ((td["import_from"][other] as Array).has(R)):
 			continue   # la relazione commerciale non include R
-		if gs.player_by_power(other) == null:
-			continue   # quella potenza non è in partita: niente commercio reale
+		# In 2-3 giocatori si compra anche dalle potenze NEUTRALI (pag. 13/14): le loro
+		# Commerce card si girano comunque; la +1 Diplomazia si ha solo dai veri giocatori.
 		var n := _commerce_faceup_for(other, R)   # carte prodotto scoperte che mostrano R
 		if n > 0:
 			out.append({"src": other, "n": n})
@@ -1729,19 +1729,20 @@ func _trade_confirm() -> void:
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
 		var cost := int(Actions.IMPORT_COST.get(R, 0))
-		# Compri da UNA sorgente scelta (banca o un giocatore, via bandierina).
+		# Compri da UNA sorgente scelta (banca, un giocatore o una potenza neutrale).
 		var src := _trade_selected_src(p, R)
 		p.money -= cost * q
 		if src != "bank":
-			# Commercio reale: paghi il venditore, che incassa il money e prende
-			# +1 Servizio (bonus di vendita); la sua Commerce card si gira (1×/round).
 			var seller := gs.player_by_power(src)
+			for _k in q:
+				_commerce_flip_for(src, R)   # gira una carta prodotto per ogni unità (anche neutrali)
 			if seller != null:
+				# Giocatore reale: incassa il money e prende +1 Servizio (bonus di vendita);
+				# comprando da lui guadagni +1 Diplomazia.
 				seller.money += cost * q
 				seller.gain_resource("services", 1, 0)
-				for _k in q:
-					_commerce_flip_for(src, R)   # gira una carta prodotto per ogni unità
 				from_players += q
+			# Potenza neutrale (2-3 giocatori): paghi la banca, niente +1 Diplomazia.
 		p.gain_resource(R, q, 0)
 	# +1 Diplomazia SOLO se hai comprato da un altro giocatore (pag. 13), non per
 	# un import qualsiasi dalla banca/potenze neutrali.

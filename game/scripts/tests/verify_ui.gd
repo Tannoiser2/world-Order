@@ -840,6 +840,40 @@ func _init() -> void:
 	bai.queue_free()
 	GameConfig.powers = saved_ai_powers
 
+	# Trade da potenza NEUTRALE (2 giocatori): la Cina compra energia dalla Russia (neutrale).
+	var saved_np: Array = GameConfig.powers
+	GameConfig.powers = ["china", "usa"]
+	var bn: Node = load("res://scenes/board.tscn").instantiate()
+	get_root().add_child(bn)
+	await process_frame
+	var chi: int = 0
+	for ii in bn.gs.players.size():
+		if bn.gs.players[ii].power == "china": chi = ii
+	bn.active_seat = chi
+	var chn: PlayerState = bn.gs.players[chi]
+	chn.allied_countries = []          # nessuna sorgente "banca": solo la Russia
+	chn.resources["energy"] = 0
+	chn.resources["diplomacy"] = 0
+	chn.money = 100
+	bn._commerce_flipped = {}
+	var nsrcs: Array = bn._import_sources(chn, "energy")
+	var has_russia := false
+	for s in nsrcs:
+		if String(s["src"]) == "russia": has_russia = true
+	bn._open_trade_ui()
+	bn._trade_pick_src("energy", "russia")
+	bn._trade_set_target("energy", 2)   # compra 2 energia dalla Russia (neutrale)
+	bn._trade_confirm()
+	var neutral_ok: bool = has_russia \
+		and chn.resources["energy"] == 2 \
+		and chn.resources["diplomacy"] == 0 \
+		and chn.money == 100 - Actions.IMPORT_COST["energy"] * 2 \
+		and (bn._commerce_flipped.get("russia", []) as Array).size() == 2
+	print("[%s] Trade da potenza neutrale (Russia): compra senza +1 Diplomazia, Commerce girate" % ["OK" if neutral_ok else "FAIL"])
+	if not neutral_ok: fails += 1
+	bn.queue_free()
+	GameConfig.powers = saved_np
+
 	# Regressione Move: dopo "Fine spostamento" non devono restare barre su
 	# popup_layer. I duplicati (rinominati da Godot quando il queue_free differito
 	# lasciava la vecchia barra in scena) si accumulavano e bloccavano _end_turn
