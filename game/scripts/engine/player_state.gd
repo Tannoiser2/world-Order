@@ -87,3 +87,54 @@ func spend(cost: Dictionary) -> bool:
 		else:
 			resources[k] -= int(cost[k])
 	return true
+
+
+## Serializzazione (snapshot/rete): solo dati puri (le carte sono già dizionari).
+## duplicate(true) = copia profonda, così lo snapshot è indipendente dallo stato vivo.
+func to_dict() -> Dictionary:
+	return {
+		"power": power, "money": money, "victory_points": victory_points,
+		"resources": resources.duplicate(true),
+		"production": production.duplicate(true),
+		"prosperity_level": prosperity_level, "focus": focus,
+		"deck": deck.duplicate(true), "hand": hand.duplicate(true),
+		"discard": discard.duplicate(true), "played": played.duplicate(true),
+		"allied_countries": allied_countries.duplicate(true),
+		"exhausted": exhausted.duplicate(true),
+		"armies_available": armies_available,
+		"strategic_assets": strategic_assets.duplicate(true),
+		"growth_cards": growth_cards.duplicate(true),
+		"used_strategic_assets": used_strategic_assets.duplicate(true),
+		"executive_order_used": executive_order_used,
+		"fdi_values": fdi_values.duplicate(true),
+		"fdi_countries": fdi_countries.duplicate(true),
+		"bases": bases.duplicate(true),
+		"engage_tokens": engage_tokens.duplicate(true),
+	}
+
+
+static func from_dict(d: Dictionary) -> PlayerState:
+	var p := PlayerState.new()
+	p.power = String(d.get("power", ""))
+	p.money = int(d.get("money", 0))
+	p.victory_points = int(d.get("victory_points", 0))
+	p.resources = (d.get("resources", {}) as Dictionary).duplicate(true)
+	p.production = (d.get("production", {}) as Dictionary).duplicate(true)
+	p.prosperity_level = int(d.get("prosperity_level", 0))
+	p.focus = int(d.get("focus", WO.Focus.DOMESTIC))
+	p.deck = (d.get("deck", []) as Array).duplicate(true)
+	p.hand = (d.get("hand", []) as Array).duplicate(true)
+	p.discard = (d.get("discard", []) as Array).duplicate(true)
+	p.played = (d.get("played", []) as Array).duplicate(true)
+	p.allied_countries = (d.get("allied_countries", []) as Array).duplicate(true)
+	p.exhausted = (d.get("exhausted", {}) as Dictionary).duplicate(true)
+	p.armies_available = int(d.get("armies_available", 0))
+	p.strategic_assets = (d.get("strategic_assets", []) as Array).duplicate(true)
+	p.growth_cards = (d.get("growth_cards", []) as Array).duplicate(true)
+	p.used_strategic_assets = (d.get("used_strategic_assets", []) as Array).duplicate(true)
+	p.executive_order_used = bool(d.get("executive_order_used", false))
+	p.fdi_values = (d.get("fdi_values", []) as Array).duplicate(true)
+	p.fdi_countries = (d.get("fdi_countries", []) as Array).duplicate(true)
+	p.bases = (d.get("bases", []) as Array).duplicate(true)
+	p.engage_tokens = (d.get("engage_tokens", []) as Array).duplicate(true)
+	return p
