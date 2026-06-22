@@ -82,6 +82,7 @@ var _produce_mode := false              # Produce attivo: si imposta sulla resou
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1×/round)
+var _prep_idx := 0                       # giocatore corrente nella PREPARATION guidata (scelta Focus)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -204,9 +205,7 @@ func _ready() -> void:
 
 	resized.connect(_on_resized)
 	_layout_ui()
-	_layout_overlays()
-	_refresh()
-	_status(_turn_hint())
+	_begin_preparation()   # Round 1: scelta guidata del Focus prima di agire (fa lei layout/refresh)
 
 
 func _on_resized() -> void:
@@ -2537,6 +2536,11 @@ func _on_power_tab(power: String) -> void:
 ## Apertura/chiusura automatica: chiuso quando si deve toccare la mappa; aperto
 ## sulla propria plancia quando serve scegliere un Country alleato.
 func _update_drawer_state() -> void:
+	# Preparazione: plancia del giocatore che sta scegliendo il Focus sempre aperta.
+	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
+		drawer_open = true
+		drawer_power = _active().power
+		return
 	# Aftermath: plancia del giocatore in scelta SEMPRE aperta (corona Prosperità).
 	if _aftermath_choice_p != null:
 		drawer_open = true
@@ -2597,7 +2601,8 @@ func _refresh_hud(p: PlayerState) -> void:
 	hud_box.add_child(spacer)
 	var endt := Button.new()
 	endt.text = "Fine turno"
-	endt.disabled = game_over or not playing_card.is_empty()
+	# In Preparazione si sceglie il Focus (barra in alto): «Fine turno» è disattivato.
+	endt.disabled = game_over or not playing_card.is_empty() or _ui_phase == "Preparazione"
 	endt.pressed.connect(_end_turn)
 	hud_box.add_child(endt)
 
@@ -2654,7 +2659,8 @@ func _refresh_drawer_content() -> void:
 	top.add_child(_build_plancia_view(p, is_active))
 	_build_allies_section(p, is_active, top)
 	_build_commerce_section(p, is_active, top)
-	_build_strategic_section(p, is_active, top)
+	# Le carte STRATEGICHE non si ripetono più sulla board: stanno solo nella mano
+	# (più grandi), per evitare il doppione (vedi _hand_strategic_token).
 	_build_growth_section(p, is_active, top)
 	_build_ongoing_section(p, is_active)
 	_build_hand_section(p, is_active)
@@ -3316,28 +3322,6 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 		prow.add_child(pcard)
 
 
-## Strategic Asset del giocatore: colonna a DESTRA, carte impilate una sopra l'altra.
-## Le carte già usate sono grigie. Informativi: si attivano dal menu della mano.
-func _build_strategic_section(p: PlayerState, is_active: bool, parent: Control) -> void:
-	var assets: Array = (p.strategic_assets as Array).duplicate()
-	assets.append_array(p.used_strategic_assets)
-	if assets.is_empty():
-		return
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
-	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	parent.add_child(col)
-	var cw: float = clampf(_plancia_height() * 0.78, 120.0, 200.0)
-	for a in assets:
-		var used: bool = a in p.used_strategic_assets
-		var card := _country_card_button(a, Vector2(cw, cw / 2.4), false)
-		card.disabled = true
-		card.tooltip_text = "%s%s\n%s" % [a.get("display_name", ""), "  (usato)" if used else "", a.get("effect_text", "")]
-		if used:
-			card.modulate = Color(0.5, 0.5, 0.55)
-		col.add_child(card)
-
-
 ## Colonna Growth: le Growth card acquisite dal giocatore, mostrate come carte
 ## (stessa arte wide_aux del mazzo) impilate, accanto agli Strategic Asset.
 func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> void:
@@ -3476,7 +3460,7 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# Durante una SCELTA (dopo aver giocato una carta: nazione alleata, ecc.) o durante
 	# il Commercio, la mano si COLLASSA da sola così non copre la plancia/le scelte.
 	# Per le scelte sulla MAPPA è già tutta la plancia a chiudersi (_update_drawer_state).
-	var auto_hide: bool = awaiting != "" or _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() or _aftermath_choice_p != null
+	var auto_hide: bool = awaiting != "" or _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() or _aftermath_choice_p != null or _ui_phase == "Preparazione"
 	var bar := Button.new()
 	bar.flat = true
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
@@ -3575,6 +3559,8 @@ func _kv2(t: String) -> Label:
 func _end_turn() -> void:
 	if not playing_card.is_empty() or game_over:
 		return
+	if _ui_phase == "Preparazione":
+		return  # in Preparazione si sceglie il Focus, non si chiude il turno
 	if popup_layer.get_child_count() > 0:
 		return  # un popup (Research/riepilogo) e' aperto
 	_selected_hand_card = {}
@@ -3611,6 +3597,11 @@ func _reset_plays() -> void:
 func _do_focus(f: int) -> void:
 	if not playing_card.is_empty():
 		return
+	# In PREPARAZIONE la scelta del Focus è guidata dalla barra in alto: instradala lì
+	# (così cliccare la colonna Focus sulla plancia equivale a premere il bottone).
+	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
+		_prep_choose_focus(f)
+		return
 	var p := _active()
 	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
 	# si fa una volta per round. Dopo, ri-cliccare sposta solo il marker.
@@ -3618,6 +3609,16 @@ func _do_focus(f: int) -> void:
 		p.focus = f
 		_after_change()
 		return
+	# Fallback (Focus non ancora scelto nel round): applica ready + produce.
+	_status(_apply_focus(p, f))
+	_after_change()
+
+
+## Applica gli effetti del Focus `f` a `p` (passo della PREPARATION): segna il Focus
+## scelto nel round, prepara (ready) le Country card esaurite e produce i tipi del
+## Focus (le secondarie consumano le primarie; le Armate vanno in riserva). Ritorna
+## un messaggio di riepilogo per la barra di stato.
+func _apply_focus(p: PlayerState, f: int) -> String:
 	_focus_round[p.power] = gs.round
 	p.focus = f
 	var key: String = ["domestic", "diplomatic", "military"][f]
@@ -3632,8 +3633,7 @@ func _do_focus(f: int) -> void:
 			p.exhausted[cid] = false
 			readied += 1
 			to_ready -= 1
-	# 2) Produce: i tipi specifici di questo Focus (secondarie consumano le primarie;
-	#    le Armate vanno nella riserva).
+	# 2) Produce: i tipi specifici di questo Focus.
 	var produced := []
 	for rt in (fb.get("produce", []) as Array):
 		var made := 0
@@ -3652,7 +3652,137 @@ func _do_focus(f: int) -> void:
 		msg += " — preparate %d Country card" % readied
 	if produced.size() > 0:
 		msg += " · Prodotto: %s" % ", ".join(produced)
-	_status(msg + ".")
+	return msg + "."
+
+
+# --- Fase PREPARATION guidata: ogni giocatore SCEGLIE il Focus e le azioni legate
+# (ready Country card, Produzione del Focus e l'opzionale aumento Produzione). ---
+
+## Avvia la PREPARATION guidata del round (reveal/turn order/produzione primaria/pesca
+## sono già stati fatti): scelta del Focus, un giocatore alla volta in ordine di turno.
+func _begin_preparation() -> void:
+	gs.phase = WO.Phase.PREPARATION
+	_ui_phase = "Preparazione"
+	_prep_idx = 0
+	_prep_step()
+
+
+## Passo della PREPARATION: chiede il Focus al giocatore corrente; finiti tutti,
+## inizia la fase Azione.
+func _prep_step() -> void:
+	if _prep_idx >= gs.players.size():
+		_begin_action_phase()
+		return
+	active_seat = gs.turn_order[_prep_idx]
+	drawer_open = true
+	drawer_power = _active().power
+	_after_change()
+	_prep_focus_bar()
+
+
+## Barra in alto della PREPARATION: intestazione + 3 bottoni Focus (con cosa fanno).
+func _prep_focus_bar() -> void:
+	_clear_choice_bar()
+	var p := _active()
+	var head := Label.new()
+	head.text = "Preparazione — %s · scegli il Focus:" % p.power.to_upper()
+	head.add_theme_font_size_override("font_size", _base_fs() + 2)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(head)
+	var keys := ["domestic", "diplomatic", "military"]
+	for f in 3:
+		var fb: Dictionary = focus_bonuses.get(keys[f], {})
+		var prod := []
+		for rt in (fb.get("produce", []) as Array):
+			prod.append(RES_LABEL.get(rt, rt))
+		var b := Button.new()
+		b.text = "%s — prepara %d Country" % [FOCUS_NAME[f], int(fb.get("ready_country_cards", 1))]
+		if prod.size() > 0:
+			b.text += ", produce %s" % ", ".join(prod)
+		b.add_theme_font_size_override("font_size", _base_fs() + 1)
+		b.tooltip_text = String(fb.get("ongoing", ""))
+		b.pressed.connect(_prep_choose_focus.bind(f))
+		choice_flow.add_child(b)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Il giocatore sceglie il Focus: applica ready+produce, poi offre l'aumento Produzione.
+func _prep_choose_focus(f: int) -> void:
+	var p := _active()
+	_status(_apply_focus(p, f))
+	_prep_boost_bar(p, f)
+
+
+## Offre (opzionale) l'aumento di una Produzione spendendo Energia — l'azione legata al
+## Focus. Diplomatic/Military: un tipo fisso; Domestic: una Produzione a scelta. «Continua»
+## passa al giocatore successivo.
+func _prep_boost_bar(p: PlayerState, f: int) -> void:
+	_after_change()   # ridisegna la plancia con ready/produce appena applicati
+	_clear_choice_bar()
+	var key: String = ["domestic", "diplomatic", "military"][f]
+	var fb: Dictionary = focus_bonuses.get(key, {})
+	var cost := int(fb.get("increase_production_cost", 8))
+	var head := Label.new()
+	head.text = "Preparazione — %s · Focus %s scelto." % [p.power.to_upper(), FOCUS_NAME[f]]
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(head)
+	if int(p.resources.get("energy", 0)) >= cost:
+		var lab := Label.new()
+		lab.text = "Aumenta Produzione (−%d Energia → +1):" % cost
+		lab.add_theme_color_override("font_color", Color(0.85, 0.9, 0.6))
+		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(lab)
+		var types: Array
+		if fb.has("increase_production"):
+			types = [String(fb["increase_production"])]
+		else:
+			types = ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy", "armies"]
+		for rt in types:
+			if int(p.production.get(rt, 0)) >= 5:
+				continue   # tracciato Produzione già al massimo
+			var b := Button.new()
+			b.text = "+1 %s" % RES_LABEL.get(rt, rt)
+			b.add_theme_font_size_override("font_size", _base_fs() + 1)
+			b.pressed.connect(_prep_do_boost.bind(p, String(rt), cost))
+			choice_flow.add_child(b)
+	var skip := Button.new()
+	skip.text = "Continua"
+	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
+	skip.pressed.connect(_prep_advance)
+	choice_flow.add_child(skip)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Applica l'aumento Produzione (paga l'Energia) e passa al giocatore successivo.
+func _prep_do_boost(p: PlayerState, rt: String, cost: int) -> void:
+	if int(p.resources.get("energy", 0)) < cost:
+		return
+	p.resources["energy"] = int(p.resources.get("energy", 0)) - cost
+	p.production[rt] = int(p.production.get(rt, 0)) + 1
+	_status("%s: Produzione %s +1 (−%d Energia)." % [p.power.to_upper(), RES_LABEL.get(rt, rt), cost])
+	_prep_advance()
+
+
+## Passa al giocatore successivo della PREPARATION.
+func _prep_advance() -> void:
+	_prep_idx += 1
+	_clear_choice_bar()
+	_prep_step()
+
+
+## Inizia la fase AZIONE al termine della PREPARATION.
+func _begin_action_phase() -> void:
+	gs.phase = WO.Phase.ACTION
+	_ui_phase = "Azione"
+	_clear_choice_bar()
+	round_turn_count = 0
+	active_seat = gs.turn_order[0]
+	_reset_plays()
+	_status("Round %d — Azione. %s" % [gs.round, _turn_hint()])
 	_after_change()
 
 
@@ -4119,12 +4249,8 @@ func _next_round() -> void:
 		p.draw_cards(6 + _ongoing_count(p, "extra_draw_per_round"))
 	_used_ongoing = {}   # abilità once-per-round di nuovo disponibili
 	_commerce_flipped = {}  # Commerce card di nuovo disponibili
-	round_turn_count = 0
-	active_seat = gs.turn_order[0]
-	_ui_phase = "Azione"
-	_reset_plays()
-	_status("Round %d — Preparazione fatta (Focus, pesca, Country). %s" % [gs.round, _turn_hint()])
-	_after_change()
+	_status("Round %d — Preparazione: ogni potenza sceglie il Focus." % gs.round)
+	_begin_preparation()   # scelta GUIDATA del Focus (niente più automatismo)
 
 
 func _game_end() -> void:
@@ -4288,27 +4414,21 @@ func _hand_money_token(ch: int, busy: bool, has_sel: bool) -> Control:
 	return box
 
 
-## Carta Strategica nella mano: immagine reale (wide), attiva solo con una carta
-## selezionata. Toccandola, la carta selezionata è il costo.
+## Carta Strategica nella mano: immagine reale GRANDE (alta quanto le carte, arte
+## ~1.4:1), senza etichetta. Attiva solo con una carta selezionata: toccandola, la
+## carta selezionata è il costo. È l'UNICO posto dove appaiono (niente più doppione
+## sulla board).
 func _hand_strategic_token(asset: Dictionary, ch: int, busy: bool, has_sel: bool) -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
-	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var w := int(ch * 0.94)
-	var card := _country_card_button(asset, Vector2(w, int(w / 2.4)), false, false)
+	var w := int(ch * 1.40)   # arte strategica landscape ~1.4:1: alta quanto le carte di mano
+	var card := _country_card_button(asset, Vector2(w, ch), false, false)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	card.disabled = busy
 	card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), asset.get("effect_text", "")]
 	if not has_sel:
 		card.modulate = Color(0.6, 0.6, 0.65)
 	card.pressed.connect(_on_play_strategic_token.bind(asset))
-	box.add_child(card)
-	var lab := Label.new()
-	lab.text = "Strategica"
-	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lab.add_theme_color_override("font_color", Color(0.7, 0.85, 1.0))
-	lab.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 3))
-	box.add_child(lab)
-	return box
+	return card
 
 
 ## Riga orizzontale scrollabile di carte (Market/Growth) come la mano.
