@@ -218,10 +218,9 @@ func _init() -> void:
 		pm.hand.append(card_move)
 		board._plays_left = 9
 		board._play_card(card_move)
-		board._move_pick_reserve()             # sorgente = riserva
-		board._on_region_pressed("europe")     # destinazione 1
-		board._move_pick_reserve()
-		board._on_region_pressed("africa")     # destinazione 2 → raggiunge max 2
+		# Drag&drop: trascina un carro dalla Riserva su una Regione (drop = _region_do_drop).
+		board._region_do_drop(Vector2.ZERO, {"move_src": "_reserve"}, "europe")   # destinazione 1
+		board._region_do_drop(Vector2.ZERO, {"move_src": "_reserve"}, "africa")   # destinazione 2 → max 2
 		var eu1: int = board.gs.regions["europe"]["armies"].get(pm.power, 0)
 		var af1: int = board.gs.regions["africa"]["armies"].get(pm.power, 0)
 		var move_ok: bool = eu1 == eu0 + 1 and af1 == af0 + 1 and pm.armies_available == 1 \
@@ -245,6 +244,22 @@ func _init() -> void:
 			and pmr.money == 25 and board.playing_card.is_empty()
 		print("[%s] Move tra Regioni: Europa 2->1, Africa 0->1, −5 money" % ["OK" if relo_ok else "FAIL"])
 		if not relo_ok: fails += 1
+
+		# Move drag&drop: rientro in Riserva (gratis, non conta nel max).
+		var pret: PlayerState = board._active()
+		pret.money = 30
+		board.gs.regions["europe"]["armies"][pret.power] = 2
+		pret.armies_available = 0
+		var card_ret := {"display_name": "Ret", "effect_ops": [{"op": "move", "max": 2}]}
+		pret.hand.append(card_ret); board._plays_left = 9
+		board._play_card(card_ret)
+		board._reserve_do_drop(Vector2.ZERO, {"move_src": "europe"})   # un carro rientra in Riserva
+		var ret_ok: bool = board.gs.regions["europe"]["armies"][pret.power] == 1 \
+			and pret.armies_available == 1 and pret.money == 30 \
+			and int(board._move_ctx.get("moved", 0)) == 0
+		board._finish_move()
+		print("[%s] Move drag&drop: rientro in Riserva (gratis, moved=0)" % ["OK" if ret_ok else "FAIL"])
+		if not ret_ok: fails += 1
 
 		# Produce multi-traccia con quantità: primarie + secondaria + Armate in riserva.
 		var ppr: PlayerState = board._active()
@@ -928,8 +943,8 @@ func _init() -> void:
 	var mcard := {"display_name": "MoveReg", "effect_ops": [{"op": "move", "count": 3}]}
 	mp.hand.append(mcard); bm._plays_left = 1
 	bm._play_card(mcard)
-	bm._move_pick_reserve(); bm._on_region_pressed("europe")
-	bm._move_pick_reserve(); bm._on_region_pressed("americas")
+	bm._region_do_drop(Vector2.ZERO, {"move_src": "_reserve"}, "europe")
+	bm._region_do_drop(Vector2.ZERO, {"move_src": "_reserve"}, "americas")
 	bm._finish_move()
 	await process_frame
 	var stray_bars := 0
