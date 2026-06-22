@@ -3230,6 +3230,7 @@ func _show_research() -> void:
 		vb.add_child(reshuffle)
 
 	# --- #12: esaurisci Country alleate per aggiungere il loro valore al Research ---
+	# Mostrate come CARTE reali (immagine + "+N R" sotto), come nel Market.
 	var allies := _research_ready_allies(p)
 	if not allies.is_empty():
 		vb.add_child(_section("Esaurisci una Country alleata per +Research (= suo valore):"))
@@ -3237,11 +3238,11 @@ func _show_research() -> void:
 		aflow.add_theme_constant_override("h_separation", 6)
 		aflow.add_theme_constant_override("v_separation", 6)
 		vb.add_child(aflow)
+		var na: int = maxi(allies.size(), 1)
+		var acard_w: float = clampf((content_w - 6.0 * (na - 1)) / na, 64.0, 104.0)
+		var acard_h: float = acard_w / 0.71
 		for c in allies:
-			var ab := Button.new()
-			ab.text = "%s  +%d R" % [c.get("display_name", "?"), int(c.get("value", 0))]
-			ab.pressed.connect(_research_exhaust_ally.bind(c))
-			aflow.add_child(ab)
+			aflow.add_child(_market_card_sized(c, "+%d R" % int(c.get("value", 0)), false, acard_w, acard_h, _research_exhaust_ally.bind(c)))
 
 	# Niente Growth qui: le Growth card si comprano con l'azione "Get a Growth Card"
 	# durante la fase di Azione, non nel passo Research.
