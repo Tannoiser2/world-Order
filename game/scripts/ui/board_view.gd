@@ -56,6 +56,8 @@ var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
 var hand_pinned: VBoxContainer   # mano del giocatore, in un pannello full-width in basso
 var hand_panel: Panel            # pannello MANO a tutta larghezza (overlay su mappa+board)
+var market_panel: Panel          # "board mercato" (Research): appare al posto della mappa
+var market_content: VBoxContainer  # contenuto scrollabile del pannello mercato
 var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
 var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
@@ -2531,6 +2533,28 @@ func _build_drawer() -> void:
 	hand_pinned.add_theme_constant_override("separation", 2)
 	hpm.add_child(hand_pinned)
 
+	# "Board mercato" (Research): un pannello che occupa l'area della MAPPA, così la board
+	# del giocatore resta visibile a sinistra mentre compri al Market. Niente più popup.
+	market_panel = Panel.new()
+	var mkst := StyleBoxFlat.new()
+	mkst.bg_color = Color(0.07, 0.09, 0.13, 0.99)
+	mkst.set_corner_radius_all(10)
+	market_panel.add_theme_stylebox_override("panel", mkst)
+	market_panel.visible = false
+	add_child(market_panel)
+	var mkm := MarginContainer.new()
+	mkm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		mkm.add_theme_constant_override(m, 12)
+	market_panel.add_child(mkm)
+	var mkscroll := ScrollContainer.new()
+	mkscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	mkm.add_child(mkscroll)
+	market_content = VBoxContainer.new()
+	market_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_content.add_theme_constant_override("separation", 8)
+	mkscroll.add_child(market_content)
+
 
 ## Scala font/altezze in base alla viewport reale (responsive). La mappa riempie
 ## lo schermo dietro; HUD in alto, schede in basso, cassetto nel mezzo.
@@ -2573,8 +2597,17 @@ func _layout_ui() -> void:
 	drawer.size = Vector2(board_w, content_h)
 	map_viewport.position = Vector2(board_w, content_top)
 	map_viewport.size = Vector2(maxf(1.0, w - board_w), content_h)
-	# Pannello MANO a tutta larghezza, ancorato in basso (sopra le linguette).
+	# "Board mercato" (Research): occupa l'area della mappa; la board resta a sinistra.
+	var in_research: bool = _ui_phase == "Research"
+	if market_panel:
+		market_panel.visible = in_research
+		if in_research:
+			market_panel.position = Vector2(board_w, content_top)
+			market_panel.size = Vector2(maxf(1.0, w - board_w), h - content_top - tab_h)
+	# Pannello MANO a tutta larghezza, ancorato in basso (sopra le linguette). Durante la
+	# Research è nascosto (non si giocano carte: c'è la board mercato).
 	if hand_panel:
+		hand_panel.visible = not in_research
 		var hand_open: bool = hand_box != null and is_instance_valid(hand_box)
 		var hand_h := (_hand_card_height() + bar_h + 18.0) if hand_open else bar_h
 		hand_h = clampf(hand_h, bar_h, h - content_top - tab_h)
@@ -2716,11 +2749,8 @@ func _refresh_drawer_content() -> void:
 	drawer_content.add_child(colv)
 	# 1) Plancia del giocatore.
 	colv.add_child(_build_plancia_view(p, is_active))
-	# 2) Carta Commercio + carte prodotto (a seguire sulla destra) — una riga.
-	var trade_row := HBoxContainer.new()
-	trade_row.add_theme_constant_override("separation", 10)
-	colv.add_child(trade_row)
-	_build_commerce_section(p, is_active, trade_row)
+	# 2) Carta Commercio + carte prodotto a destra (stessa riga).
+	_build_commerce_section(p, is_active, colv)
 	# 3) Carte nazione alleate.
 	_build_allies_section(p, is_active, colv)
 	# 4) Carte crescita (ultima riga).
@@ -3408,32 +3438,32 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 	var td := _trade_deal(p.power)
 	if not td.has("art"):
 		return
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
-	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	parent.add_child(col)
+	# Carta Commercio a SINISTRA, carte prodotto a DESTRA sulla STESSA riga.
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(row)
 	var cardw: float = clampf(_plancia_height() * 0.62, 96.0, 150.0)
 	var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(cardw, cardw * 0.71), false)
 	tdcard.disabled = false
 	tdcard.focus_mode = Control.FOCUS_NONE
 	if is_active:
 		tdcard.pressed.connect(_open_trade_ui)
-	col.add_child(tdcard)
+	row.add_child(tdcard)
 	# Carte prodotto (Commerce card) della potenza: 2 (3 per la Russia). Ogni carta
-	# che viene usata (venduta) nel round è mostrata girata/grigia.
+	# che viene usata (venduta) nel round è mostrata girata/grigia. Stanno in fila a
+	# DESTRA della carta Commercio, alte quanto essa.
 	var cards := _commerce_cards(p.power)
 	var art: String = trade_deals.get("commerce_card_art", {}).get(p.power, "")
 	if cards.is_empty() or art == "":
 		return
 	var flipped: Array = _commerce_flipped.get(p.power, [])
-	# Le carte prodotto stanno TUTTE in una riga larga quanto la carta Trade Deals
-	# sopra: più carte ci sono (Russia 3), più piccole diventano.
-	var n: int = cards.size()
-	var sep := 3.0
-	var pcw: float = (cardw - sep * float(maxi(n - 1, 0))) / float(maxi(n, 1))
-	var pcsz := Vector2(pcw, pcw / 0.65)
-	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", int(sep))
-	col.add_child(prow)
+	var pch: float = cardw * 0.71            # stessa altezza della carta Commercio
+	var pcw: float = pch * 0.65              # ritratto
+	var pcsz := Vector2(pcw, pch)
+	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", 3)
+	prow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(prow)
 	for i in cards.size():
 		var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, pcsz, false)
 		pcard.focus_mode = Control.FOCUS_NONE
@@ -3914,35 +3944,17 @@ func _available_growth(p: PlayerState) -> Array:
 	return growth_pool.filter(func(c): return int(c.get("level", 0)) == nl and not (c.get("id", "") in owned))
 
 
+## "Board mercato" (Research): popola il pannello a destra (al posto della mappa), con la
+## board del giocatore visibile a sinistra. Non è più un popup che copre tutto.
 func _show_research() -> void:
 	var p := _active()
-	for c in popup_layer.get_children():
+	# Assicura che il pannello mercato sia visibile e dimensionato (siamo in fase Research).
+	_layout_ui()
+	for c in market_content.get_children():
 		c.queue_free()
-	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(center)
-	# Pannello limitato allo schermo; contenuto scrollabile in verticale così le
-	# carte non sforano né si accavallano (specie su schermi stretti).
-	var panel := PanelContainer.new()
-	var pst := StyleBoxFlat.new(); pst.bg_color = Color(0.08, 0.10, 0.14, 0.99)
-	pst.set_corner_radius_all(10); pst.set_content_margin_all(14)
-	panel.add_theme_stylebox_override("panel", pst)
-	center.add_child(panel)
-	var panel_w: float = minf(size.x * 0.94, 1000.0)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(panel_w, minf(size.y * 0.86, 760.0))
-	panel.add_child(scroll)
-	var vb := VBoxContainer.new()
-	vb.custom_minimum_size = Vector2(panel_w - 28.0, 0)
-	vb.add_theme_constant_override("separation", 8)
-	scroll.add_child(vb)
-	var content_w: float = panel_w - 36.0   # larghezza utile per le righe di carte
+	var vb := market_content
+	var board_w := clampf(size.x * 0.40, 300.0, size.x * 0.52)
+	var content_w: float = maxf(200.0, (size.x - board_w) - 56.0)   # larghezza utile area mercato
 
 	var head := Label.new()
 	head.text = "Research - %s   -   Research disponibili: %d" % [p.power.to_upper(), _research_points]
@@ -3991,7 +4003,6 @@ func _show_research() -> void:
 	done.text = "Continua"
 	done.pressed.connect(func():
 		_research_idx += 1
-		_close_popup()
 		_research_next())
 	vb.add_child(done)
 

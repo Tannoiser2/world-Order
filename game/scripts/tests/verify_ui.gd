@@ -949,10 +949,13 @@ func _init() -> void:
 			b2._do_focus(0)
 			await process_frame
 			continue
-		# "Continua" può stare nel popup (riepiloghi) o nella barra scelte (Aftermath su mappa).
+		# "Continua" può stare nel popup (riepiloghi), nella barra scelte (Aftermath) o nel
+		# pannello Market (Research, nuova "board mercato" a destra).
 		var cont: Button = _find_button(b2.popup_layer, "Continua")
 		if cont == null:
 			cont = _find_button(b2.choice_bar, "Continua")
+		if cont == null and b2.market_panel and b2.market_panel.visible:
+			cont = _find_button(b2.market_panel, "Continua")
 		if cont:
 			cont.pressed.emit()
 		else:
