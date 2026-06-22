@@ -115,6 +115,7 @@ const ONGOING_DESC := {
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
 var game_over := false
+var _ui_phase := "Azione"   # fase mostrata nell'HUD: Azione · Research · Aftermath
 
 
 func _ready() -> void:
@@ -198,6 +199,7 @@ func _ready() -> void:
 	_layout_ui()
 	_layout_overlays()
 	_refresh()
+	_status(_turn_hint())
 
 
 func _on_resized() -> void:
@@ -2345,6 +2347,17 @@ func _build_drawer() -> void:
 		fl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		fl.offset_left = 8; fl.offset_top = 5; fl.offset_right = -8; fl.offset_bottom = -5
 		b.add_child(fl)
+		# Marcatore "▶ a chi tocca" (mostrato/nascosto in _refresh_tab_bar).
+		var mark := Label.new()
+		mark.name = "TurnMark"
+		mark.text = "▶"
+		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mark.add_theme_color_override("font_color", Color(1, 0.95, 0.4))
+		mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		mark.add_theme_constant_override("outline_size", 3)
+		mark.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+		mark.offset_left = 3
+		b.add_child(mark)
 		tab_bar.add_child(b)
 	drawer_power = _active().power
 
@@ -2429,12 +2442,20 @@ func _refresh_hud(p: PlayerState) -> void:
 	for c in hud_box.get_children():
 		c.queue_free()
 	var my_turn := (round_turn_count / gs.players.size()) + 1
-	# Barra snella: turno/round + denaro + Fine turno. VP sono sui segnalini del
-	# tabellone; la Prosperità è sulla plancia (così la barra non copre la mappa).
-	var who := Label.new()
-	who.text = "Round %d/6 · %s · turno %d/4" % [gs.round, p.power.to_upper(), mini(my_turn, 4)]
-	who.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
-	hud_box.add_child(who)
+	# Barra snella: round + fase + indicatore di TURNO (a chi tocca, nel suo colore) +
+	# denaro + Fine turno. VP sui segnalini del tabellone; Prosperità sulla plancia.
+	var rl := Label.new()
+	rl.text = ("Round %d/6 · Azione %d/4" % [gs.round, mini(my_turn, 4)]) if _ui_phase == "Azione" else ("Round %d/6 · %s" % [gs.round, _ui_phase])
+	rl.add_theme_color_override("font_color", Color(0.72, 0.78, 0.9))
+	hud_box.add_child(rl)
+	# Indicatore di turno BEN VISIBILE: ▶ + potenza nel suo colore.
+	var turn := Label.new()
+	turn.text = "▶ %s" % p.power.to_upper()
+	turn.add_theme_font_size_override("font_size", _base_fs() + 3)
+	turn.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	turn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	turn.add_theme_constant_override("outline_size", 3)
+	hud_box.add_child(turn)
 	hud_box.add_child(_money_widget(p.money))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2466,6 +2487,9 @@ func _refresh_tab_bar() -> void:
 		for st in ["normal", "hover", "pressed", "focus"]:
 			b.add_theme_stylebox_override(st, sb)
 		b.disabled = map_lock
+		var mark: Node = b.get_node_or_null("TurnMark")
+		if mark:
+			(mark as Label).visible = is_active
 
 
 ## Vista completa della plancia di una potenza: intestazione, Focus (solo per il
@@ -3381,8 +3405,17 @@ func _end_turn() -> void:
 		return
 	active_seat = gs.turn_order[round_turn_count % gs.players.size()]
 	_reset_plays()
-	_status("Turno di %s." % _active().power.to_upper())
+	_status(_turn_hint())
 	_after_change()
+
+
+## Prompt chiaro di inizio turno: a chi tocca e cosa può fare (indicatore guidato).
+func _turn_hint() -> String:
+	var p := _active()
+	if _plays_left <= 0:
+		return "%s: turno esaurito — premi «Fine turno»." % p.power.to_upper()
+	var focus_txt := ", oppure scegli un Focus sulla plancia" if int(_focus_round.get(p.power, -1)) != gs.round else ""
+	return "▶ Tocca a %s: gioca una carta dalla mano%s, poi «Fine turno»." % [p.power.to_upper(), focus_txt]
 
 
 ## Carte giocabili nel turno: 1 di base, +1 al primo turno del round con
@@ -3479,6 +3512,7 @@ func _market_end_discard_count() -> int:
 
 
 func _begin_research() -> void:
+	_ui_phase = "Research"
 	_research_idx = 0
 	_research_next()
 
@@ -3712,6 +3746,7 @@ func _allied_count_in_region(p: PlayerState, region: String) -> int:
 
 func _run_aftermath() -> void:
 	gs.phase = WO.Phase.AFTERMATH
+	_ui_phase = "Aftermath"
 	_aftermath_lines = ["— Aftermath round %d —" % gs.round]
 	_threat_defense = {}
 	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
@@ -3896,8 +3931,9 @@ func _next_round() -> void:
 	_commerce_flipped = {}  # Commerce card di nuovo disponibili
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
+	_ui_phase = "Azione"
 	_reset_plays()
-	_status("Round %d — Preparazione completata. Turno di %s." % [gs.round, _active().power.to_upper()])
+	_status("Round %d — Preparazione fatta (Focus, pesca, Country). %s" % [gs.round, _turn_hint()])
 	_after_change()
 
 
