@@ -95,7 +95,7 @@ const AWAITING_REGION := ["region", "move", "convert_influence", "reset_influenc
 const AWAITING_MAP := ["region", "move", "convert_influence", "reset_influence", "board_country"]
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
-var _commerce_flipped: Dictionary = {}  # venditore(power) -> [risorse] Commerce card già usate nel round
+var _commerce_flipped: Dictionary = {}  # venditore(power) -> [indici] carte Commerce già girate nel round
 var _plays_left := 1                  # carte ancora giocabili nel turno corrente (1 base)
 
 ## Abilità continuative (Growth): descrizione e se sono attivabili una volta/round.
@@ -1529,9 +1529,54 @@ func _trade_allied_import(p: PlayerState, R: String) -> int:
 	return n
 
 
+## Carte prodotto (Commerce) di una potenza: lista di carte, ognuna è una lista di
+## risorse vendibili (2 carte per potenza, 3 per la Russia).
+func _commerce_cards(power: String) -> Array:
+	return trade_deals.get("commerce_cards", {}).get(power, [])
+
+
+## Quante carte prodotto di `power` a faccia in su mostrano R (quante unità di R
+## può ancora vendere questo round).
+func _commerce_faceup_for(power: String, R: String) -> int:
+	var flipped: Array = _commerce_flipped.get(power, [])
+	var n := 0
+	var cards := _commerce_cards(power)
+	for i in cards.size():
+		if i not in flipped and R in (cards[i] as Array):
+			n += 1
+	return n
+
+
+## Gira (esaurisce) la prima carta prodotto di `power` a faccia in su che mostra R.
+## Ritorna true se ne ha girata una.
+func _commerce_flip_for(power: String, R: String) -> bool:
+	if not _commerce_flipped.has(power):
+		_commerce_flipped[power] = []
+	var flipped: Array = _commerce_flipped[power]
+	var cards := _commerce_cards(power)
+	for i in cards.size():
+		if i not in flipped and R in (cards[i] as Array):
+			flipped.append(i)
+			return true
+	return false
+
+
+## Gira una qualunque carta prodotto di `power` a faccia in su (Auto-Influence, pag. 18).
+func _commerce_flip_any(power: String) -> bool:
+	if not _commerce_flipped.has(power):
+		_commerce_flipped[power] = []
+	var flipped: Array = _commerce_flipped[power]
+	var cards := _commerce_cards(power)
+	for i in cards.size():
+		if i not in flipped:
+			flipped.append(i)
+			return true
+	return false
+
+
 ## Sorgenti d'importazione di R, in ordine: prima il mercato (nazioni amiche),
-## poi le Commerce card degli altri giocatori non ancora girate in questo round.
-## Ritorna [{src:"bank"|power, n:int}] per attribuire ogni unità importata.
+## poi gli altri giocatori che ancora hanno una Commerce card scoperta che mostra R.
+## Ritorna [{src:"bank"|power, n:int}] (n = quante unità quella sorgente può dare).
 func _import_sources(p: PlayerState, R: String) -> Array:
 	var out := []
 	var bank := _trade_allied_import(p, R)
@@ -1539,11 +1584,11 @@ func _import_sources(p: PlayerState, R: String) -> Array:
 		out.append({"src": "bank", "n": bank})
 	var td := _trade_deal(p.power)
 	for other in (td.get("import_from", {}) as Dictionary):
-		if R in (_commerce_flipped.get(other, []) as Array):
-			continue   # quella Commerce card è già stata usata questo round
+		if not ((td["import_from"][other] as Array).has(R)):
+			continue   # la relazione commerciale non include R
 		if gs.player_by_power(other) == null:
 			continue   # quella potenza non è in partita: niente commercio reale
-		var n := (td["import_from"][other] as Array).count(R)
+		var n := _commerce_faceup_for(other, R)   # carte prodotto scoperte che mostrano R
 		if n > 0:
 			out.append({"src": other, "n": n})
 	return out
@@ -1647,9 +1692,8 @@ func _trade_confirm() -> void:
 			if seller != null:
 				seller.money += cost * q
 				seller.gain_resource("services", 1, 0)
-				if not _commerce_flipped.has(src):
-					_commerce_flipped[src] = []
-				(_commerce_flipped[src] as Array).append(R)
+				for _k in q:
+					_commerce_flip_for(src, R)   # gira una carta prodotto per ogni unità
 				from_players += q
 		p.gain_resource(R, q, 0)
 	# +1 Diplomazia SOLO se hai comprato da un altro giocatore (pag. 13), non per
@@ -2649,29 +2693,27 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 	if is_active:
 		tdcard.pressed.connect(_open_trade_ui)
 	col.add_child(tdcard)
-	# Carta prodotto (Commerce card) della potenza: arte ufficiale che mostra le
-	# risorse vendibili (es. USA = valigetta/Servizi, Russia = barile + roccia).
-	var offered: Array = trade_deals.get("commerce_offered", {}).get(p.power, [])
+	# Carte prodotto (Commerce card) della potenza: 2 (3 per la Russia). Ogni carta
+	# che viene usata (venduta) nel round è mostrata girata/grigia.
+	var cards := _commerce_cards(p.power)
 	var art: String = trade_deals.get("commerce_card_art", {}).get(p.power, "")
-	if offered.is_empty() or art == "":
+	if cards.is_empty() or art == "":
 		return
 	var flipped: Array = _commerce_flipped.get(p.power, [])
 	var pcw: float = cardw * 0.66
-	var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, Vector2(pcw, pcw / 0.65), false)
-	pcard.focus_mode = Control.FOCUS_NONE
-	# Stato "usata": carta grigia se TUTTE le risorse offerte sono già state
-	# vendute nel round (la singola disponibilità è applicata dalla UI di Commercio).
-	var all_used := not offered.is_empty()
-	var names := []
-	for res in offered:
-		var u: bool = String(res) in flipped
-		if not u:
-			all_used = false
-		names.append("%s%s" % [RES_LABEL.get(res, res), " (usata)" if u else ""])
-	if all_used:
-		pcard.modulate = Color(0.5, 0.5, 0.55)
-	pcard.tooltip_text = "Prodotti vendibili: " + ", ".join(names)
-	col.add_child(pcard)
+	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", 4)
+	col.add_child(prow)
+	for i in cards.size():
+		var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, Vector2(pcw, pcw / 0.65), false)
+		pcard.focus_mode = Control.FOCUS_NONE
+		var used: bool = i in flipped
+		if used:
+			_apply_exhausted(pcard, Vector2(pcw, pcw / 0.65))
+		var prods := []
+		for res in (cards[i] as Array):
+			prods.append(RES_LABEL.get(res, res))
+		pcard.tooltip_text = "Commerce %d/%d%s — vende: %s" % [i + 1, cards.size(), "  (usata)" if used else "", ", ".join(prods)]
+		prow.add_child(pcard)
 
 
 ## Strategic Asset del giocatore: colonna a DESTRA, carte impilate una sopra l'altra.
@@ -3230,21 +3272,6 @@ func _cost_text(cost: Dictionary) -> String:
 ## Add Auto-Influence: con meno di 4 giocatori, le potenze NEUTRALI piazzano
 ## Influenza/Armate da una carta Auto-Influence (così contano per scoring e
 ## maggioranze). Aggiunge le righe al riepilogo e ritorna l'art della carta.
-## Gira una Commerce card a faccia in su del giocatore (una risorsa offerta non
-## ancora usata nel round) e ritorna true (→ +10 money, pag. 18). False se sono
-## tutte già girate.
-func _flip_one_commerce(power: String) -> bool:
-	var offered: Array = trade_deals.get("commerce_offered", {}).get(power, [])
-	if not _commerce_flipped.has(power):
-		_commerce_flipped[power] = []
-	var flipped: Array = _commerce_flipped[power]
-	for r in offered:
-		if r not in flipped:
-			flipped.append(r)
-			return true
-	return false
-
-
 func _apply_auto_influence(lines: Array) -> String:
 	var player_powers := []
 	for p in gs.players:
@@ -3276,7 +3303,7 @@ func _apply_auto_influence(lines: Array) -> String:
 		# Money del commercio (pag. 18): solo se il giocatore ha una Commerce card a
 		# faccia in su, che viene girata; altrimenti niente.
 		for tw in trade_players:
-			if _flip_one_commerce(String(tw)):
+			if _commerce_flip_any(String(tw)):
 				var tp := gs.player_by_power(String(tw))
 				if tp:
 					tp.money += 10
