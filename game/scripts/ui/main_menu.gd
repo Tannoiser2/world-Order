@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.54"
+const VERSION := "v0.7.55"
 const CHANGELOG := [
+	"v0.7.55 — MANO ridisegnata, niente più popup «Come giochi?»: nella mano, dopo le 6 carte, ci sono il gettone 💰10 e le tue carte STRATEGICHE. Tocchi una carta per SELEZIONARLA (si evidenzia), la ri-tocchi per GIOCARLA; oppure, con la carta selezionata, tocchi 💰10 per scartarla e prendere +10 money, o una carta Strategica per attivarla (la carta è il costo). Niente più scritte in sovraimpressione.",
 	"v0.7.54 — FIX Commercio: comprando da una potenza ora si gira UNA SOLA carta prodotto per trade (non si sommano più tutte le carte scoperte). Quindi dalla Russia compri al massimo 3 Energia O 3 Materie Prime per trade (prima il bug permetteva fino a 9 perché contava tutte e 3 le carte). Le altre carte restano per altri trade/giocatori dello stesso round.",
 	"v0.7.53 — FLUSSO TURNO più chiaro (indicatori): in alto ora vedi «Round X/6 · Azione Y/4» con la FASE corrente (Azione / Research / Aftermath) e un grande «▶ POTENZA» nel colore di chi tocca; la sua linguetta-bandiera in basso ha un ▶. A ogni inizio turno una riga ti dice cosa puoi fare (gioca una carta, oppure scegli un Focus, poi «Fine turno»). Niente schermate che interrompono.",
 	"v0.7.52 — CALIBRAZIONE precisa (dalla tua guida): le carte nazione ora si posano ESATTAMENTE nei 2 slot stampati di ogni Regione (2 per zona), e il token ENGAGE va sul simbolo handshake stampato. Gli Engage successivi nella stessa Regione si impilano di lato, o SOTTO per Americhe/Europa/Asia Centrale. Coordinate rilevate al pixel dai pallini di «Guida posizioni 3.png».",

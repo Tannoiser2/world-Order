@@ -685,14 +685,36 @@ func _init() -> void:
 		# la mano del giocatore di turno; l'interazione con la mappa la richiude.
 		board.drawer_open = false
 		board._on_power_tab(ac.power)
+		# hand_box: le carte della mano + separatore + gettone 💰10 (+ eventuali Strategiche).
 		var opened: bool = board.drawer_open and board.drawer_power == ac.power \
-			and board.hand_box != null and board.hand_box.get_child_count() == ac.hand.size()
+			and board.hand_box != null and board.hand_box.get_child_count() >= ac.hand.size()
 		print("[%s] scheda potenza apre la plancia con la mano (%d carte)" % ["OK" if opened else "FAIL", ac.hand.size()])
 		if not opened: fails += 1
 		board._on_power_tab(ac.power)  # ri-tocco la stessa scheda -> chiude
 		var toggled: bool = board.drawer_open == false
 		print("[%s] ri-toccando la scheda attiva il cassetto si chiude" % ["OK" if toggled else "FAIL"])
 		if not toggled: fails += 1
+
+		# Mano senza popup: 1° tap seleziona; gettone 💰10 scarta la selezionata per +10;
+		# ri-tap sulla stessa carta = giocala.
+		var ph: PlayerState = board._active()
+		board._selected_hand_card = {}; board.playing_card = {}; board._plays_left = 9
+		ph.money = 0
+		var hcard := {"display_name": "Htest10", "effect_ops": [{"op": "gain_money", "amount": 1}]}
+		ph.hand.append(hcard)
+		board._on_hand_card_tap(hcard)                 # 1° tap → seleziona
+		var sel_ok: bool = board._selected_hand_card == hcard
+		var hsz0: int = ph.hand.size()
+		board._on_play_money_token()                   # 💰10 → scarta la selezionata, +10
+		var money_ok: bool = ph.money == 10 and ph.hand.size() == hsz0 - 1 and board._selected_hand_card.is_empty()
+		board.playing_card = {}; board._plays_left = 9; ph.money = 0
+		var hcard2 := {"display_name": "Htest2", "effect_ops": [{"op": "gain_money", "amount": 3}]}
+		ph.hand.append(hcard2)
+		board._on_hand_card_tap(hcard2)                # seleziona
+		board._on_hand_card_tap(hcard2)                # ri-tap → gioca (gain_money auto)
+		var play_ok: bool = ph.money == 3 and board._selected_hand_card.is_empty()
+		print("[%s] Mano senza popup: seleziona + 💰10 (+10), ri-tap gioca" % ["OK" if (sel_ok and money_ok and play_ok) else "FAIL"])
+		if not (sel_ok and money_ok and play_ok): fails += 1
 		board._on_power_tab(ac.power)  # riapro per il test di auto-chiusura
 		ac.resources["diplomacy"] = 20
 		var card_close := {"display_name": "Engage close", "effect_ops": [{"op": "engage"}]}
