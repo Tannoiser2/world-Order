@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.61"
+const VERSION := "v0.7.62"
 const CHANGELOG := [
+	"v0.7.62 — I RIEPILOGHI (fine round / fine partita) non coprono più la board: sono ora un pannello ANCORATO A DESTRA, scrollabile, con la mappa visibile a sinistra e solo un velo leggero. «Continua» chiude.",
 	"v0.7.61 — La barra del MOVE non galleggia più sulla mappa: i controlli (vassoio Riserva da cui trascinare i carri, «Fine spostamento» e «Annulla» se non hai ancora mosso) sono ora nella barra in alto, che spinge giù la mappa senza coprirla. «Annulla» (prima di muovere) ridà la carta senza consumare la giocata.",
 	"v0.7.60 — PRODUCE sulla PLANCIA (niente popup): come il Commercio, ora imposti quanto produrre toccando le caselle sulla resource track (entro la tua Produzione). Le caselle mostrano il guadagno e, per le secondarie, il costo in primarie (es. «+2 −2,−2»); le Armate si producono con ± nella barra in cima (−1 Materia cad.). Conferma/Annulla in cima al cassetto.",
 	"v0.7.59 — FIX: annullare il COMMERCIO non consuma più la giocata del turno né scarta la carta. Prima «Annulla» nel Commercio chiudeva la carta (come se l'avessi giocata): ora la carta resta in mano e puoi giocarne un'altra.",

@@ -4057,23 +4057,35 @@ func _vp_summary(d: Dictionary) -> String:
 
 
 ## Popup di riepilogo con un pulsante Continua.
+## Riepilogo (fine round / fine partita): pannello ANCORATO A DESTRA che NON copre la
+## mappa (velo leggero, board visibile a sinistra). Scrollabile; «Continua» chiude.
 func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 	for c in popup_layer.get_children():
 		c.queue_free()
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(dim)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	popup_layer.add_child(center)
+	var veil := ColorRect.new()
+	veil.color = Color(0, 0, 0, 0.22)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup_layer.add_child(veil)
+	var pw := minf(size.x * 0.46, 470.0)
 	var panel := PanelContainer.new()
-	center.add_child(panel)
+	var pst := StyleBoxFlat.new()
+	pst.bg_color = Color(0.07, 0.09, 0.13, 0.99)
+	pst.set_corner_radius_all(10); pst.set_content_margin_all(14)
+	pst.set_border_width_all(2); pst.border_color = Color(0.5, 0.7, 1.0, 0.6)
+	panel.add_theme_stylebox_override("panel", pst)
+	panel.position = Vector2(size.x - pw - 12, size.y * 0.07)
+	panel.size = Vector2(pw, 0)
+	popup_layer.add_child(panel)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(pw - 30, minf(size.y * 0.84, 600.0))
+	panel.add_child(scroll)
 	var vb := VBoxContainer.new()
-	vb.custom_minimum_size = Vector2(420, 0)
-	panel.add_child(vb)
-	# Carta (es. Auto-Influence) mostrata in cima al riepilogo, con flyover.
+	vb.custom_minimum_size = Vector2(pw - 30, 0)
+	vb.add_theme_constant_override("separation", 4)
+	scroll.add_child(vb)
+	# Carta (es. Auto-Influence) mostrata in cima al riepilogo.
 	if art != "":
 		var tex: Texture2D = load("res://assets/cards/%s" % art)
 		if tex:
@@ -4082,16 +4094,18 @@ func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 			img.texture = tex
 			img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			var iw := minf(size.x * 0.5, 360.0)
+			var iw := minf(pw * 0.78, 320.0)
 			img.custom_minimum_size = Vector2(iw, iw * 0.42)
 			cc.add_child(img)
 			vb.add_child(cc)
 	for line in lines:
 		var l := Label.new()
 		l.text = String(line)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		vb.add_child(l)
 	var ok := Button.new()
 	ok.text = "Continua"
+	ok.add_theme_font_size_override("font_size", _base_fs() + 1)
 	ok.pressed.connect(func():
 		_close_popup()
 		cb.call())
