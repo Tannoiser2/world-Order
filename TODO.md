@@ -36,10 +36,21 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 >
 > ### ⏳ DA FARE
 > Resta: #13 (spareggio ordine turno con starting money, bassa).
-> Più i 🔵 da playtest (Focus in Preparation, carte prodotto multiple) e:
+> Più i 🔵 da playtest (Focus in Preparation) e:
 > - **Trade: drag&drop** vero (trascinare i token) — iterazione 2, sopra al tap.
 > - **Trade: vendita Armate** dalla riserva (20 cad., non sulla resource track) — #14
 >   lato vendita-riserva, non ancora nella UI Commercio.
+> - **Commerce cards: composizione per-carta** da confermare (ora ogni carta = tutti i
+>   prodotti della potenza; se EU/Russia hanno carte "splittate" è solo da editare il
+>   dato `commerce_cards` in `data/trade_deals.json`).
+>
+> ### ✅ FATTO 2026-06-22 (7° giro — carte prodotto multiple)
+> - Ogni potenza ha ora **2 carte prodotto (3 la Russia)**, mostrate tutte nel cassetto;
+>   quelle usate nel round appaiono **girate/grigie**.
+> - Comprando un prodotto da una potenza si **gira la carta specifica** che lo mostra:
+>   così può venderlo **una volta per carta scoperta** (prima: una sola volta in assoluto).
+>   Il cap d'import dalla potenza = sue carte scoperte che mostrano quel prodotto.
+> - Auto-Influence (#10) gira una qualunque sua carta scoperta per i 10 money.
 >
 > ### ✅ FATTO 2026-06-22 (6° giro — Commercio sulla resource track)
 > - Nuovo Commercio: niente più tabella di testo. Ogni risorsa ha la sua **track 0-10**;

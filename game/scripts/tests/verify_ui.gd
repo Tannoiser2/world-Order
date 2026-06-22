@@ -377,9 +377,11 @@ func _init() -> void:
 			psrc.allied_countries = [{"id": "ss", "region": "africa", "value": 1,
 				"exports": [], "imports": ["services", "services"]}]   # banca offre 2 services
 			board.trade_deals = {"cards": [{"power": psrc.power, "exports": 2, "imports": 2,
-				"import_from": {seller2_pw: ["services"]}}]}             # il venditore offre 1
+				"import_from": {seller2_pw: ["services"]}}],
+				"commerce_cards": {seller2_pw: [["services"]]}}        # il venditore: 1 carta services
 			psrc.resources["services"] = 0
 			psrc.money = 100
+			board._commerce_flipped = {}   # carte prodotto tutte scoperte all'inizio
 			var s2_money0: int = seller2.money
 			board._open_trade_ui()
 			var def_src: String = board._trade_selected_src(psrc, "services")   # default = banca
@@ -536,10 +538,13 @@ func _init() -> void:
 			buyer.allied_countries = []  # niente import "dal mercato": solo dai giocatori
 			buyer.money = 50
 			seller.money = 0
+			board._commerce_flipped = {}   # carte prodotto tutte scoperte all'inizio
 			var serv_pre: int = seller.resources["services"]
-			# Forziamo una Trade Deals con import_from dal venditore (1 risorsa offerta).
+			# Forziamo una Trade Deals con import_from dal venditore + 1 sua carta prodotto
+			# (consumer_goods), così dopo l'acquisto resta a 0 carte scoperte.
 			board.trade_deals = {"cards": [{"power": buyer.power, "exports": 2, "imports": 2,
-				"import_from": {seller_power: ["consumer_goods"]}}]}
+				"import_from": {seller_power: ["consumer_goods"]}}],
+				"commerce_cards": {seller_power: [["consumer_goods"]]}}
 			var src: Array = board._import_sources(buyer, "consumer_goods")
 			board._open_trade_ui()
 			board._trade_adjust("consumer_goods", "import", 1)
@@ -552,8 +557,8 @@ func _init() -> void:
 				and seller.resources["services"] == serv_pre + 1 \
 				and buyer.money == b_money_pre - cost \
 				and buyer.resources["diplomacy"] == dip_buyer_pre + 1 \
-				and ("consumer_goods" in (board._commerce_flipped.get(seller_power, []) as Array)) \
-				and board._trade_import_cap(buyer, "consumer_goods") == 0  # card girata
+				and (board._commerce_flipped.get(seller_power, []) as Array).size() == 1 \
+				and board._trade_import_cap(buyer, "consumer_goods") == 0  # unica carta girata
 			print("[%s] Trade P2P: venditore +money +1 Servizio, Commerce card girata" % ["OK" if p2p_ok else "FAIL"])
 			if not p2p_ok: fails += 1
 			board._trade_sel = {}
@@ -811,11 +816,11 @@ func _init() -> void:
 	var bai: Node = load("res://scenes/board.tscn").instantiate()
 	get_root().add_child(bai)
 	await process_frame
-	# #10 — _flip_one_commerce: gira finché ci sono Commerce a faccia in su (russia ne offre 2).
+	# #10 — gira le carte prodotto finché ce ne sono di scoperte (EU ne ha 2).
 	bai._commerce_flipped = {}
-	var f1: bool = bai._flip_one_commerce("russia")   # energy → true
-	var f2: bool = bai._flip_one_commerce("russia")   # raw_materials → true
-	var f3: bool = bai._flip_one_commerce("russia")   # tutte girate → false
+	var f1: bool = bai._commerce_flip_any("eu")   # carta 1 → true
+	var f2: bool = bai._commerce_flip_any("eu")   # carta 2 → true
+	var f3: bool = bai._commerce_flip_any("eu")   # tutte girate → false
 	var flip_ok: bool = f1 and f2 and not f3
 	# #9 — applica 2 carte (deck di 2); #10 — China incassa 10 (1 trade_with, 1 Commerce).
 	bai._commerce_flipped = {}
