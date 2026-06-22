@@ -149,7 +149,10 @@ func _ready() -> void:
 	ui_theme = Theme.new()
 	theme = ui_theme   # ereditato da tutta la scena: font scalati in _layout_ui
 	_apply_button_theme()   # i bottoni "normali" hanno una chiara forma da pulsante
+	net = GameConfig.net   # sessione di rete (lobby online), null = locale/hot-seat
 	var powers: Array = GameConfig.powers if GameConfig.powers.size() >= 2 else GameConfig.powers_for_count_n(2)
+	if net != null and net.is_client() and (net.powers as Array).size() >= 2:
+		powers = net.powers   # le potenze/seggi li ha assegnati l'host
 	gs = GameSetup.new_game(powers)
 	for p in gs.players:
 		p.draw_cards(6)   # denaro iniziale: impostato per potenza in GameSetup
@@ -247,9 +250,23 @@ func _ready() -> void:
 	active_seat = gs.turn_order[0]
 	_reset_plays()
 
+	# RETE: collega i segnali della sessione. Il CLIENT renderizza gli snapshot dell'host
+	# e non avvia da sé la partita; l'HOST applica i comandi ricevuti dai client.
+	if net != null:
+		net.snapshot_received.connect(apply_remote_snapshot)
+		if net.is_host():
+			net.command_received.connect(_on_net_command)
+
 	resized.connect(_on_resized)
 	_layout_ui()
-	_begin_preparation()   # Round 1: scelta guidata del Focus prima di agire (fa lei layout/refresh)
+	if net != null and net.is_client():
+		# Il client aspetta lo stato iniziale dall'host (non gioca la Preparazione).
+		_status("In attesa dell'host…")
+		_refresh()
+	else:
+		_begin_preparation()   # Round 1: scelta guidata del Focus prima di agire (fa lei layout/refresh)
+		if net != null and net.is_host():
+			_net_sync()   # invia subito lo stato iniziale ai client
 
 
 func _on_resized() -> void:
@@ -4061,6 +4078,20 @@ func apply_remote_snapshot(state: Dictionary) -> void:
 	if state.has("ui"):
 		_apply_ui_snapshot(state["ui"])
 	_refresh()
+
+
+## HOST: comando ricevuto da un CLIENT. Lo si applica con la stessa via dell'input locale
+## (apply_command farà poi il ribroadcast a tutti). Il `seat` del messaggio è già dentro cmd.
+func _on_net_command(_seat: int, cmd: Dictionary) -> void:
+	apply_command(cmd)
+
+
+## HOST: invia a OGNI client il suo stato redatto + lo stato di interazione corrente.
+## Da chiamare quando lo stato cambia per vie che non passano da apply_command (es. avvio,
+## avanzamenti automatici di fase). In hot-seat / da client è un no-op.
+func _net_sync() -> void:
+	if net != null and net.is_host():
+		net.broadcast_snapshots(func(seat: int): return {"gs": gs.state_for_seat(seat), "ui": _ui_snapshot()})
 
 
 ## Stato di INTERAZIONE corrente (per la rete): cosa la Vista attende ORA. La callback di
