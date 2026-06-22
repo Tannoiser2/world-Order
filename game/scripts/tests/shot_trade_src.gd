@@ -18,6 +18,9 @@ func _initialize() -> void:
 			board.active_seat = i
 	var p = board._active()
 	p.money = 100
+	# Alleata con 2 simboli Import CG → base 2; i giocatori venditori AGGIUNGONO la loro vendita.
+	p.allied_countries.append({"id": "imp_cg", "region": "africa", "value": 1,
+		"exports": [], "imports": ["consumer_goods", "consumer_goods"]})
 	board._commerce_flipped = {}     # tutte le Commerce card scoperte (più sorgenti)
 	# Sceglie un prodotto che la Russia importa da altre potenze (sorgenti = bandierine).
 	board._open_trade_ui()
