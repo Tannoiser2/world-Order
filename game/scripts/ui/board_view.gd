@@ -2747,13 +2747,17 @@ func _refresh_drawer_content() -> void:
 	colv.add_theme_constant_override("separation", 8)
 	colv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	drawer_content.add_child(colv)
-	# 1) Plancia del giocatore.
-	colv.add_child(_build_plancia_view(p, is_active))
-	# 2) Carta Commercio + carte prodotto a destra (stessa riga).
-	_build_commerce_section(p, is_active, colv)
-	# 3) Carte nazione alleate.
+	# 1) Riga in alto: PLANCIA (sinistra) + carta COMMERCIO con le carte prodotto sotto
+	#    (destra), allineate in alto.
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	top.alignment = BoxContainer.ALIGNMENT_BEGIN
+	colv.add_child(top)
+	top.add_child(_build_plancia_view(p, is_active))
+	_build_commerce_section(p, is_active, top)
+	# 2) Carte nazione alleate in FILA (almeno 6 per riga, le altre vanno a capo).
 	_build_allies_section(p, is_active, colv)
-	# 4) Carte crescita (ultima riga).
+	# 3) Carte crescita (riga ancora sotto, quando acquistate).
 	_build_growth_section(p, is_active, colv)
 	_build_ongoing_section(p, is_active)
 	# La MANO (pannello full-width in basso) è SEMPRE quella del giocatore di turno,
@@ -2800,11 +2804,11 @@ const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "servi
 const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 
 
-## Altezza della plancia: si adatta alla LARGHEZZA del pannello board (a destra), così
-## non trabocca; con tetto proporzionale all'altezza e assoluto.
+## Altezza della plancia: condivide la riga in alto con la carta Commercio (a destra),
+## quindi occupa ~64% della larghezza del pannello board; tetto proporzionale e assoluto.
 func _plancia_height() -> float:
 	var board_w := clampf(size.x * 0.40, 300.0, size.x * 0.52)
-	return minf(minf((board_w - 30.0) * PLANCIA_RATIO, size.y * 0.42), 460.0)
+	return minf(minf((board_w * 0.64 - 16.0) * PLANCIA_RATIO, size.y * 0.40), 420.0)
 
 
 func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
@@ -3304,10 +3308,12 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		else:
 			index[key] = groups.size()
 			groups.append({"cards": [cn]})
-	var rows: int = int(ceil(groups.size() / 2.0))
-	var ch: float = clampf(_plancia_height() / maxf(rows, 1) - 8.0, 52.0, 130.0)
-	var grid := GridContainer.new()
-	grid.columns = 2
+	# Carte alleate in FILA a tutta larghezza del pannello: ne entrano almeno 6 per riga,
+	# le altre vanno a capo (HFlowContainer). Dimensionate di conseguenza.
+	var board_w := clampf(size.x * 0.40, 300.0, size.x * 0.52)
+	var cw: float = clampf((board_w - 28.0) / 6.0 - 6.0, 52.0, 104.0)
+	var ch: float = cw / 0.70
+	var grid := HFlowContainer.new()
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -3324,7 +3330,7 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 			or (ex_active and not ex_this)
 		var on_press: Callable = _on_exhaust_toggle.bind(cn) if ex_this else Callable()
 		var clickable: bool = (is_active and not dim) or ex_this
-		var sz := Vector2(ch * 0.70, ch)
+		var sz := Vector2(cw, ch)
 		var stack := _ally_stack(cn, cards.size(), sz, highlight, clickable, spent, on_press)
 		_overlay_country_markers(stack, sz, cid in p.fdi_countries, cid in p.bases)
 		grid.add_child(stack)
@@ -3438,32 +3444,31 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 	var td := _trade_deal(p.power)
 	if not td.has("art"):
 		return
-	# Carta Commercio a SINISTRA, carte prodotto a DESTRA sulla STESSA riga.
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	parent.add_child(row)
-	var cardw: float = clampf(_plancia_height() * 0.62, 96.0, 150.0)
+	# Carta Commercio in alto, carte prodotto SOTTO (in una riga larga quanto la carta).
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	parent.add_child(col)
+	var cardw: float = clampf(_plancia_height() * 0.56, 92.0, 150.0)
 	var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(cardw, cardw * 0.71), false)
 	tdcard.disabled = false
 	tdcard.focus_mode = Control.FOCUS_NONE
 	if is_active:
 		tdcard.pressed.connect(_open_trade_ui)
-	row.add_child(tdcard)
-	# Carte prodotto (Commerce card) della potenza: 2 (3 per la Russia). Ogni carta
-	# che viene usata (venduta) nel round è mostrata girata/grigia. Stanno in fila a
-	# DESTRA della carta Commercio, alte quanto essa.
+	col.add_child(tdcard)
+	# Carte prodotto (Commerce card): 2 (3 per la Russia), un po' più PICCOLE così la loro
+	# riga è larga quanto la carta Commercio. Le carte usate sono girate/grigie.
 	var cards := _commerce_cards(p.power)
 	var art: String = trade_deals.get("commerce_card_art", {}).get(p.power, "")
 	if cards.is_empty() or art == "":
 		return
 	var flipped: Array = _commerce_flipped.get(p.power, [])
-	var pch: float = cardw * 0.71            # stessa altezza della carta Commercio
-	var pcw: float = pch * 0.65              # ritratto
-	var pcsz := Vector2(pcw, pch)
-	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", 3)
-	prow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(prow)
+	var n: int = cards.size()
+	var sep := 3.0
+	var pcw: float = (cardw - sep * float(maxi(n - 1, 0))) / float(maxi(n, 1))
+	var pcsz := Vector2(pcw, pcw / 0.65)
+	var prow := HBoxContainer.new(); prow.add_theme_constant_override("separation", int(sep))
+	col.add_child(prow)
 	for i in cards.size():
 		var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, pcsz, false)
 		pcard.focus_mode = Control.FOCUS_NONE

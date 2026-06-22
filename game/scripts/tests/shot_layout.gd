@@ -21,7 +21,7 @@ func _initialize() -> void:
 	var n := 0
 	for c in board.all_countries:
 		allies.append(c); n += 1
-		if n >= 3: break
+		if n >= 8: break   # 8 alleate: si vede la fila (6+) che va a capo
 	p.allied_countries = allies
 	for c in allies:
 		p.exhausted[String(c.get("id", ""))] = false
