@@ -37,7 +37,12 @@ func is_final_round() -> bool:
 
 
 func is_scoring_round() -> bool:
-	return round in board_data.get("global", {}).get("scoring_rounds", [3, 6])
+	# NB: i numeri da JSON sono FLOAT, e `int in [float, ...]` e' sempre false in Godot
+	# (confronto type-strict). Si confronta come intero.
+	for r in board_data.get("global", {}).get("scoring_rounds", [3, 6]):
+		if int(r) == round:
+			return true
+	return false
 
 
 func add_vp(power: String, amount: int) -> void:
