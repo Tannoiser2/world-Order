@@ -757,11 +757,34 @@ func _on_allied_pressed(country: Dictionary) -> void:
 		if name == "invest":
 			if Actions.execute_invest(gs, p.power, country, slot) < 0:
 				_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
+			_after_change()
+			_advance_play()
 		elif name == "build_base":
-			if Actions.execute_build_base(gs, p.power, country, 1, slot) < 0:
-				_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
-		_after_change()
-		_advance_play())
+			# Build a Base: muovi da 1 fino al valore del Country (pag. 15), non 1 fisso.
+			_pick_base_armies(country, func(n_armies):
+				if Actions.execute_build_base(gs, p.power, country, n_armies, slot) < 0:
+					_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
+				_after_change()
+				_advance_play())
+		else:
+			_after_change()
+			_advance_play())
+
+
+## Sceglie quante Armate spostare costruendo una Base: da 1 fino al valore del
+## Country (limitato dalle Armate in riserva). Con un solo valore possibile salta
+## il popup. cb riceve il numero scelto.
+func _pick_base_armies(country: Dictionary, cb: Callable) -> void:
+	var p := _active()
+	var max_n: int = mini(maxi(1, int(country.get("value", 1))), p.armies_available)
+	if max_n <= 1:
+		cb.call(1)
+		return
+	var items := []
+	for n in range(1, max_n + 1):
+		items.append({"label": "%d Armata/e  (costo %d money)" % [n, Actions.build_base_cost(n)], "value": n})
+	_show_popup("Quante Armate sposti in %s?" % country.get("display_name", "?"), items,
+		func(choice): cb.call(int(choice)))
 
 
 func _on_region_pressed(region: String) -> void:
@@ -1565,7 +1588,6 @@ func _trade_confirm() -> void:
 		var q := int(_trade_sel["export"][R])
 		p.resources[R] = int(p.resources.get(R, 0)) - q
 		p.money += int(Actions.EXPORT_GAIN.get(R, 0)) * q
-	var imported := false
 	var from_players := 0
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
@@ -1590,9 +1612,10 @@ func _trade_confirm() -> void:
 					from_players += take
 			remaining -= take
 		p.gain_resource(R, q, 0)
-		imported = true
-	if imported:
-		p.gain_resource("diplomacy", 1, 0)   # +1 Diplomazia comprando dagli altri
+	# +1 Diplomazia SOLO se hai comprato da un altro giocatore (pag. 13), non per
+	# un import qualsiasi dalla banca/potenze neutrali.
+	if from_players > 0:
+		p.gain_resource("diplomacy", 1, 0)
 	_close_popup()
 	_trade_sel = {}
 	if from_players > 0:
