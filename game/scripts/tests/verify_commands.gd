@@ -94,6 +94,24 @@ func _init() -> void:
 	check.call("pick_region fuori turno rifiutata",
 		board.apply_command(GameCommands.pick_region((board.active_seat + 1) % n, board._next_seq(), "europe")) == false)
 
+	# 7) Acquisti (growth/market) + Aftermath: forma e gating per fase.
+	check.call("buy_growth shape ok", GameCommands.valid_shape(GameCommands.buy_growth(0, 1, "growth_x")))
+	check.call("buy_market shape: id vuoto rifiutato",
+		GameCommands.valid_shape(GameCommands.buy_market(0, 1, "")) == false)
+	check.call("aftermath_token shape: kind valido",
+		GameCommands.valid_shape(GameCommands.aftermath_token(0, 1, "europe", "money")))
+	check.call("aftermath_token shape: kind non valido rifiutato",
+		GameCommands.valid_shape(GameCommands.aftermath_token(0, 1, "europe", "boh")) == false)
+	check.call("aftermath_continue shape ok", GameCommands.valid_shape(GameCommands.aftermath_continue(0, 1)))
+	# Fuori dall'Aftermath i comandi aftermath_* sono rifiutati (guardia _aftermath_choice_p).
+	check.call("aftermath_continue fuori fase rifiutato",
+		board.apply_command(GameCommands.aftermath_continue(board.active_seat, board._next_seq())) == false)
+	# _acting_seat() segue il giocatore Aftermath quando attivo, altrimenti = active_seat.
+	board._aftermath_choice_p = board.gs.players[2]
+	check.call("_acting_seat segue il giocatore Aftermath", board._acting_seat() == 2)
+	board._aftermath_choice_p = null
+	check.call("_acting_seat fuori Aftermath = active_seat", board._acting_seat() == board.active_seat)
+
 	print("Verifica command bus: %s" % ("OK" if fails == 0 else "FALLITA (%d)" % fails))
 	board.queue_free()
 	await process_frame
