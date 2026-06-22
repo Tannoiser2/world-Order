@@ -94,6 +94,7 @@ var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (p
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
 var _prep_idx := 0                       # giocatore corrente nella PREPARATION guidata (scelta Focus)
+var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -3805,6 +3806,15 @@ func apply_command(cmd: Dictionary) -> bool:
 			_end_turn()
 		"use_ongoing":
 			_use_ongoing(String(a["tag"]))
+		"increase_production":
+			# Passo "Increase Production" della Preparazione: type vuoto = salta.
+			if _ui_phase != "Preparazione":
+				return false
+			var t := String(a["type"])
+			if t != "":
+				_status(_apply_increase_production(_active(), t))
+			_clear_choice_bar()
+			_prep_advance()
 		"pick_region":
 			_on_region_pressed(String(a["region"]))
 		"pick_influence_cell":
@@ -3909,6 +3919,10 @@ func _cmd_use_ongoing(tag: String) -> void:
 	apply_command(GameCommands.use_ongoing(active_seat, _next_seq(), tag))
 
 
+func _cmd_increase_production(type: String) -> void:
+	apply_command(GameCommands.increase_production(active_seat, _next_seq(), type))
+
+
 func _cmd_pick_region(region: String) -> void:
 	apply_command(GameCommands.pick_region(active_seat, _next_seq(), region))
 
@@ -3989,11 +4003,14 @@ func _reset_plays() -> void:
 func _do_focus(f: int) -> void:
 	if not playing_card.is_empty():
 		return
+	if _prep_awaiting_increase:
+		return  # Focus già scelto: si attende la scelta di aumento Produzione
 	# In PREPARAZIONE la scelta del Focus si fa toccando una colonna sulla plancia: applica
-	# le azioni del Focus (ready + produce) e passa al giocatore successivo.
+	# le azioni del Focus (ready + produce), poi OFFRE l'aumento Produzione opzionale e
+	# infine passa al giocatore successivo.
 	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
 		_status(_apply_focus(_active(), f))
-		_prep_advance()
+		_prep_offer_increase()
 		return
 	var p := _active()
 	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
@@ -4028,6 +4045,7 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 			to_ready -= 1
 	# 2) Produce: i tipi specifici di questo Focus.
 	var produced := []
+	var produced_types := []
 	for rt in (fb.get("produce", []) as Array):
 		var made := 0
 		if String(rt) == "armies":
@@ -4040,12 +4058,96 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 			made = Actions.execute_produce(p, String(rt))
 		if made > 0:
 			produced.append("%s +%d" % [RES_LABEL.get(rt, rt), made])
+			produced_types.append(String(rt))
+	# Commerce: produrre un tipo elencato sulle carte prodotto le rigira a faccia in su
+	# (risorse in surplus disponibili per il Trade) - regolamento Choose Focus.
+	_flip_commerce_faceup_on_produce(p.power, produced_types)
 	var msg := "Focus %s" % FOCUS_NAME[f]
 	if readied > 0:
 		msg += " - preparate %d Country card" % readied
 	if produced.size() > 0:
 		msg += " - Prodotto: %s" % ", ".join(produced)
 	return msg + "."
+
+
+## Tipi di Produzione aumentabili dal Focus corrente di `p` + il costo (Choose Focus,
+## passo "Increase Production"): Diplomatic -> Diplomazia, Military -> Armate, Domestic
+## -> una primaria (Energia/Materie/Cibo). Ritorna [{type, cost}].
+func _increase_prod_options(p: PlayerState) -> Array:
+	var key: String = ["domestic", "diplomatic", "military"][p.focus]
+	var fb: Dictionary = focus_bonuses.get(key, {})
+	var cost := int(fb.get("increase_production_cost", 8))
+	var types: Array = [String(fb["increase_production"])] if fb.has("increase_production") \
+		else ["energy", "raw_materials", "food"]
+	var out := []
+	for t in types:
+		out.append({"type": String(t), "cost": cost})
+	return out
+
+
+## Applica l'aumento di una Produzione: paga il costo, sposta il cubo di 1; se la
+## risorsa è PRIMARIA si guadagna subito 1 di quella risorsa (e si rigirano le carte
+## Commerce relative). Ritorna un messaggio, o "" se non applicabile.
+func _apply_increase_production(p: PlayerState, type: String) -> String:
+	var cost := -1
+	for o in _increase_prod_options(p):
+		if String(o["type"]) == type:
+			cost = int(o["cost"])
+	if cost < 0 or p.money < cost:
+		return ""
+	p.money -= cost
+	p.production[type] = int(p.production.get(type, 0)) + 1
+	var msg := "Produzione %s +1 (-%d money)" % [RES_LABEL.get(type, type), cost]
+	if type in ["energy", "raw_materials", "food"]:
+		p.resources[type] = int(p.resources.get(type, 0)) + 1   # primaria: +1 subito
+		_flip_commerce_faceup_on_produce(p.power, [type])
+		msg += ", +1 %s subito" % RES_LABEL.get(type, type)
+	return msg + "."
+
+
+## Offre (barra in alto) l'aumento Produzione opzionale del Focus; se nessuna opzione è
+## abbordabile, passa direttamente al giocatore successivo della Preparazione.
+func _prep_offer_increase() -> void:
+	var p := _active()
+	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
+	if opts.is_empty():
+		_prep_advance()
+		return
+	_prep_awaiting_increase = true
+	_clear_choice_bar()
+	var head := Label.new()
+	head.text = "Aumento Produzione (opzionale) - %s:" % p.power.to_upper()
+	head.add_theme_font_size_override("font_size", _base_fs() + 1)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(head)
+	for o in opts:
+		var b := Button.new()
+		b.text = "+1 %s (-%d money)" % [RES_LABEL.get(o["type"], o["type"]), int(o["cost"])]
+		b.add_theme_font_size_override("font_size", _base_fs() + 1)
+		b.pressed.connect(_cmd_increase_production.bind(String(o["type"])))
+		choice_flow.add_child(b)
+	var skip := Button.new()
+	skip.text = "Salta"
+	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
+	skip.pressed.connect(_cmd_increase_production.bind(""))
+	choice_flow.add_child(skip)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Rigira a faccia in su le carte Commerce di `power` che elencano uno dei tipi prodotti
+## (surplus disponibile per il Trade) - regolamento Choose Focus.
+func _flip_commerce_faceup_on_produce(power: String, types: Array) -> void:
+	var flipped: Array = _commerce_flipped.get(power, [])
+	if flipped.is_empty() or types.is_empty():
+		return
+	var cards := _commerce_cards(power)
+	for t in types:
+		for i in range(cards.size()):
+			if i in flipped and int((cards[i] as Dictionary).get(t, 0)) > 0:
+				flipped.erase(i)
+	_commerce_flipped[power] = flipped
 
 
 # --- Fase PREPARATION guidata: ogni giocatore SCEGLIE il Focus e le azioni legate
@@ -4096,6 +4198,7 @@ func _prep_bar() -> void:
 
 ## Passa al giocatore successivo della PREPARATION.
 func _prep_advance() -> void:
+	_prep_awaiting_increase = false
 	_prep_idx += 1
 	_clear_choice_bar()
 	_prep_step()

@@ -14,7 +14,7 @@ extends RefCounted
 
 const KNOWN := [
 	# Azione (turno del giocatore attivo) e Preparazione
-	"choose_focus", "play_card", "end_turn", "use_ongoing",
+	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
 	# Get a Growth Card (Azione) e acquisto al Market (Research)
@@ -47,6 +47,12 @@ static func end_turn(seat: int, seq: int) -> Dictionary:
 
 static func use_ongoing(seat: int, seq: int, tag: String) -> Dictionary:
 	return make("use_ongoing", seat, seq, {"tag": tag})
+
+
+## Aumento Produzione opzionale (passo Choose Focus della Preparazione). `type` vuoto
+## = il giocatore SALTA l'aumento. Se `type` è una primaria, l'effetto dà +1 risorsa.
+static func increase_production(seat: int, seq: int, type: String) -> Dictionary:
+	return make("increase_production", seat, seq, {"type": type})
 
 
 ## Sotto-scelte (risolvono uno stato `awaiting` durante la risoluzione di una carta).
@@ -109,6 +115,8 @@ static func valid_shape(cmd: Variant) -> bool:
 			return true
 		"use_ongoing":
 			return typeof(args.get("tag")) == TYPE_STRING and String(args["tag"]) != ""
+		"increase_production":
+			return typeof(args.get("type")) == TYPE_STRING   # "" ammesso = salta
 		"pick_region":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != ""
 		"pick_influence_cell":
