@@ -153,6 +153,35 @@ func _init() -> void:
 		print("[%s] Invest da Country alleata: spesa money, carta in scarti" % ["OK" if inv_ok else "FAIL"])
 		if not inv_ok: fails += 1
 
+		# Build a Base: la UI fa SCEGLIERE quante Armate muovere (fino al valore del
+		# Country), non 1 fissa (audit #19).
+		var pbb: PlayerState = board._active()
+		pbb.money = 100
+		pbb.armies_available = 4
+		var bb_country := {"id": "country_bb_ui", "display_name": "BaseTest", "region": "africa",
+			"value": 3, "has_base_symbol": true, "base_allowed_powers": [pbb.power]}
+		pbb.allied_countries.append(bb_country)
+		pbb.exhausted["country_bb_ui"] = false
+		var bb_region_pre: int = int((board.gs.regions["africa"]["armies"] as Dictionary).get(pbb.power, 0))
+		var bb_money_pre: int = pbb.money
+		var card_bb := {"display_name": "Test Build Base", "effect_ops": [{"op": "build_base"}]}
+		pbb.hand.append(card_bb)
+		board._plays_left = 9
+		board._play_card(card_bb)
+		board._on_allied_pressed(bb_country)
+		var slot_bb: Button = _find_button(board.popup_layer, "Temporanea")
+		if slot_bb: slot_bb.pressed.emit()
+		var n2_btn: Button = _find_button(board.popup_layer, "2 Armata/e")   # scelgo 2 Armate
+		if n2_btn: n2_btn.pressed.emit()
+		var bb_region_post: int = int((board.gs.regions["africa"]["armies"] as Dictionary).get(pbb.power, 0))
+		var bb_ok: bool = (card_bb in pbb.played) \
+			and bb_region_post == bb_region_pre + 2 \
+			and pbb.money == bb_money_pre - Actions.build_base_cost(2) \
+			and pbb.armies_available == 2
+		print("[%s] Build a Base UI: muove 2 Armate (fino al valore), costo %d" % ["OK" if bb_ok else "FAIL", Actions.build_base_cost(2)])
+		if not bb_ok: fails += 1
+		pbb.allied_countries.erase(bb_country)
+
 		# Scelta slot Influenza: con permanente libero il giocatore sceglie; sennò temporaneo.
 		var trk2: InfluenceTrack = board.gs.regions["americas"]["track"]
 		for i in range(trk2.perm.size()): trk2.perm[i] = null     # libera i permanenti
@@ -300,9 +329,9 @@ func _init() -> void:
 		var trade_ok: bool = exp_cap == 2 and imp_cap == 1 \
 			and pt.resources["energy"] == en_pre - 2 \
 			and pt.resources["food"] == 1 \
-			and pt.resources["diplomacy"] == 1 \
+			and pt.resources["diplomacy"] == 0 \
 			and pt.money == money_t0 + Actions.EXPORT_GAIN["energy"] * 2 - Actions.IMPORT_COST["food"]
-		print("[%s] Trade UI: export 2 Energia, import 1 Cibo, +1 Diplomazia" % ["OK" if trade_ok else "FAIL"])
+		print("[%s] Trade UI: export 2 Energia, import 1 Cibo (banca → niente Diplomazia)" % ["OK" if trade_ok else "FAIL"])
 		if not trade_ok: fails += 1
 
 		# Cap Trade: non puoi esportare oltre i simboli delle nazioni amiche.
@@ -466,12 +495,14 @@ func _init() -> void:
 			board._open_trade_ui()
 			board._trade_adjust("consumer_goods", "import", 1)
 			var b_money_pre: int = buyer.money
+			var dip_buyer_pre: int = buyer.resources["diplomacy"]
 			board._trade_confirm()
 			var cost: int = Actions.IMPORT_COST["consumer_goods"]
 			var p2p_ok: bool = src.size() == 1 and String(src[0]["src"]) == seller_power \
 				and seller.money == cost \
 				and seller.resources["services"] == serv_pre + 1 \
 				and buyer.money == b_money_pre - cost \
+				and buyer.resources["diplomacy"] == dip_buyer_pre + 1 \
 				and ("consumer_goods" in (board._commerce_flipped.get(seller_power, []) as Array)) \
 				and board._trade_import_cap(buyer, "consumer_goods") == 0  # card girata
 			print("[%s] Trade P2P: venditore +money +1 Servizio, Commerce card girata" % ["OK" if p2p_ok else "FAIL"])

@@ -29,16 +29,19 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 > - **#16** Engage: richiede ≥1 Country alleata nella Regione.
 > - **#17** Invest / Build a Base: una sola volta per Country.
 > - **#18** Move: destinazione solo in zona di interesse o dove si ha una Base.
+> - **#19** Build a Base: la UI fa scegliere quante Armate muovere (fino al valore
+>   del Country), non 1 fissa (`_pick_base_armies`).
 > - **#20** Produce: la Diplomazia in eccesso (>10) va **persa**, non in money.
+> - **#21** Trade: +1 Diplomazia SOLO comprando da un altro giocatore (non dalla banca).
 >
-> ### ⏳ DA FARE — items UI-interattivi (richiedono il flusso UI, non testabili headless)
-> Restano gli item che sono **scelte interattive nel flusso UI** o **riprogettazioni UI**;
-> il motore è pronto dove serve (es. THREAT/ROI accettano già gli Engage-token scartati):
+> ### ⏳ DA FARE — items UI-interattivi (scelte nel flusso UI / riprogettazioni UI)
+> Restano gli item che sono **scelte interattive nell'Aftermath** o **riprogettazioni UI**
+> (meritano una revisione visiva/UX); il motore è già pronto dove serve (es. THREAT/ROI
+> accettano già gli Engage-token scartati):
 > #5 (scarto Engage→+2 Difesa), #6 (scarto Engage→+5 money/Country), #7 (Increase
 > Prosperity a scelta), #9–#10 (Auto-Influence: 2 carte/round + money commercio
 > condizionato), #11 (scarto/ricambio Market nel Research), #12 (Research da Country
-> alleate), #13 (spareggio ordine turno con starting money, bassa), #19 (Build-a-Base:
-> muovi fino al valore, non 1 fisso), #21 (+1 Diplomazia solo comprando da giocatori).
+> alleate), #13 (spareggio ordine turno con starting money, bassa).
 > Più i 🔵 da playtest (Market leggibile, Focus in Preparation, Aftermath interattivo,
 > Auto-Influence a video, carte prodotto multiple, Trade drag&drop).
 
