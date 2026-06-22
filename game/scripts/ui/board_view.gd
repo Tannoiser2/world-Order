@@ -2867,6 +2867,33 @@ func _refill_market() -> void:
 		market_display.append(market_deck.pop_back())
 
 
+## Rimuove `card` dal Market e rivela una nuova carta nella posizione più a SINISTRA
+## (le altre scorrono a destra), come da regolamento (pag. 17).
+func _market_take(card: Dictionary) -> void:
+	market_display.erase(card)
+	if not market_deck.is_empty():
+		market_display.push_front(market_deck.pop_back())
+
+
+## Scarta le N carte più a DESTRA del Market e rivela N nuove a sinistra (pag. 17).
+func _market_discard_rightmost(n: int) -> void:
+	for _i in n:
+		if market_display.is_empty():
+			break
+		market_display.pop_back()
+		if not market_deck.is_empty():
+			market_display.push_front(market_deck.pop_back())
+
+
+## Carte scartate dal Market a fine Research (pag. 17): 2 in 2 giocatori, 1 in 3,
+## nessuna in 4.
+func _market_end_discard_count() -> int:
+	match gs.players.size():
+		2: return 2
+		3: return 1
+		_: return 0
+
+
 func _begin_research() -> void:
 	_research_idx = 0
 	_research_next()
@@ -2875,6 +2902,8 @@ func _begin_research() -> void:
 ## Passa alla Research del prossimo giocatore (in ordine di turno); poi Aftermath.
 func _research_next() -> void:
 	if _research_idx >= gs.turn_order.size():
+		# Fine Research: scarta le carte Market più a destra (in base ai giocatori).
+		_market_discard_rightmost(_market_end_discard_count())
 		_run_aftermath()
 		return
 	active_seat = gs.turn_order[_research_idx]
@@ -2908,26 +2937,50 @@ func _show_research() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	popup_layer.add_child(center)
+	# Pannello limitato allo schermo; contenuto scrollabile in verticale così le
+	# carte non sforano né si accavallano (specie su schermi stretti).
 	var panel := PanelContainer.new()
+	var pst := StyleBoxFlat.new(); pst.bg_color = Color(0.08, 0.10, 0.14, 0.99)
+	pst.set_corner_radius_all(10); pst.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", pst)
 	center.add_child(panel)
+	var panel_w: float = minf(size.x * 0.94, 1000.0)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(panel_w, minf(size.y * 0.86, 760.0))
+	panel.add_child(scroll)
 	var vb := VBoxContainer.new()
-	vb.custom_minimum_size = Vector2(480, 0)
-	vb.add_theme_constant_override("separation", 6)
-	panel.add_child(vb)
+	vb.custom_minimum_size = Vector2(panel_w - 28.0, 0)
+	vb.add_theme_constant_override("separation", 8)
+	scroll.add_child(vb)
+	var content_w: float = panel_w - 36.0   # larghezza utile per le righe di carte
 
 	var head := Label.new()
 	head.text = "Research — %s   ·   Research disponibili: %d" % [p.power.to_upper(), _research_points]
-	head.add_theme_font_size_override("font_size", 18)
+	head.add_theme_font_size_override("font_size", _base_fs() + 2)
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	vb.add_child(head)
 
-	vb.add_child(_section("Market (spendi Research):"))
+	# --- Market: carte a RITRATTO dimensionate per stare tutte in una riga ---
+	vb.add_child(_section("Market (spendi Research; la nuova carta compare a sinistra):"))
 	var mrow := _card_row()
 	vb.add_child(mrow)
+	var nm: int = maxi(market_display.size(), 1)
+	var mcard_w: float = clampf((content_w - 8.0 * (nm - 1)) / nm, 64.0, 132.0)
+	var mcard_h: float = mcard_w / 0.72
 	for card in market_display:
 		var cost := int(card.get("market_cost", 0))
-		mrow.add_child(_market_card(card, "costo %d R" % cost, _research_points < cost, _buy_market.bind(card)))
+		mrow.add_child(_market_card_sized(card, "costo %d R" % cost, _research_points < cost, mcard_w, mcard_h, _buy_market.bind(card)))
 
+	# Opzione (pag. 17): −2 Research per scartare le 3 carte più a destra.
+	if not market_display.is_empty():
+		var reshuffle := Button.new()
+		reshuffle.text = "Cambia Market: −2 Research → scarta le 3 a destra"
+		reshuffle.disabled = _research_points < 2
+		reshuffle.pressed.connect(_market_reshuffle_3)
+		vb.add_child(reshuffle)
+
+	# --- Growth: carte LARGHE (landscape) dimensionate per la riga ---
 	vb.add_child(_section("Growth (livello %d, spendi risorse):" % _next_growth_level(p)))
 	var ag := _available_growth(p)
 	if ag.is_empty():
@@ -2937,8 +2990,11 @@ func _show_research() -> void:
 	else:
 		var grow := _card_row()
 		vb.add_child(grow)
+		var ng: int = maxi(ag.size(), 1)
+		var gcard_w: float = clampf((content_w - 10.0 * (ng - 1)) / ng, 120.0, 240.0)
+		var gcard_h: float = gcard_w / 1.54
 		for card in ag:
-			grow.add_child(_market_card(card, "%s  +%d VP" % [_cost_text(card.get("cost", {})), int(card.get("victory_points", 0))], not p.has_resources(card.get("cost", {})), _buy_growth.bind(card)))
+			grow.add_child(_market_card_sized(card, "%s  +%d VP" % [_cost_text(card.get("cost", {})), int(card.get("victory_points", 0))], not p.has_resources(card.get("cost", {})), gcard_w, gcard_h, _buy_growth.bind(card)))
 
 	var done := Button.new()
 	done.text = "Continua"
@@ -2953,11 +3009,22 @@ func _buy_market(card: Dictionary) -> void:
 	var spent := GamePhases.buy_market_card(_active(), card, _research_points)
 	if spent >= 0:
 		_research_points -= spent
-		market_display.erase(card)
-		_refill_market()
+		_market_take(card)
 		_status("Comprata dal Market: %s (−%d Research)." % [card.get("display_name", ""), spent])
 		_after_change()
 		_show_research()
+
+
+## Opzione del Research (pag. 17): spendi 2 Research per scartare le 3 carte più a
+## destra del Market e rivelarne 3 nuove. Ripetibile finché hai Research.
+func _market_reshuffle_3() -> void:
+	if _research_points < 2:
+		return
+	_research_points -= 2
+	_market_discard_rightmost(3)
+	_status("Market: scartate le 3 carte più a destra (−2 Research).")
+	_after_change()
+	_show_research()
 
 
 func _buy_growth(card: Dictionary) -> void:
@@ -3208,17 +3275,20 @@ func _card_row() -> HBoxContainer:
 	return row
 
 
-## Carta Market/Growth come IMMAGINE reale + etichetta costo sotto, cliccabile.
-func _market_card(card: Dictionary, cost_text: String, disabled: bool, on_press: Callable) -> Control:
-	var ch := int(clampf(size.y * 0.22, 88, 180))
+## Carta Market/Growth come IMMAGINE reale (dimensione w×h data dal chiamante, così
+## sta nella riga senza accavallarsi) + etichetta costo sotto, cliccabile.
+func _market_card_sized(card: Dictionary, cost_text: String, disabled: bool, w: float, h: float, on_press: Callable) -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(int(ch * 0.70), ch)
+	b.custom_minimum_size = Vector2(w, h)
 	b.flat = true
 	b.disabled = disabled
 	b.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
-	b.pressed.connect(on_press)
+	if not disabled:
+		b.pressed.connect(on_press)
+	else:
+		b.modulate = Color(0.5, 0.5, 0.55)
 	var tr := TextureRect.new()
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -3232,6 +3302,7 @@ func _market_card(card: Dictionary, cost_text: String, disabled: bool, on_press:
 	var lab := Label.new()
 	lab.text = cost_text
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.custom_minimum_size = Vector2(w, 0)
 	lab.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 3))
 	lab.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6) if not disabled else Color(0.6, 0.5, 0.5))
 	box.add_child(lab)

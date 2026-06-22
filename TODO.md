@@ -40,10 +40,19 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 > accettano già gli Engage-token scartati):
 > #5 (scarto Engage→+2 Difesa), #6 (scarto Engage→+5 money/Country), #7 (Increase
 > Prosperity a scelta), #9–#10 (Auto-Influence: 2 carte/round + money commercio
-> condizionato), #11 (scarto/ricambio Market nel Research), #12 (Research da Country
-> alleate), #13 (spareggio ordine turno con starting money, bassa).
-> Più i 🔵 da playtest (Market leggibile, Focus in Preparation, Aftermath interattivo,
+> condizionato), #13 (spareggio ordine turno con starting money, bassa).
+> Più i 🔵 da playtest (Focus in Preparation, Aftermath interattivo,
 > Auto-Influence a video, carte prodotto multiple, Trade drag&drop).
+>
+> ### ✅ FATTO 2026-06-22 (2° giro — Market/Research)
+> - **Schermata Research/Market leggibile** (bug playtest): carte dimensionate per stare
+>   in riga senza accavallarsi, Growth in orizzontale, pannello scrollabile/adattato.
+> - **#11** Market: comprando ne compare una nuova a sinistra; opzione −2 Research per
+>   scartare le 3 a destra; scarto di fine Research (2/1/0 per 2/3/4 giocatori).
+> - **#12 BLOCCATO dai dati**: i file `data/countries/*.json` non hanno il valore
+>   **Research** delle Country (non trascritto dalle carte). Serve aggiungere il campo
+>   `research` per ogni Country (dalle carte) prima di poter esaurire le Country per
+>   aggiungere Research nel passo Research. `buy_market_card` ha già `extra_from_countries`.
 
 ### 🔴 Discrepanze rispetto al regolamento (dettaglio originale dell'audit)
 
