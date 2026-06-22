@@ -115,3 +115,22 @@ func owners() -> Array:
 		if o != null:
 			s[o] = true
 	return s.keys()
+
+
+## Serializzazione (per snapshot/rete): solo dati puri, nessun nodo.
+func to_dict() -> Dictionary:
+	return {
+		"perm_values": perm_values.duplicate(),
+		"temp_values": temp_values.duplicate(),
+		"perm": perm.duplicate(),
+		"temp": temp.duplicate(),
+	}
+
+
+static func from_dict(d: Dictionary) -> InfluenceTrack:
+	# Il costruttore imposta perm_values/temp_values e mette tutti gli owner a null:
+	# poi sovrascriviamo gli owner salvati (perm/temp).
+	var t := InfluenceTrack.new(d.get("perm_values", []), d.get("temp_values", []))
+	t.perm = (d.get("perm", []) as Array).duplicate()
+	t.temp = (d.get("temp", []) as Array).duplicate()
+	return t

@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.74"
+const VERSION := "v0.7.75"
 const CHANGELOG := [
+	"v0.7.75 - Lavori preparatori per il GIOCO IN RETE (multiplayer): lo stato della partita ora si puo' SERIALIZZARE (snapshot completo: giocatori, regioni/influenza, market) e ricostruire identico, e c'e' la REDAZIONE per giocatore (ogni client vedra' la propria mano intera e quelle avversarie solo come numero). Nessun cambiamento visibile in partita: e' la base su cui costruiremo il multiplayer in LAN. +9 test motore (133 totali).",
 	"v0.7.74 - Layout ancora piu' arioso: la MAPPA viene allineata a DESTRA e lo spazio 'grigio' che lasciava ai lati viene RECUPERATO per la colonna BOARD, ora un po' piu' larga (board, plancia e carte si adattano e crescono). Le carte ALLEATE sono un po' piu' piccole: ne entrano almeno 7 per riga. Le pile di carte uguali (xN) ora si sfalsano verso il BASSO, cosi' si vede la PRODUZIONE della carta sotto invece del solo bordo superiore.",
 	"v0.7.73 - Barra in alto RICALIBRATA: l'HUD si compatta (niente piu' spazio vuoto ne' doppioni con la riga sotto) e la BARRA SCELTE ha altezza FISSA con testo piu' piccolo, cosi' non sconfina piu' sulla mappa/board. Il tasto 'Fine turno' non e' piu' nell'angolo in alto a destra (scomodo, a volte tagliato): ora e' un tasto fisso in BASSO a destra, accanto alle linguette. Corretto il testo del turno (non si sceglie il Focus durante l'azione). Cornice delle caselle Influenza piu' sottile.",
 	"v0.7.72 - Pannello board riorganizzato: in alto la PLANCIA con la carta COMMERCIO a fianco (allineata in alto) e le carte PRODOTTO subito SOTTO la carta Commercio (piu' piccole, riga larga quanto la carta). Sotto, le carte nazione ALLEATE in una fila (almeno 6 per riga, le altre vanno a capo); piu' sotto ancora le carte CRESCITA quando acquistate.",

@@ -500,4 +500,56 @@ static func run_all() -> Dictionary:
 	check.call("partita: VP assegnati", any_vp)
 	log.append("  (info) Vincitore simulazione: %s con %d VP" % [win, fin.player_by_power(win).victory_points])
 
+	# --- 13. Serializzazione / snapshot (fondamenta del gioco in rete) ---
+	# Round-trip: to_dict() -> from_dict() -> to_dict() deve dare lo stesso stato.
+	var snap := fin.to_dict()
+	var fin2 := GameState.from_dict(snap)
+	check.call("snapshot: round-trip identico", _deep_eq(snap, fin2.to_dict()))
+	check.call("snapshot: giocatori ricostruiti", fin2.players.size() == fin.players.size())
+	check.call("snapshot: regioni ricostruite", fin2.regions.size() == fin.regions.size())
+	check.call("snapshot: InfluenceTrack ricostruito come oggetto",
+		not fin2.regions.is_empty() and (fin2.regions.values()[0]["track"] is InfluenceTrack))
+	# Redazione per seggio: la TUA mano è visibile, quelle avversarie solo come conteggio,
+	# il mazzo è coperto per tutti.
+	var fresh := GameSetup.new_game(["usa", "china", "russia", "eu"])
+	(fresh.players[0] as PlayerState).hand = [{"id": "a"}, {"id": "b"}, {"id": "c"}]
+	(fresh.players[1] as PlayerState).hand = [{"id": "x"}, {"id": "y"}]
+	var view0 := fresh.state_for_seat(0)
+	check.call("redazione: la TUA mano è visibile (3)", (view0["players"][0]["hand"] as Array).size() == 3)
+	check.call("redazione: mano avversaria coperta", (view0["players"][1]["hand"] as Array).is_empty())
+	check.call("redazione: mano avversaria contata (2)", int(view0["players"][1].get("hand_count", -1)) == 2)
+	check.call("redazione: mazzo coperto per tutti", (view0["players"][0]["deck"] as Array).is_empty())
+	check.call("redazione: seggio osservatore marcato", int(view0.get("viewer_seat", -1)) == 0)
+
 	return {"passed": c["passed"], "failed": c["failed"], "log": log}
+
+
+## Confronto PROFONDO (ricorsivo) di Dictionary/Array/primitive, indipendente
+## dall'ordine delle chiavi. Usato per verificare i round-trip di serializzazione.
+static func _deep_eq(a: Variant, b: Variant) -> bool:
+	var ta := typeof(a)
+	var tb := typeof(b)
+	if ta != tb:
+		# int e float numericamente uguali sono accettati come equivalenti.
+		if (ta == TYPE_INT or ta == TYPE_FLOAT) and (tb == TYPE_INT or tb == TYPE_FLOAT):
+			return float(a) == float(b)
+		return false
+	match ta:
+		TYPE_DICTIONARY:
+			if a.size() != b.size():
+				return false
+			for k in a:
+				if not b.has(k):
+					return false
+				if not _deep_eq(a[k], b[k]):
+					return false
+			return true
+		TYPE_ARRAY:
+			if a.size() != b.size():
+				return false
+			for i in a.size():
+				if not _deep_eq(a[i], b[i]):
+					return false
+			return true
+		_:
+			return a == b
