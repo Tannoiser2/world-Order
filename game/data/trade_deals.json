@@ -107,45 +107,22 @@
   "note": "Russia offre 3 unita' di ciascuna delle sue risorse (Energia, Materie Prime) sulle Commerce card.",
   "commerce_cards": {
     "usa": [
-      [
-        "services"
-      ],
-      [
-        "services"
-      ]
+      { "services": 1 },
+      { "services": 1 }
     ],
     "eu": [
-      [
-        "consumer_goods",
-        "services"
-      ],
-      [
-        "consumer_goods",
-        "services"
-      ]
+      { "consumer_goods": 1, "services": 1 },
+      { "consumer_goods": 1, "services": 1 }
     ],
     "russia": [
-      [
-        "energy",
-        "raw_materials"
-      ],
-      [
-        "energy",
-        "raw_materials"
-      ],
-      [
-        "energy",
-        "raw_materials"
-      ]
+      { "energy": 3, "raw_materials": 3 },
+      { "energy": 3, "raw_materials": 3 },
+      { "energy": 3, "raw_materials": 3 }
     ],
     "china": [
-      [
-        "consumer_goods"
-      ],
-      [
-        "consumer_goods"
-      ]
+      { "consumer_goods": 1 },
+      { "consumer_goods": 1 }
     ]
   },
-  "_commerce_cards_note": "commerce_cards: carte prodotto per potenza (2, 3 per Russia). Comprando un prodotto da una potenza si gira UNA sua carta che lo mostra; il numero di carte a faccia in su limita quante unita' puo' vendere nel round. La composizione per-carta e' assunta = commerce_offered (da confermare)."
+  "_commerce_cards_note": "commerce_cards: carte prodotto per potenza (USA/Cina 2, EU 2, Russia 3). Ogni carta e' {risorsa: quantita' max vendibile} e si vende UNA risorsa per carta (la quantita' e' il tetto): USA 1 Servizi/carta, Cina 1 Beni/carta, EU 1 Servizi O 1 Beni/carta, Russia fino a 3 Energia O 3 Materie Prime/carta. Comprando da una potenza si girano le sue carte fino a coprire la quantita' richiesta; ogni carta girata e' consumata per intero (anche l'altra risorsa)."
 }

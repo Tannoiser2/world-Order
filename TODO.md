@@ -38,9 +38,10 @@ Rulebook: `/Tabelle_Materiali/World Order/Rules.pdf` (24 pp.).
 > Resta: #13 (spareggio ordine turno con starting money, bassa).
 > Più:
 > - **Trade: drag&drop** vero (trascinare i token) — iterazione 2, sopra al tap.
-> - **Commerce cards: composizione per-carta** da confermare (ora ogni carta = tutti i
->   prodotti della potenza; se EU/Russia hanno carte "splittate" è solo da editare il
->   dato `commerce_cards` in `data/trade_deals.json`).
+> - ✅ **Commerce cards: composizione per-carta** confermata (v0.7.46): USA 1 Servizi/carta
+>   (×2), Cina 1 Beni/carta (×2), EU 1 Servizi O 1 Beni/carta (×2), Russia fino a 3 Energia
+>   O 3 Materie Prime/carta (×3). Ogni carta è `{risorsa: quantità}`; girarne una la consuma
+>   per intero (anche l'altra risorsa). Cap d'import = somma delle quantità sulle carte scoperte.
 >
 > ### ✅ FATTO 2026-06-22 (7° giro — carte prodotto multiple)
 > - Ogni potenza ha ora **2 carte prodotto (3 la Russia)**, mostrate tutte nel cassetto;

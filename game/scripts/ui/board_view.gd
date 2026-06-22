@@ -1563,36 +1563,47 @@ func _trade_allied_import(p: PlayerState, R: String) -> int:
 	return n
 
 
-## Carte prodotto (Commerce) di una potenza: lista di carte, ognuna è una lista di
-## risorse vendibili (2 carte per potenza, 3 per la Russia).
+## Carte prodotto (Commerce) di una potenza: lista di carte, ognuna è un dizionario
+## {risorsa: quantità max vendibile} (USA/Cina/EU 2 carte, Russia 3). Si vende UNA
+## risorsa per carta (es. una carta Russia: fino a 3 Energia O 3 Materie Prime).
 func _commerce_cards(power: String) -> Array:
 	return trade_deals.get("commerce_cards", {}).get(power, [])
 
 
-## Quante carte prodotto di `power` a faccia in su mostrano R (quante unità di R
-## può ancora vendere questo round).
+## Quante unità di R può ancora vendere `power` questo round = somma delle quantità
+## di R sulle sue carte prodotto a faccia in su.
 func _commerce_faceup_for(power: String, R: String) -> int:
 	var flipped: Array = _commerce_flipped.get(power, [])
 	var n := 0
 	var cards := _commerce_cards(power)
 	for i in cards.size():
-		if i not in flipped and R in (cards[i] as Array):
-			n += 1
+		if i not in flipped:
+			n += int((cards[i] as Dictionary).get(R, 0))
 	return n
 
 
-## Gira (esaurisce) la prima carta prodotto di `power` a faccia in su che mostra R.
-## Ritorna true se ne ha girata una.
-func _commerce_flip_for(power: String, R: String) -> bool:
+## Esaurisce (gira) le carte prodotto di `power` necessarie a coprire `q` unità di R.
+## Ogni carta girata è consumata PER INTERO (anche la sua altra risorsa: è il vincolo
+## "una risorsa per carta"). Ritorna il numero di carte girate.
+func _commerce_consume(power: String, R: String, q: int) -> int:
 	if not _commerce_flipped.has(power):
 		_commerce_flipped[power] = []
 	var flipped: Array = _commerce_flipped[power]
 	var cards := _commerce_cards(power)
+	var need := q
+	var done := 0
 	for i in cards.size():
-		if i not in flipped and R in (cards[i] as Array):
-			flipped.append(i)
-			return true
-	return false
+		if need <= 0:
+			break
+		if i in flipped:
+			continue
+		var qty := int((cards[i] as Dictionary).get(R, 0))
+		if qty <= 0:
+			continue
+		flipped.append(i)
+		need -= qty
+		done += 1
+	return done
 
 
 ## Gira una qualunque carta prodotto di `power` a faccia in su (Auto-Influence, pag. 18).
@@ -1760,8 +1771,7 @@ func _trade_confirm() -> void:
 		p.money -= cost * q
 		if src != "bank":
 			var seller := gs.player_by_power(src)
-			for _k in q:
-				_commerce_flip_for(src, R)   # gira una carta prodotto per ogni unità (anche neutrali)
+			_commerce_consume(src, R, q)   # gira le carte prodotto necessarie a coprire q (anche neutrali)
 			if seller != null:
 				# Giocatore reale: incassa il money e prende +1 Servizio (bonus di vendita);
 				# comprando da lui guadagni +1 Diplomazia.
@@ -2851,9 +2861,11 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 		if used:
 			_apply_exhausted(pcard, pcsz)
 		var prods := []
-		for res in (cards[i] as Array):
-			prods.append(RES_LABEL.get(res, res))
-		pcard.tooltip_text = "Commerce %d/%d%s — vende: %s" % [i + 1, cards.size(), "  (usata)" if used else "", ", ".join(prods)]
+		for res in (cards[i] as Dictionary):
+			var qy := int((cards[i] as Dictionary)[res])
+			prods.append("%d %s" % [qy, RES_LABEL.get(res, res)] if qy > 1 else String(RES_LABEL.get(res, res)))
+		# "una risorsa per carta": le risorse sulla stessa carta sono alternative (O).
+		pcard.tooltip_text = "Commerce %d/%d%s — vende: %s" % [i + 1, cards.size(), "  (usata)" if used else "", " o ".join(prods)]
 		prow.add_child(pcard)
 
 
