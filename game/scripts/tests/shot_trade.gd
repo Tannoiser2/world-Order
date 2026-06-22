@@ -13,7 +13,9 @@ func _initialize() -> void:
 	board.active_seat = board.gs.turn_order[0]
 	var p = board._active()
 	p.armies_available = maxi(p.armies_available, 6)
-	board._open_trade_ui()   # stato iniziale: bottoni-prodotto espliciti nella barra
+	p.resources["services"] = 3
+	p.resources["food"] = 3        # Serv e Food sulla STESSA casella → anello con ↻ (ciclo)
+	board._open_trade_ui()   # stato iniziale: selezione del prodotto sulla casella
 	for _i in range(10):
 		await process_frame
 	await create_timer(0.3).timeout

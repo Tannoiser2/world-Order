@@ -9,6 +9,8 @@ const POWER_COLORS := {
 	"russia": Color(0.9, 0.9, 0.9), "china": Color(0.9, 0.3, 0.3),
 	"local": Color(0.3, 0.3, 0.3),
 }
+## Nome leggibile delle superpotenze (per i bottoni "compra da:" nel Commercio).
+const POWER_LABEL := {"usa": "USA", "eu": "Europa", "china": "Cina", "russia": "Russia"}
 const RES := ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy", "armies"]
 const RES_LABEL := {
 	"energy": "En", "raw_materials": "RM", "food": "Food",
@@ -2827,6 +2829,20 @@ func _trade_select_res(res: String) -> void:
 	_trade_rerender()
 
 
+## Tocco su un anello-casella: seleziona il prodotto; se la casella ne contiene più
+## d'uno (stessa quantità), CICLA tra loro a ogni tocco — così due prodotti sulla
+## stessa casella sono entrambi raggiungibili senza ambiguità.
+func _trade_cycle_select(group: Array) -> void:
+	if group.is_empty():
+		return
+	if _trade_active_res in group:
+		var i: int = group.find(_trade_active_res)
+		_trade_active_res = String(group[(i + 1) % group.size()])
+	else:
+		_trade_active_res = String(group[0])
+	_trade_rerender()
+
+
 # --- Drag&drop (iterazione 2, sopra al tap): trascini il token risorsa sulla
 # track e lo rilasci su una casella valida. Usa il drag&drop nativo di Godot
 # (set_drag_forwarding) — niente calcolo manuale del puntatore. ---
@@ -2862,32 +2878,53 @@ func _trade_do_drop(_at_position: Vector2, _data: Variant, R: String, i: int) ->
 func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) -> void:
 	var exp: Dictionary = _trade_sel.get("export", {})
 	var imp: Dictionary = _trade_sel.get("import", {})
+	# Raggruppa i prodotti commerciabili per CASELLA (stessa quantità → stessa casella):
+	# un solo anello cliccabile per casella che SELEZIONA il prodotto e, se la casella
+	# ne ha più d'uno, CICLA tra loro a ogni tocco (↻). Il drag resta sul prodotto attivo.
+	var by_slot := {}   # amt -> [res...]
+	for res in TRADE_RES:
+		var amt := int(p.resources.get(res, 0)) - int(exp.get(res, 0)) + int(imp.get(res, 0))
+		if not by_slot.has(amt):
+			by_slot[amt] = []
+		(by_slot[amt] as Array).append(res)
+	for amt in by_slot:
+		var group: Array = by_slot[amt]
+		var active_here: bool = _trade_active_res in group
+		var slot := _resource_slot(int(amt))
+		var d := ph * 0.16
+		var b := Button.new()   # niente flat: l'anello dev'essere visibile
+		b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
+		b.offset_left = -d * 0.5; b.offset_right = d * 0.5; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
+		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d)); sb.bg_color = Color(1, 1, 1, 0.0)
+		sb.set_border_width_all(maxi(2, int(d * 0.12)))
+		sb.border_color = Color(0.95, 0.85, 0.4) if active_here else Color(0.55, 0.8, 1.0, 0.9)
+		for stn in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(stn, sb)
+		var labels := []
+		for res in group:
+			labels.append(RES_LABEL.get(res, res))
+		b.tooltip_text = "Commercia " + ", ".join(labels) + ("  ·  ri-tocca per cambiare prodotto" if group.size() > 1 else "")
+		if group.size() > 1:
+			b.text = "↻"
+			b.add_theme_font_size_override("font_size", maxi(9, int(d * 0.5)))
+			b.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4) if active_here else Color(0.7, 0.85, 1.0))
+		b.pressed.connect(_trade_cycle_select.bind(group.duplicate()))
+		# Drag: trascina il prodotto attivo della casella (o il primo se nessuno è attivo).
+		var drag_res := _trade_active_res if active_here else String(group[0])
+		b.set_drag_forwarding(_trade_drag_begin.bind(drag_res), Callable(), Callable())
+		area.add_child(b)
+	# Nessun prodotto selezionato: ci si ferma agli anelli di selezione.
 	if _trade_active_res == "":
-		for res in TRADE_RES:
-			var amt := int(p.resources.get(res, 0)) - int(exp.get(res, 0)) + int(imp.get(res, 0))
-			var slot := _resource_slot(amt)
-			var staged: bool = exp.has(res) or imp.has(res)
-			var d := ph * 0.155
-			var b := Button.new()   # niente flat: bordo del cerchio visibile
-			b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
-			b.offset_left = -d * 0.5; b.offset_right = d * 0.5; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
-			var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d)); sb.bg_color = Color(1, 1, 1, 0.0)
-			sb.set_border_width_all(2)
-			sb.border_color = Color(0.95, 0.85, 0.4) if staged else Color(0.55, 0.8, 1.0, 0.85)
-			b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
-			b.tooltip_text = "Commercia %s (tocca o trascina)" % RES_LABEL.get(res, res)
-			b.pressed.connect(_trade_select_res.bind(res))
-			# Drag&drop: trascinando il token compaiono e si attivano le caselle valide.
-			b.set_drag_forwarding(_trade_drag_begin.bind(res), Callable(), Callable())
-			area.add_child(b)
 		return
-	# Un prodotto selezionato: caselle valide con il money.
+	# Prodotto selezionato: caselle valide col money (verso 0 vendi, verso 10 compra).
 	var R := _trade_active_res
 	var qty := int(p.resources.get(R, 0))
 	var lo := maxi(0, qty - _trade_export_cap(p, R))
 	var hi := mini(10, qty + _trade_import_cap_sel(p, R))
 	var eff := qty - int(exp.get(R, 0)) + int(imp.get(R, 0))
 	for i in range(lo, hi + 1):
+		if i == eff:
+			continue   # la casella corrente è già l'anello di selezione/ciclo
 		var slot := _resource_slot(i)
 		var d := ph * 0.135
 		var b := Button.new()
@@ -2895,14 +2932,10 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 		b.offset_left = -d * 0.78; b.offset_right = d * 0.78; b.offset_top = -d * 0.55; b.offset_bottom = d * 0.55
 		b.add_theme_font_size_override("font_size", maxi(8, int(ph * 0.05)))
 		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(3)
-		if i == qty:
-			sb.bg_color = Color(0.30, 0.30, 0.36, 0.92); b.text = "•"
-		elif i < qty:
+		if i < qty:
 			sb.bg_color = Color(0.16, 0.5, 0.24, 0.92); b.text = "+%d" % (int(Actions.EXPORT_GAIN.get(R, 0)) * (qty - i))
 		else:
 			sb.bg_color = Color(0.55, 0.2, 0.2, 0.92); b.text = "−%d" % (int(Actions.IMPORT_COST.get(R, 0)) * (i - qty))
-		if i == eff and eff != qty:
-			sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4)
 		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
 		b.pressed.connect(_trade_set_target.bind(R, i))
 		# Drop target del drag&drop: rilasciando qui il token, imposta questa quantità.
@@ -2926,31 +2959,27 @@ func _show_trade_bar(p: PlayerState) -> void:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
 	if _trade_active_res == "":
-		# Selezione ESPLICITA del prodotto (niente più ambiguità quando due risorse
-		# stanno sulla stessa casella della track): un bottone per prodotto, con la
-		# quantità posseduta. In alternativa resta il tap/drag diretto sulla plancia.
-		var lab := Label.new(); lab.text = "scegli il prodotto:"
-		lab.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
-		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		choice_flow.add_child(lab)
-		for res in TRADE_RES:
-			var rb := Button.new()
-			rb.text = "%s (%d)" % [RES_LABEL.get(res, res), int(p.resources.get(res, 0))]
-			rb.add_theme_font_size_override("font_size", _base_fs())
-			rb.pressed.connect(_trade_select_res.bind(res))
-			choice_flow.add_child(rb)
+		# Selezione del prodotto SULLA CASELLA (si tocca/trascina il token sulla plancia;
+		# se due prodotti stanno sulla stessa casella, ri-toccando si CICLA tra loro).
+		var hint := Label.new()
+		hint.text = "— tocca un prodotto sulla plancia (ri-tocca la stessa casella per cambiare prodotto); poi scegli da CHI comprare"
+		hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.8))
+		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(hint)
 	else:
 		var R := _trade_active_res
-		var rl := Label.new(); rl.text = "%s:" % RES_LABEL.get(R, R)
+		var rl := Label.new(); rl.text = "%s — compra da:" % RES_LABEL.get(R, R)
 		rl.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 		rl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(rl)
 		var srcs := _import_sources(p, R)
-		if not srcs.is_empty():
+		if srcs.is_empty():
+			var no := Label.new(); no.text = "(nessuna sorgente: puoi solo VENDERE)"
+			no.add_theme_color_override("font_color", Color(0.75, 0.7, 0.6))
+			no.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			choice_flow.add_child(no)
+		else:
 			var sel_src := _trade_selected_src(p, R)
-			var bl := Label.new(); bl.text = "compra da:"
-			bl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			choice_flow.add_child(bl)
 			for s in srcs:
 				choice_flow.add_child(_trade_src_flag_btn(R, s, String(s["src"]) == sel_src))
 		var chg := Button.new(); chg.text = "Cambia prodotto"
@@ -3015,8 +3044,10 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 	var fsb := StyleBoxFlat.new(); fsb.set_corner_radius_all(5); fsb.bg_color = Color(0.2, 0.22, 0.28)
 	fsb.content_margin_left = 7; fsb.content_margin_right = 7
 	fsb.content_margin_top = 3; fsb.content_margin_bottom = 3
+	# Sorgente SELEZIONATA = sbloccata: bordo e sfondo dorati, ben evidenti.
 	if selected:
-		fsb.set_border_width_all(3); fsb.border_color = Color(0.95, 0.85, 0.4)
+		fsb.set_border_width_all(3); fsb.border_color = Color(1.0, 0.85, 0.3)
+		fsb.bg_color = Color(0.42, 0.34, 0.12)
 	else:
 		fsb.set_border_width_all(1); fsb.border_color = Color(0.5, 0.6, 0.75, 0.75)
 	for stn in ["normal", "hover", "pressed", "focus"]:
@@ -3033,12 +3064,12 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 		else:
 			fb.text = "Tue alleate ×%d" % int(s["n"])
 	else:
-		# La bandierina è l'ICONA del bottone, limitata in larghezza così resta sempre
-		# piccola e allineata al testo (niente più immagini gonfiate a tutta altezza).
+		# Bandiera (icona) + NOME della superpotenza, così è CHIARO da quale giocatore
+		# compri (es. "Europa" vs "USA" se entrambi vendono Servizi). Toccarla la sblocca.
 		fb.icon = load("res://assets/flags/%s.png" % src)
 		fb.expand_icon = true
-		fb.add_theme_constant_override("icon_max_width", int(fh * 1.5))
-		fb.text = "×%d" % int(s["n"])
+		fb.add_theme_constant_override("icon_max_width", int(fh * 1.4))
+		fb.text = "%s ×%d" % [POWER_LABEL.get(src, src.to_upper()), int(s["n"])]
 	fb.pressed.connect(_trade_pick_src.bind(R, src))
 	return fb
 

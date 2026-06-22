@@ -11,6 +11,7 @@ func _initialize() -> void:
 	get_root().add_child(board)
 	for _i in range(6):
 		await process_frame
+	board._begin_action_phase()
 	# Trova la Russia e rendila attiva.
 	for i in board.gs.players.size():
 		if board.gs.players[i].power == "russia":
