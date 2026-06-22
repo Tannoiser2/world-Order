@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.81"
+const VERSION := "v0.7.82"
 const CHANGELOG := [
+	"v0.7.82 - AREE delle Regioni ricalibrate: i riquadri di evidenziazione e piazzamento (dove si droppano i Carri durante Move, si scelgono le Regioni per Engage, ecc.) erano enormi e si SOVRAPPONEVANO. Ora usano le 7 aree precise della guida posizioni: piu' piccole, una per Regione, senza piu' sovrapposizioni.",
 	"v0.7.81 - TRADUZIONE ITALIANA dei testi delle carte: passando il mouse su una carta (mano, Market, Strategic Asset, Growth) ora a fianco dell'anteprima ingrandita compare la spiegazione dell'effetto tradotta in italiano, con carattere piu' piccolo. Tradotte 109 carte (abilita', Market, Strategic, Growth). L'inglese resta come riserva se manca la traduzione.",
 	"v0.7.80 - Linee di EVIDENZIAZIONE piu' sottili: i bordi che evidenziano Regioni, celle d'Influenza, carte (selezione), zone Focus e le sorgenti di Move/Trade erano troppo spessi e ora sono assottigliati (restano comunque ben visibili).",
 	"v0.7.79 - CHOOSE FOCUS completo: dopo aver scelto il Focus in Preparazione ora compare il passo opzionale AUMENTO PRODUZIONE (paga il costo per spostare un cubo Produzione di +1; se aumenti una PRIMARIA - Energia/Materie/Cibo - guadagni subito 1 di quella risorsa). Inoltre, quando produci un tipo elencato sulle tue carte Commercio, queste si rigirano a faccia in su (surplus per il Trade). Domestic permette di aumentare una primaria, Diplomatic la Diplomazia, Military le Armate.",
