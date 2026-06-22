@@ -66,6 +66,7 @@ var market_content: VBoxContainer  # contenuto scrollabile del pannello mercato
 var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
 var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
+var card_preview_text: Label     # traduzione IT dell'effetto carta, accanto al flyover
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
 var tab_bg: Panel                   # sfondo solido della barra linguette
@@ -209,6 +210,21 @@ func _ready() -> void:
 	card_preview.visible = false
 	card_preview.z_index = 200
 	add_child(card_preview)
+	# Pannello-testo del flyover: la TRADUZIONE in italiano dell'effetto carta, con font
+	# piccolo, mostrata accanto all'anteprima ingrandita (vedi _attach_preview).
+	card_preview_text = Label.new()
+	card_preview_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card_preview_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_preview_text.visible = false
+	card_preview_text.z_index = 200
+	var cpst := StyleBoxFlat.new()
+	cpst.bg_color = Color(0.04, 0.05, 0.08, 0.97)
+	cpst.set_corner_radius_all(6)
+	cpst.set_content_margin_all(8)
+	cpst.border_color = Color(0.5, 0.6, 0.78, 0.7); cpst.set_border_width_all(1)
+	card_preview_text.add_theme_stylebox_override("normal", cpst)
+	card_preview_text.add_theme_color_override("font_color", Color(0.92, 0.94, 0.98))
+	add_child(card_preview_text)
 
 	GamePhases.determine_turn_order(gs)
 	round_turn_count = 0
@@ -578,7 +594,7 @@ func _make_region_button(region: String) -> Button:
 			"selected": st.bg_color = Color(0.95, 0.8, 0.2, 0.46); st.border_color = Color(1, 0.9, 0.3, 1)
 			"dest": st.bg_color = Color(0.2, 0.6, 0.95, 0.42); st.border_color = Color(0.4, 0.9, 1, 1)
 			_: st.bg_color = Color(0.2, 0.6, 0.95, 0.42); st.border_color = Color(0.4, 0.9, 1, 1)
-		st.set_border_width_all(maxi(4, int(board_native.y * 0.006)))
+		st.set_border_width_all(maxi(2, int(board_native.y * 0.003)))
 		st.set_corner_radius_all(6)
 	else:
 		st.bg_color = Color(0, 0, 0, 0)
@@ -741,7 +757,7 @@ func _layout_engage_tokens() -> void:
 					btn.position = Vector2(px, py)
 					btn.size = Vector2(w, h)
 					var bst := StyleBoxFlat.new(); bst.bg_color = Color(0, 0, 0, 0)
-					bst.set_border_width_all(maxi(2, int(h * 0.14))); bst.border_color = Color(1, 0.95, 0.4, 0.95)
+					bst.set_border_width_all(maxi(1, int(h * 0.09))); bst.border_color = Color(1, 0.95, 0.4, 0.95)
 					bst.set_corner_radius_all(4)
 					for stn in ["normal", "hover", "pressed", "focus"]:
 						btn.add_theme_stylebox_override(stn, bst)
@@ -804,7 +820,7 @@ func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool, with_pre
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0, 0, 0, 0)
 	sb.border_color = Color(0.4, 1, 0.5) if highlight else Color(0, 0, 0, 0)
-	sb.set_border_width_all(int(board_native.y * 0.004) if highlight else 0)
+	sb.set_border_width_all(maxi(2, int(minf(sz.x, sz.y) * 0.028)) if highlight else 0)
 	sb.set_corner_radius_all(int(board_native.y * 0.006))
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, sb)
@@ -824,19 +840,27 @@ func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool, with_pre
 		hl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		var hs := StyleBoxFlat.new()
 		hs.bg_color = Color(0.4, 1.0, 0.5, 0.10)
-		hs.set_border_width_all(maxi(3, int(sz.y * 0.045)))
+		hs.set_border_width_all(maxi(2, int(sz.y * 0.024)))
 		hs.border_color = Color(0.45, 1.0, 0.55)
 		hs.set_corner_radius_all(int(sz.y * 0.03))
 		hl.add_theme_stylebox_override("panel", hs)
 		b.add_child(hl)
 	if with_preview:
-		_attach_preview(b, img.texture)
+		_attach_preview(b, img.texture, _card_text(cn))
 	return b
 
 
+## Testo dell'effetto di una carta in ITALIANO (campo *_it) con fallback all'inglese.
+## Le carte nazione/commercio non hanno questi campi -> ritorna "".
+func _card_text(card: Dictionary) -> String:
+	return String(card.get("effect_text_it", card.get("ability_text_it",
+		card.get("effect_text", card.get("ability_text", "")))))
+
+
 ## Flyover: passando il mouse su una carta ne mostra una versione ingrandita
-## al centro dello schermo; uscendo, la nasconde.
-func _attach_preview(btn: Control, tex: Texture2D) -> void:
+## ancorata a destra; se `text` è valorizzato, mostra accanto la TRADUZIONE italiana
+## dell'effetto (font piccolo). Uscendo, nasconde tutto.
+func _attach_preview(btn: Control, tex: Texture2D, text := "") -> void:
 	if tex == null or card_preview == null:
 		return
 	btn.mouse_entered.connect(func():
@@ -848,8 +872,21 @@ func _attach_preview(btn: Control, tex: Texture2D) -> void:
 		card_preview.texture = tex
 		card_preview.size = Vector2(w, h)
 		card_preview.position = Vector2(size.x - w - margin, (size.y - h) * 0.5)
-		card_preview.visible = true)
-	btn.mouse_exited.connect(func(): card_preview.visible = false)
+		card_preview.visible = true
+		# Traduzione IT a SINISTRA della carta ingrandita, font piccolo.
+		if text != "" and card_preview_text:
+			card_preview_text.add_theme_font_size_override("font_size", clampi(int(size.y * 0.022), 11, 18))
+			var tw: float = clampf(size.x * 0.24, 170.0, 340.0)
+			card_preview_text.size = Vector2(tw, 0)
+			card_preview_text.position = Vector2(maxf(8.0, size.x - w - margin - tw - 8.0), (size.y - h) * 0.5)
+			card_preview_text.text = text
+			card_preview_text.visible = true
+		elif card_preview_text:
+			card_preview_text.visible = false)
+	btn.mouse_exited.connect(func():
+		card_preview.visible = false
+		if card_preview_text:
+			card_preview_text.visible = false)
 
 
 ## Click su una Country disponibile sul board: target di Improve Relations.
@@ -1307,7 +1344,7 @@ func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.25, 1.0, 0.45, 0.62) if slot == "permanent" else Color(1.0, 0.4, 1.0, 0.62)
 	sb.border_color = Color(1, 1, 1, 0.95)
-	sb.set_border_width_all(maxi(1, int(s * 0.08)))   # cornice SOTTILE
+	sb.set_border_width_all(maxi(1, int(s * 0.05)))   # cornice SOTTILE
 	sb.set_corner_radius_all(int(s * 0.20))
 	var hv := sb.duplicate()
 	hv.bg_color = Color(0.3, 1.0, 0.55, 0.85) if slot == "permanent" else Color(1.0, 0.5, 1.0, 0.85)
@@ -2902,7 +2939,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			var fst := StyleBoxFlat.new()
 			if in_prep:
 				fst.bg_color = Color(0.95, 0.8, 0.2, 0.16)
-				fst.set_border_width_all(maxi(2, int(ph * 0.012))); fst.border_color = Color(1.0, 0.85, 0.3, 0.95)
+				fst.set_border_width_all(maxi(1, int(ph * 0.007))); fst.border_color = Color(1.0, 0.85, 0.3, 0.95)
 				fst.set_corner_radius_all(6)
 				fb.tooltip_text = "Scegli Focus %s" % FOCUS_NAME[f]
 			else:
@@ -3044,7 +3081,7 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 				halo.offset_left = -ts * 0.62 + off; halo.offset_right = ts * 0.62 + off
 				halo.offset_top = -ts * 0.62; halo.offset_bottom = ts * 0.62
 				var hs := StyleBoxFlat.new(); hs.bg_color = Color(1.0, 0.85, 0.3, 0.30)
-				hs.set_corner_radius_all(int(ts)); hs.set_border_width_all(maxi(2, int(ts * 0.12))); hs.border_color = Color(1.0, 0.85, 0.3, 0.95)
+				hs.set_corner_radius_all(int(ts)); hs.set_border_width_all(maxi(1, int(ts * 0.06))); hs.border_color = Color(1.0, 0.85, 0.3, 0.95)
 				halo.add_theme_stylebox_override("panel", hs)
 				area.add_child(halo)
 			var tok := TextureRect.new()
@@ -3207,7 +3244,7 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 	fsb.content_margin_top = 3; fsb.content_margin_bottom = 3
 	# Sorgente SELEZIONATA = sbloccata: bordo e sfondo dorati, ben evidenti.
 	if selected:
-		fsb.set_border_width_all(3); fsb.border_color = Color(1.0, 0.85, 0.3)
+		fsb.set_border_width_all(2); fsb.border_color = Color(1.0, 0.85, 0.3)
 		fsb.bg_color = Color(0.42, 0.34, 0.12)
 	else:
 		fsb.set_border_width_all(1); fsb.border_color = Color(0.5, 0.6, 0.75, 0.75)
@@ -3554,7 +3591,7 @@ func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	for g in p.growth_cards:
 		var card := _country_card_button(g, Vector2(cw, cw / 2.4), false)
 		card.disabled = true
-		card.tooltip_text = "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), g.get("ability_text", "")]
+		card.tooltip_text = "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), _card_text(g)]
 		col.add_child(card)
 
 
@@ -4782,14 +4819,14 @@ func _render_hand() -> void:
 	# Carte della mano: 1° tap evidenzia (bordo verde + le altre si oscurano), ri-tap gioca.
 	for card in p.hand:
 		var sel: bool = card == _selected_hand_card
-		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), sel, false)
+		var btn := _country_card_button(card, Vector2(int(ch * 0.71), ch), sel, true)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		btn.disabled = busy
 		# Con una carta selezionata, le NON selezionate si oscurano: la scelta è evidente.
 		if has_sel and not sel:
 			btn.modulate = Color(0.5, 0.5, 0.55)
-		btn.tooltip_text = "%s\n%s\n(tocca per selezionare - ri-tocca per giocare)" % [card.get("display_name", ""), card.get("effect_text", "")]
+		btn.tooltip_text = "%s\n%s\n(tocca per selezionare - ri-tocca per giocare)" % [card.get("display_name", ""), _card_text(card)]
 		btn.pressed.connect(_on_hand_card_tap.bind(card))
 		hand_box.add_child(btn)
 	# Separatore tra le carte e i "modi alternativi di giocare la carta selezionata".
@@ -4840,11 +4877,11 @@ func _hand_money_token(ch: int, busy: bool, has_sel: bool) -> Control:
 ## sulla board).
 func _hand_strategic_token(asset: Dictionary, ch: int, busy: bool, has_sel: bool) -> Control:
 	var w := int(ch * 1.40)   # arte strategica landscape ~1.4:1: alta quanto le carte di mano
-	var card := _country_card_button(asset, Vector2(w, ch), false, false)
+	var card := _country_card_button(asset, Vector2(w, ch), false, true)
 	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	card.disabled = busy
-	card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), asset.get("effect_text", "")]
+	card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), _card_text(asset)]
 	if not has_sel:
 		card.modulate = Color(0.6, 0.6, 0.65)
 	card.pressed.connect(_on_play_strategic_token.bind(asset))
@@ -4867,7 +4904,7 @@ func _market_card_sized(card: Dictionary, cost_text: String, disabled: bool, w: 
 	b.custom_minimum_size = Vector2(w, h)
 	b.flat = true
 	b.disabled = disabled
-	b.tooltip_text = "%s\n%s" % [card.get("display_name", ""), card.get("effect_text", "")]
+	b.tooltip_text = "%s\n%s" % [card.get("display_name", ""), _card_text(card)]
 	if not disabled:
 		b.pressed.connect(on_press)
 	else:

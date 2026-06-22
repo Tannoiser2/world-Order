@@ -15,6 +15,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Produce 1 resource type. Then, Get a Growth Card.",
+   "effect_text_it": "Produce 1 tipo di risorsa. Poi, Get a Growth Card.",
    "effect_ops": [
     {
      "op": "produce",
@@ -37,6 +38,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Improve Relations with 2 Countries on the board.",
+   "effect_text_it": "Improve Relations con 2 Country sul tabellone.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -58,6 +60,7 @@
    },
    "research_bonus": 2,
    "effect_text": "Produce 1 Army. Then, Move up to 3 Armies.",
+   "effect_text_it": "Produce 1 Armata. Poi, Move fino a 3 Armate.",
    "effect_ops": [
     {
      "op": "produce",
@@ -83,6 +86,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Gain 4 money for each FDI token on your allied Countries. Then, Invest in an allied Country.",
+   "effect_text_it": "Guadagni 4 money per ogni segnalino FDI sulle tue Country alleate. Poi, Invest in una Country alleata.",
    "effect_ops": [
     {
      "op": "gain_money_per_fdi",
@@ -105,6 +109,7 @@
    },
    "research_bonus": 2,
    "effect_text": "Choose a Region. Trade, considering that Region's available Countries on the board as allied Countries. Then, Reset 1 of your temporary Influence in that Region.",
+   "effect_text_it": "Scegli una Regione. Trade, considerando le Country disponibili di quella Regione sul tabellone come Country alleate. Poi, reimposta 1 delle tue Influenza temporanee in quella Regione.",
    "effect_ops": [
     {
      "op": "trade"
@@ -129,6 +134,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Improve Relations with a Country on the board. Then, Invest in that Country or Trade.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone. Poi, Invest in quella Country o Trade.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -162,6 +168,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Trash this card when you play it. Research a card costing up to 6 Research for free and immediately Play it.",
+   "effect_text_it": "Scarta definitivamente questa carta quando la giochi. Research una carta che costa fino a 6 Research gratuitamente e giocala immediatamente.",
    "effect_ops": [
     {
      "op": "trash",
@@ -188,6 +195,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Trade. Then, Invest in an allied Country.",
+   "effect_text_it": "Trade. Poi, Invest in una Country alleata.",
    "effect_ops": [
     {
      "op": "trade"
@@ -209,6 +217,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Produce 1 Army. Then, Build a Base in an allied Country.",
+   "effect_text_it": "Produce 1 Armata. Poi, Build a Base in una Country alleata.",
    "effect_ops": [
     {
      "op": "produce",
@@ -233,6 +242,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Engage in a Region, spending 1 Diplomacy less for each allied Country you have from the same Region.",
+   "effect_text_it": "Engage in una Regione, spendendo 1 Diplomazia in meno per ogni Country alleata che hai della stessa Regione.",
    "effect_ops": [
     {
      "op": "engage"
@@ -254,6 +264,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Improve Relations with a Country on the board. Then, if able, Build a Base in that Country, or Move up to 2 Armies to that Country's Region, even if you don't have a Base there.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone. Poi, se possibile, Build a Base in quella Country, oppure Move fino a 2 Armate verso la Regione di quella Country, anche se non hai una Base lì.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -288,6 +299,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Draw 2 cards. Then, Play another card.",
+   "effect_text_it": "Pesca 2 carte. Poi, gioca un'altra carta.",
    "effect_ops": [
     {
      "op": "draw",
@@ -310,6 +322,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Improve Relations with a Country on the board, spending 1 Diplomacy less. You can then Reset 1 of your temporary Influence in that Country's Region.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone, spendendo 1 Diplomazia in meno. Puoi poi reimpostare 1 delle tue Influenza temporanee nella Regione di quella Country.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -334,6 +347,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Gain 10 money. Then, Invest in an allied Country.",
+   "effect_text_it": "Guadagni 10 money. Poi, Invest in una Country alleata.",
    "effect_ops": [
     {
      "op": "gain_money",
@@ -356,6 +370,7 @@
    },
    "research_bonus": 2,
    "effect_text": "Trade a resource type. (You can either Export or Import it.) Then, Play another card.",
+   "effect_text_it": "Trade un tipo di risorsa. (Puoi esportarla o importarla.) Poi, gioca un'altra carta.",
    "effect_ops": [
     {
      "op": "trade"
@@ -380,6 +395,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Draw 3 cards. You can then discard 2 cards to Play another card.",
+   "effect_text_it": "Pesca 3 carte. Puoi poi scartare 2 carte per giocare un'altra carta.",
    "effect_ops": [
     {
      "op": "draw",
@@ -420,6 +436,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Build a Base in an allied Country. You can choose a Country even if you have already built a Base in it once before (but only once).",
+   "effect_text_it": "Build a Base in una Country alleata. Puoi scegliere una Country anche se vi hai già costruito una Base una volta in precedenza (ma solo una volta).",
    "effect_ops": [
     {
      "op": "build_base"
@@ -441,6 +458,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Invest in an allied Country. You can choose a Country even if you have already invested in it once before (but only once).",
+   "effect_text_it": "Invest in una Country alleata. Puoi scegliere una Country anche se vi hai già investito una volta in precedenza (ma solo una volta).",
    "effect_ops": [
     {
      "op": "invest"
@@ -462,6 +480,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Move up to 3 Armies. You can then Reset 1 of your temporary Influence in 1 of the Regions you moved your Armies to.",
+   "effect_text_it": "Move fino a 3 Armate. Puoi poi reimpostare 1 delle tue Influenza temporanee in 1 delle Regioni in cui hai spostato le tue Armate.",
    "effect_ops": [
     {
      "op": "move",
@@ -484,6 +503,7 @@
    },
    "research_bonus": 1,
    "effect_text": "Ready up to 2 allied Country cards. Then, Engage in a Region.",
+   "effect_text_it": "Raddrizza fino a 2 carte Country alleate. Poi, Engage in una Regione.",
    "effect_ops": [
     {
      "op": "ready_country",
@@ -506,6 +526,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Build a Base in an allied Country. You can move up to 3 Armies to its Region, regardless of the Country's value and without paying their move cost.",
+   "effect_text_it": "Build a Base in una Country alleata. Puoi spostare fino a 3 Armate verso la sua Regione, indipendentemente dal valore della Country e senza pagare il loro costo di movimento.",
    "effect_ops": [
     {
      "op": "build_base"
@@ -527,6 +548,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Choose any 2, in any order: Improve Relations with a Country on the board; Trade; Move up to 2 Armies.",
+   "effect_text_it": "Scegline 2 qualsiasi, in qualsiasi ordine: Improve Relations con una Country sul tabellone; Trade; Move fino a 2 Armate.",
    "effect_ops": [
     {
      "op": "choose_n",
@@ -558,6 +580,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Ready an allied Country. Then, Invest in that Country without exhausting it.",
+   "effect_text_it": "Raddrizza una Country alleata. Poi, Invest in quella Country senza esaurirla.",
    "effect_ops": [
     {
      "op": "ready_country",
@@ -583,6 +606,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Choose a resource type. Increase its Production by 1 (if able) and Produce it. Then, Play another card.",
+   "effect_text_it": "Scegli un tipo di risorsa. Aumenta la sua Produzione di 1 (se possibile) e Produce. Poi, gioca un'altra carta.",
    "effect_ops": [
     {
      "op": "increase_production",
@@ -609,6 +633,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Produce 1 Consumer Goods. Then, you can either increase your Prosperity, spending 2 Consumer Goods less, or Play another card.",
+   "effect_text_it": "Produce 1 Beni di Consumo. Poi, puoi aumentare la tua Prosperità, spendendo 2 Beni di Consumo in meno, oppure giocare un'altra carta.",
    "effect_ops": [
     {
      "op": "produce",
@@ -646,6 +671,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Improve Relations with a Country on the board. You can then Engage in that Country's Region.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone. Puoi poi Engage nella Regione di quella Country.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -667,6 +693,7 @@
    },
    "research_bonus": 2,
    "effect_text": "Build a Base in an allied Country. When adding Influence to its Region as part of the action, you can place it as permanent Influence even if there is no available slot.",
+   "effect_text_it": "Build a Base in una Country alleata. Quando aggiungi Influenza alla sua Regione come parte dell'azione, puoi piazzarla come Influenza permanente anche se non c'è uno slot disponibile.",
    "effect_ops": [
     {
      "op": "build_base"
@@ -688,6 +715,7 @@
    },
    "research_bonus": 2,
    "effect_text": "Engage in a Region, spending 1 Diplomacy less for each Army you have in that Region.",
+   "effect_text_it": "Engage in una Regione, spendendo 1 Diplomazia in meno per ogni Armata che hai in quella Regione.",
    "effect_ops": [
     {
      "op": "engage"
@@ -709,6 +737,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Draw a card. You can then Trash a card from your hand or your discard pile to Play another card.",
+   "effect_text_it": "Pesca una carta. Puoi poi scartare definitivamente una carta dalla tua mano o dalla tua pila degli scarti per giocare un'altra carta.",
    "effect_ops": [
     {
      "op": "draw",
@@ -756,6 +785,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Gain 2 Diplomacy. Then, Improve Relations with a Country on the board or Engage in a Region.",
+   "effect_text_it": "Guadagni 2 Diplomazia. Poi, Improve Relations con una Country sul tabellone oppure Engage in una Regione.",
    "effect_ops": [
     {
      "op": "gain_resource",
@@ -791,6 +821,7 @@
    },
    "research_bonus": 4,
    "effect_text": "Choose a Region and Reset 1 of your temporary Influence there. Then, Draw a card and Play another card.",
+   "effect_text_it": "Scegli una Regione e reimposta 1 delle tue Influenza temporanee lì. Poi, pesca una carta e gioca un'altra carta.",
    "effect_ops": [
     {
      "op": "reset_influence"
@@ -816,6 +847,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Ready an allied Country. You can then search the Country cards on the board of any 1 Region, choose 1 of those Countries, and Improve Relations with it. Shuffle the rest of the cards afterward and reveal the first 2 on the board.",
+   "effect_text_it": "Raddrizza una Country alleata. Puoi poi cercare tra le carte Country sul tabellone di 1 Regione qualsiasi, scegliere 1 di quelle Country e Improve Relations con essa. Mescola le altre carte in seguito e rivela le prime 2 sul tabellone.",
    "effect_ops": [
     {
      "op": "ready_country",
@@ -841,6 +873,7 @@
    },
    "research_bonus": 3,
    "effect_text": "Draw a card. Then, Build a Base in an allied Country.",
+   "effect_text_it": "Pesca una carta. Poi, Build a Base in una Country alleata.",
    "effect_ops": [
     {
      "op": "draw",

@@ -4,8 +4,10 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.79"
+const VERSION := "v0.7.81"
 const CHANGELOG := [
+	"v0.7.81 - TRADUZIONE ITALIANA dei testi delle carte: passando il mouse su una carta (mano, Market, Strategic Asset, Growth) ora a fianco dell'anteprima ingrandita compare la spiegazione dell'effetto tradotta in italiano, con carattere piu' piccolo. Tradotte 109 carte (abilita', Market, Strategic, Growth). L'inglese resta come riserva se manca la traduzione.",
+	"v0.7.80 - Linee di EVIDENZIAZIONE piu' sottili: i bordi che evidenziano Regioni, celle d'Influenza, carte (selezione), zone Focus e le sorgenti di Move/Trade erano troppo spessi e ora sono assottigliati (restano comunque ben visibili).",
 	"v0.7.79 - CHOOSE FOCUS completo: dopo aver scelto il Focus in Preparazione ora compare il passo opzionale AUMENTO PRODUZIONE (paga il costo per spostare un cubo Produzione di +1; se aumenti una PRIMARIA - Energia/Materie/Cibo - guadagni subito 1 di quella risorsa). Inoltre, quando produci un tipo elencato sulle tue carte Commercio, queste si rigirano a faccia in su (surplus per il Trade). Domestic permette di aumentare una primaria, Diplomatic la Diplomazia, Military le Armate.",
 	"v0.7.78 - Multiplayer (passo 4): il COMMAND BUS copre ora anche 'Get a Growth Card', l'acquisto al Market (Research) e le scelte di Aftermath (scarta Engage per money/Difesa, aumenta Prosperita', Continua). Introdotto il gating per FASE: durante l'Aftermath il comando deve venire dal giocatore in scelta, non dal giocatore di turno. Sempre invisibile in partita.",
 	"v0.7.77 - Multiplayer (passo 3): il COMMAND BUS ora copre anche le scelte sulla mappa e in plancia - clic su una Regione, clic su una cella d'Influenza, scelta di una nazione alleata (Invest/Build), attivazione abilita' continuative e sconto 'esaurisci alleato'. Tutto continua a funzionare come prima in partita; cambia solo che questi input passano per il punto unico (validati e pronti per la rete).",

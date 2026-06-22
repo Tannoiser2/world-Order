@@ -15,6 +15,7 @@
     "kind": "money"
    },
    "effect_text": "Get a Growth Card or Produce 3 resource types.",
+   "effect_text_it": "Get a Growth Card oppure Produce 3 tipi di risorsa.",
    "effect_ops": [
     {
      "op": "choice",
@@ -46,6 +47,7 @@
     "kind": "money"
    },
    "effect_text": "Improve Relations with a Country on the board.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -65,6 +67,7 @@
     "kind": "diplomacy"
    },
    "effect_text": "Engage in a Region. If you Engage in Europe, Middle East-North Africa, or Central Asia, spend 1 Diplomacy less.",
+   "effect_text_it": "Engage in una Regione. Se fai Engage in Europa, Medio Oriente-Nord Africa o Asia Centrale, spendi 1 Diplomazia in meno.",
    "effect_ops": [
     {
      "op": "engage"
@@ -87,6 +90,7 @@
     "kind": "money"
    },
    "effect_text": "Improve Relations with a Country on the board. For every Diplomacy required, you can spend 3 money instead.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone. Per ogni Diplomazia richiesta, puoi spendere invece 3 money.",
    "effect_ops": [
     {
      "op": "improve_relations"
@@ -108,6 +112,7 @@
     "kind": "money"
    },
    "effect_text": "Build a Base in an allied Country.",
+   "effect_text_it": "Build a Base in una Country alleata.",
    "effect_ops": [
     {
      "op": "build_base"
@@ -126,6 +131,7 @@
     "kind": "diplomacy"
    },
    "effect_text": "Engage in a Region.",
+   "effect_text_it": "Engage in una Regione.",
    "effect_ops": [
     {
      "op": "engage"
@@ -144,6 +150,7 @@
     "kind": "money"
    },
    "effect_text": "Invest in an allied Country.",
+   "effect_text_it": "Invest in una Country alleata.",
    "effect_ops": [
     {
      "op": "invest"
@@ -162,6 +169,7 @@
     "kind": "money"
    },
    "effect_text": "Trade.",
+   "effect_text_it": "Trade.",
    "effect_ops": [
     {
      "op": "trade"
@@ -180,6 +188,7 @@
     "kind": "money"
    },
    "effect_text": "Gain 1 Army. You can then Move up to 2 Armies.",
+   "effect_text_it": "Guadagna 1 Armata. Puoi poi Move fino a 2 Armate.",
    "effect_ops": [
     {
      "op": "gain_armies",
@@ -203,6 +212,7 @@
     "kind": "money"
    },
    "effect_text": "Get a Growth Card or Produce 3 resource types.",
+   "effect_text_it": "Get a Growth Card oppure Produce 3 tipi di risorsa.",
    "effect_ops": [
     {
      "op": "choice",
@@ -234,6 +244,7 @@
     "kind": "money"
    },
    "effect_text": "Trade.",
+   "effect_text_it": "Trade.",
    "effect_ops": [
     {
      "op": "trade"
@@ -252,6 +263,7 @@
     "kind": "money"
    },
    "effect_text": "Improve Relations with a Country on the board.",
+   "effect_text_it": "Improve Relations con una Country sul tabellone.",
    "effect_ops": [
     {
      "op": "improve_relations"

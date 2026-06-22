@@ -14,6 +14,7 @@
     "money": 10
    },
    "ability_text": "Increase 2 of your Productions by 1.",
+   "ability_text_it": "Aumenta di 1 due delle tue Produzioni.",
    "effect_ops": [
     {
      "op": "increase_production",
@@ -32,6 +33,7 @@
     "diplomacy": 1
    },
    "ability_text": "Whenever you choose your Focus, Ready an additional Country card.",
+   "ability_text_it": "Ogni volta che scegli il tuo Focus, prepara una carta Country aggiuntiva.",
    "effect_ops": [
     {
      "op": "ongoing",
@@ -50,6 +52,7 @@
     "money": 10
    },
    "ability_text": "Once per round, you can Draw a card. Then, Trash a card from your hand.",
+   "ability_text_it": "Una volta per round, puoi pescare una carta. Poi, elimina una carta dalla tua mano.",
    "effect_ops": [
     {
      "op": "ongoing",
@@ -68,6 +71,7 @@
     "diplomacy": 1
    },
    "ability_text": "Once per round, you can Draw cards up to the highest value among your ready allied Countries. Then, discard that many cards.",
+   "ability_text_it": "Una volta per round, puoi pescare carte fino al valore più alto tra le tue Country alleate pronte. Poi, scarta altrettante carte.",
    "effect_ops": [
     {
      "op": "ongoing",
@@ -86,6 +90,7 @@
     "money": 15
    },
    "ability_text": "Draw an additional card each round (including the round you get this card).",
+   "ability_text_it": "Pesca una carta aggiuntiva ogni round (incluso il round in cui ottieni questa carta).",
    "effect_ops": [
     {
      "op": "ongoing",
@@ -104,6 +109,7 @@
     "diplomacy": 2
    },
    "ability_text": "Once per round, when you Improve Relations, you can Improve Relations again with another Country, spending 1 Diplomacy more.",
+   "ability_text_it": "Una volta per round, quando esegui Improve Relations, puoi eseguire Improve Relations di nuovo con un'altra Country, spendendo 1 Diplomazia in più.",
    "effect_ops": [
     {
      "op": "ongoing",
@@ -122,6 +128,7 @@
     "money": 15
    },
    "ability_text": "During your first turn each round, you can Play an additional card.",
+   "ability_text_it": "Durante il tuo primo turno di ogni round, puoi giocare una carta aggiuntiva.",
    "effect_ops": [
     {
      "op": "ongoing",
@@ -140,6 +147,7 @@
     "diplomacy": 2
    },
    "ability_text": "Once per round, before or after adding Influence to a Region, you can convert 1 of your temporary Influence in that Region to a permanent one, even if there is no available slot.",
+   "ability_text_it": "Una volta per round, prima o dopo aver aggiunto Influenza a una Regione, puoi convertire 1 della tua Influenza temporanea in quella Regione in una permanente, anche se non c'è uno slot disponibile.",
    "effect_ops": [
     {
      "op": "ongoing",
