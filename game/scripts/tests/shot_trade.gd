@@ -9,11 +9,11 @@ func _initialize() -> void:
 	get_root().add_child(board)
 	for _i in range(6):
 		await process_frame
+	board._begin_action_phase()
 	board.active_seat = board.gs.turn_order[0]
 	var p = board._active()
 	p.armies_available = maxi(p.armies_available, 6)
-	board._open_trade_ui()
-	board._trade_select_res("energy")   # mostra le bandierine "compra da:" nella barra in alto
+	board._open_trade_ui()   # stato iniziale: bottoni-prodotto espliciti nella barra
 	for _i in range(10):
 		await process_frame
 	await create_timer(0.3).timeout

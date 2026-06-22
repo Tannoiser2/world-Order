@@ -10,6 +10,7 @@ func _initialize() -> void:
 	get_root().add_child(board)
 	for _i in range(6):
 		await process_frame
+	board._begin_action_phase()   # esci dalla PREPARAZIONE
 	board.active_seat = board.gs.turn_order[0]
 	var p = board._active()
 	var card := {"display_name": "Inf", "effect_ops": [{"op": "add_influence"}]}

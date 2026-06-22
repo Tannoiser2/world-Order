@@ -447,10 +447,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _touches.size() == 2:
 			_pinch_dist = _touch_distance()
 		return
+	# Se è in corso un drag&drop (es. trascinamento di un carro Armata), NON pannare
+	# la mappa: il gesto deve spostare il carro, non il tabellone.
+	var dragging_dnd := get_viewport().gui_is_dragging()
 	if event is InputEventScreenDrag:
 		_touches[event.index] = event.position
 		if _touches.size() == 1:
-			_pan(event.relative)
+			if not dragging_dnd:
+				_pan(event.relative)
 		elif _touches.size() == 2:
 			var d := _touch_distance()
 			if _pinch_dist > 0.0:
@@ -466,7 +470,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_zoom_at(1.0 / 1.12, event.position)
 		elif event.button_index == MOUSE_BUTTON_LEFT:
 			_mouse_dragging = event.pressed
-	elif event is InputEventMouseMotion and _mouse_dragging:
+	elif event is InputEventMouseMotion and _mouse_dragging and not dragging_dnd:
 		_pan(event.relative)
 
 
@@ -537,7 +541,6 @@ func _clamp_map() -> void:
 func _make_region_button(region: String) -> Button:
 	var awaiting_region := (awaiting in AWAITING_REGION)
 	var btn := Button.new()
-	btn.flat = true
 	# Le Regioni catturano il mouse SOLO quando devi sceglierne una; altrimenti
 	# lasciano passare il drag così puoi trascinare/pannare la mappa anche da zoomata.
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP if awaiting_region else Control.MOUSE_FILTER_IGNORE
@@ -550,19 +553,24 @@ func _make_region_button(region: String) -> Button:
 	# indica il ruolo: verde = sorgente possibile, giallo = sorgente scelta, blu = destinazione.
 	var st := StyleBoxFlat.new()
 	var role := _move_role(region) if awaiting == "move" else ("pick" if awaiting_region else "")
+	# IMPORTANTE: un Button `flat` NON disegna lo stylebox "normal" → l'evidenziazione
+	# sparirebbe. Quindi flat SOLO quando non c'è ruolo (zona trasparente, lascia passare).
+	btn.flat = (role == "")
 	if role != "":
 		match role:
-			"source": st.bg_color = Color(0.3, 0.85, 0.4, 0.28); st.border_color = Color(0.4, 1, 0.5, 0.95)
-			"selected": st.bg_color = Color(0.95, 0.8, 0.2, 0.34); st.border_color = Color(1, 0.9, 0.3, 0.98)
-			"dest": st.bg_color = Color(0.2, 0.6, 0.95, 0.28); st.border_color = Color(0.4, 0.9, 1, 0.95)
-			_: st.bg_color = Color(0.2, 0.6, 0.95, 0.28); st.border_color = Color(0.4, 0.9, 1, 0.95)
-		st.set_border_width_all(4)
+			"source": st.bg_color = Color(0.3, 0.85, 0.4, 0.42); st.border_color = Color(0.4, 1, 0.5, 1)
+			"selected": st.bg_color = Color(0.95, 0.8, 0.2, 0.46); st.border_color = Color(1, 0.9, 0.3, 1)
+			"dest": st.bg_color = Color(0.2, 0.6, 0.95, 0.42); st.border_color = Color(0.4, 0.9, 1, 1)
+			_: st.bg_color = Color(0.2, 0.6, 0.95, 0.42); st.border_color = Color(0.4, 0.9, 1, 1)
+		st.set_border_width_all(maxi(4, int(board_native.y * 0.006)))
 		st.set_corner_radius_all(6)
 	else:
 		st.bg_color = Color(0, 0, 0, 0)
-	btn.add_theme_stylebox_override("normal", st)
-	var hv := st.duplicate(); hv.bg_color = Color(0.3, 0.6, 0.95, 0.16)
-	btn.add_theme_stylebox_override("hover", hv)
+	var hv := st.duplicate()
+	if role != "":
+		hv.bg_color = st.bg_color; hv.bg_color.a = minf(1.0, st.bg_color.a + 0.18)
+	for stn in ["normal", "hover", "pressed", "focus"]:
+		btn.add_theme_stylebox_override(stn, hv if stn == "hover" else st)
 
 	var vb := VBoxContainer.new()
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -712,7 +720,8 @@ func _layout_engage_tokens() -> void:
 				# money o Difesa): lo si tocca direttamente sulla mappa.
 				if _aftermath_choice_p != null and _aftermath_choice_p == p:
 					var btn := Button.new()
-					btn.flat = true
+					# Niente `flat`: il bordo giallo (evidenziazione del token cliccabile)
+					# deve restare visibile, non solo all'hover.
 					btn.position = Vector2(px, py)
 					btn.size = Vector2(w, h)
 					var bst := StyleBoxFlat.new(); bst.bg_color = Color(0, 0, 0, 0)
@@ -1272,19 +1281,24 @@ func _layout_influence_cells() -> void:
 
 
 func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
-	var s := board_native.y * 0.034
+	# Caselle più GRANDI e contrastate, così si vedono bene e non si va a tentativi.
+	# NB: niente `flat` (un Button flat NON disegnerebbe lo stylebox → cella invisibile).
+	var s := board_native.y * 0.046
 	var b := Button.new()
-	b.flat = true
 	b.mouse_filter = Control.MOUSE_FILTER_STOP
 	b.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
 	b.size = Vector2(s, s)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.3, 0.9, 0.45, 0.45) if slot == "permanent" else Color(0.9, 0.45, 0.9, 0.45)
-	sb.border_color = Color(1, 1, 1, 0.97)
-	sb.set_border_width_all(maxi(2, int(s * 0.16)))
-	sb.set_corner_radius_all(int(s * 0.18))
-	for st in ["normal", "hover", "pressed", "focus"]:
-		b.add_theme_stylebox_override(st, sb)
+	sb.bg_color = Color(0.25, 1.0, 0.45, 0.62) if slot == "permanent" else Color(1.0, 0.4, 1.0, 0.62)
+	sb.border_color = Color(1, 1, 1, 1)
+	sb.set_border_width_all(maxi(3, int(s * 0.22)))
+	sb.set_corner_radius_all(int(s * 0.22))
+	var hv := sb.duplicate()
+	hv.bg_color = Color(0.3, 1.0, 0.55, 0.85) if slot == "permanent" else Color(1.0, 0.5, 1.0, 0.85)
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("focus", sb)
+	b.add_theme_stylebox_override("hover", hv)
+	b.add_theme_stylebox_override("pressed", hv)
 	b.tooltip_text = "Influenza %s in %s" % ["permanente" if slot == "permanent" else "temporanea", region.replace("_", " ")]
 	b.set_meta("influence_cell", {"region": region, "slot": slot})
 	b.pressed.connect(_on_influence_cell.bind(region, slot))
@@ -1847,6 +1861,16 @@ func _trade_allied_import(p: PlayerState, R: String) -> int:
 	for c in p.allied_countries:
 		n += (c.get("imports", []) as Array).count(R)
 	return n
+
+
+## Nomi delle Country alleate del giocatore che forniscono l'import di R (per chiarire
+## che l'import "banca" passa in realtà dalle proprie nazioni alleate — non da una banca).
+func _allied_importer_names(p: PlayerState, R: String) -> Array:
+	var names := []
+	for c in p.allied_countries:
+		if (c.get("imports", []) as Array).has(R):
+			names.append(String(c.get("display_name", c.get("id", "?"))))
+	return names
 
 
 ## Carte prodotto (Commerce) di una potenza: lista di carte, ognuna è un dizionario
@@ -2491,6 +2515,10 @@ func _layout_ui() -> void:
 	var hud_h := clampf(h * 0.11, 40, 86)
 	top_hud.position = Vector2.ZERO
 	top_hud.size = Vector2(w, hud_h)
+	# Niente DOPPIONE di informazioni: quando la barra scelte è visibile (riga 3) la
+	# riga di stato (riga 2) si nasconde — il contesto è già nella barra scelte.
+	if status_label:
+		status_label.visible = not (choice_bar and choice_bar.visible)
 	# Barra scelte SOTTO l'HUD (quando attiva): sposta giù l'inizio della mappa.
 	var choice_h := 0.0
 	if choice_bar and choice_bar.visible:
@@ -2541,10 +2569,10 @@ func _update_drawer_state() -> void:
 		drawer_open = true
 		drawer_power = _active().power
 		return
-	# Aftermath: plancia del giocatore in scelta SEMPRE aperta (corona Prosperità).
+	# Aftermath: board CHIUSA, così la mappa è piena per cliccare gli Engage token da
+	# scartare; la Prosperità è un bottone nella barra in alto.
 	if _aftermath_choice_p != null:
-		drawer_open = true
-		drawer_power = _aftermath_choice_p.power
+		drawer_open = false
 		return
 	if not drawer_open:
 		drawer_power = _active().power
@@ -2766,26 +2794,6 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# Marker Prosperità.
 	var pl := clampi(p.prosperity_level, 0, PROSPERITY_POS.size() - 1)
 	_add_cube(area, PROSPERITY_POS[pl][0], PROSPERITY_POS[pl][1], pw, ph, Color(0.45, 0.95, 0.55), true)
-	# Aftermath: la PROSSIMA corona è cliccabile se te la puoi permettere (Increase Prosperity).
-	if _aftermath_choice_p != null and _aftermath_choice_p == p:
-		var psteps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
-		var nxt := p.prosperity_level + 1
-		if p.prosperity_level < psteps.size() and nxt < PROSPERITY_POS.size():
-			var pcost := int((psteps[p.prosperity_level] as Dictionary).get("cost_consumer_goods", 999))
-			if int(p.resources.get("consumer_goods", 0)) >= pcost:
-				var pb := Button.new()
-				pb.flat = true
-				var pbw := pw * 0.062
-				pb.size = Vector2(pbw, pbw)
-				pb.position = Vector2(PROSPERITY_POS[nxt][0] * pw - pbw * 0.5, PROSPERITY_POS[nxt][1] * ph - pbw * 0.5)
-				var ps := StyleBoxFlat.new(); ps.bg_color = Color(0.3, 0.9, 0.4, 0.25)
-				ps.set_border_width_all(maxi(2, int(pbw * 0.16))); ps.border_color = Color(0.4, 1, 0.5, 0.95)
-				ps.set_corner_radius_all(int(pbw * 0.5))
-				for stn in ["normal", "hover", "pressed", "focus"]:
-					pb.add_theme_stylebox_override(stn, ps)
-				pb.tooltip_text = "Aumenta Prosperità (−%d Consumer Goods)" % pcost
-				pb.pressed.connect(_aftermath_prosperity.bind(p))
-				area.add_child(pb)
 	# Token risorsa (immagini reali) sulla traccia RESOURCES 0..10, alla quantità.
 	# Durante il Commercio i prodotti commerciabili stanno alla posizione "staged"
 	# (quantità ± transazione in corso), così vedi il token muoversi verso 0/10.
@@ -2860,7 +2868,7 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 			var slot := _resource_slot(amt)
 			var staged: bool = exp.has(res) or imp.has(res)
 			var d := ph * 0.155
-			var b := Button.new(); b.flat = true
+			var b := Button.new()   # niente flat: bordo del cerchio visibile
 			b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
 			b.offset_left = -d * 0.5; b.offset_right = d * 0.5; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
 			var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d)); sb.bg_color = Color(1, 1, 1, 0.0)
@@ -2918,10 +2926,19 @@ func _show_trade_bar(p: PlayerState) -> void:
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
 	if _trade_active_res == "":
-		var hint := Label.new(); hint.text = "— tocca o TRASCINA un prodotto sulla plancia (verso 0 vendi, verso 10 compri)"
-		hint.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
-		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		choice_flow.add_child(hint)
+		# Selezione ESPLICITA del prodotto (niente più ambiguità quando due risorse
+		# stanno sulla stessa casella della track): un bottone per prodotto, con la
+		# quantità posseduta. In alternativa resta il tap/drag diretto sulla plancia.
+		var lab := Label.new(); lab.text = "scegli il prodotto:"
+		lab.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
+		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(lab)
+		for res in TRADE_RES:
+			var rb := Button.new()
+			rb.text = "%s (%d)" % [RES_LABEL.get(res, res), int(p.resources.get(res, 0))]
+			rb.add_theme_font_size_override("font_size", _base_fs())
+			rb.pressed.connect(_trade_select_res.bind(res))
+			choice_flow.add_child(rb)
 	else:
 		var R := _trade_active_res
 		var rl := Label.new(); rl.text = "%s:" % RES_LABEL.get(R, R)
@@ -2990,7 +3007,11 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 	var fb := Button.new()
 	fb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var fh := _base_fs() + 8
-	fb.tooltip_text = ("Banca" if src == "bank" else src.to_upper()) + "  (vende %d)" % int(s["n"])
+	if src == "bank":
+		var names := _allied_importer_names(_active(), R)
+		fb.tooltip_text = "Import tramite le TUE Country alleate" + (": " + ", ".join(names) if not names.is_empty() else "") + "  (fino a %d)" % int(s["n"])
+	else:
+		fb.tooltip_text = "Compra dalla potenza %s  (vende %d, +1 Diplomazia)" % [src.to_upper(), int(s["n"])]
 	var fsb := StyleBoxFlat.new(); fsb.set_corner_radius_all(5); fsb.bg_color = Color(0.2, 0.22, 0.28)
 	fsb.content_margin_left = 7; fsb.content_margin_right = 7
 	fsb.content_margin_top = 3; fsb.content_margin_bottom = 3
@@ -3002,7 +3023,15 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 		fb.add_theme_stylebox_override(stn, fsb)
 	fb.add_theme_font_size_override("font_size", _base_fs())
 	if src == "bank":
-		fb.text = "Banca ×%d" % int(s["n"])
+		# Non è una "banca": sono le TUE Country alleate (i loro simboli Import). Mostra
+		# i nomi se sono pochi, altrimenti "Tue alleate ×N".
+		var names := _allied_importer_names(_active(), R)
+		if names.size() == 1:
+			fb.text = "%s ×%d" % [names[0], int(s["n"])]
+		elif names.size() == 2:
+			fb.text = "%s, %s" % [names[0], names[1]]
+		else:
+			fb.text = "Tue alleate ×%d" % int(s["n"])
 	else:
 		# La bandierina è l'ICONA del bottone, limitata in larghezza così resta sempre
 		# piccola e allineata al testo (niente più immagini gonfiate a tutta altezza).
@@ -4085,14 +4114,14 @@ func _aftermath_player_step() -> void:
 ## - "Continua" nella barra in alto passa al giocatore successivo.
 func _show_aftermath_choices(p: PlayerState) -> void:
 	_aftermath_choice_p = p
-	# Plancia del giocatore aperta (per la traccia Prosperità cliccabile).
-	drawer_open = true
-	drawer_power = p.power
-	_after_change()          # ridisegna mappa (token Engage cliccabili) + plancia
+	# Board CHIUSA: serve la mappa piena per cliccare gli Engage token da scartare.
+	# La Prosperità non è più una corona sulla plancia ma un BOTTONE nella barra.
+	drawer_open = false
+	_after_change()          # ridisegna mappa (token Engage cliccabili)
 	_aftermath_bar(p)
 
 
-## Barra in alto dell'Aftermath: intestazione, suggerimento e «Continua».
+## Barra in alto dell'Aftermath: intestazione, eventuale «Aumenta Prosperità» e «Continua».
 func _aftermath_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var head := Label.new()
@@ -4101,14 +4130,23 @@ func _aftermath_bar(p: PlayerState) -> void:
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(head)
-	var hint := Label.new()
-	if p.engage_tokens.is_empty():
-		hint.text = "—  tocca la prossima corona Prosperità sulla plancia per avanzare (se puoi)"
-	else:
-		hint.text = "—  tocca un Engage token sulla mappa (money/Difesa) · prossima corona Prosperità sulla plancia"
-	hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.6))
-	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	choice_flow.add_child(hint)
+	if not p.engage_tokens.is_empty():
+		var hint := Label.new()
+		hint.text = "— tocca un Engage token sulla mappa per scartarlo (→ money o Difesa)"
+		hint.add_theme_color_override("font_color", Color(0.8, 0.85, 0.6))
+		hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(hint)
+	# Aumenta Prosperità: BOTTONE chiaro (niente più corona da cercare sulla plancia).
+	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
+	if p.prosperity_level < steps.size():
+		var step: Dictionary = steps[p.prosperity_level]
+		var cost := int(step.get("cost_consumer_goods", 999))
+		if int(p.resources.get("consumer_goods", 0)) >= cost:
+			var bpr := Button.new()
+			bpr.text = "Aumenta Prosperità (−%d CG → +%d VP, +%d money)" % [cost, int(step.get("vp", 0)), int(step.get("money", 0))]
+			bpr.add_theme_font_size_override("font_size", _base_fs() + 1)
+			bpr.pressed.connect(_aftermath_prosperity.bind(p))
+			choice_flow.add_child(bpr)
 	var done := Button.new()
 	done.text = "Continua"
 	done.add_theme_font_size_override("font_size", _base_fs() + 1)
