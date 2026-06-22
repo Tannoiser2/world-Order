@@ -1583,32 +1583,31 @@ func _refresh_move_ui() -> void:
 
 ## Barra flottante del Move: vassoio RISERVA (carro trascinabile + drop per i rientri)
 ## e «Fine spostamento». Niente più scelta della sorgente: si trascina direttamente.
+## Controlli del Move nella BARRA SCELTE in alto (non più galleggianti sulla mappa):
+## info + vassoio Riserva (drag) + «Fine spostamento» (+ «Annulla» se non hai ancora mosso).
 func _refresh_move_bar() -> void:
-	_hide_move_bar()
+	_clear_choice_bar()
 	var p := _active()
 	var c := _move_ctx
-	var bar := PanelContainer.new()
-	bar.name = "MoveBar"
-	bar.set_meta("move_bar", true)
-	var st := StyleBoxFlat.new(); st.bg_color = Color(0.10, 0.12, 0.16, 0.96)
-	st.set_corner_radius_all(8); st.set_content_margin_all(8)
-	bar.add_theme_stylebox_override("panel", st)
-	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 10)
-	bar.add_child(hb)
 	var info := Label.new()
-	info.text = "Sposta Armate  %d/%d" % [int(c.get("moved", 0)), int(c["max"])]
+	info.text = "Sposta Armate  %d/%d — trascina i carri (Riserva ↔ mappa · zona ↔ zona)" % [int(c.get("moved", 0)), int(c["max"])]
 	info.add_theme_color_override("font_color", Color(0.9, 0.85, 0.5))
-	info.add_theme_font_size_override("font_size", _base_fs() + 1)
-	hb.add_child(info)
-	hb.add_child(_move_reserve_tray(p))
+	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(info)
+	choice_flow.add_child(_move_reserve_tray(p))
 	var done := Button.new()
 	done.text = "Fine spostamento"
 	done.add_theme_font_size_override("font_size", _base_fs() + 1)
 	done.pressed.connect(_finish_move)
-	hb.add_child(done)
-	bar.position = Vector2(size.x * 0.5 - 240, size.y * 0.12)
-	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup_layer.add_child(bar)
+	choice_flow.add_child(done)
+	if int(c.get("moved", 0)) == 0:
+		var cancel := Button.new()
+		cancel.text = "Annulla"
+		cancel.add_theme_font_size_override("font_size", _base_fs() + 1)
+		cancel.pressed.connect(_cancel_card)   # niente mosse fatte: annulla e ridai la carta
+		choice_flow.add_child(cancel)
+	choice_bar.visible = true
+	_layout_ui()
 
 
 ## Vassoio Riserva del Move: un carro TRASCINABILE (schiera dalla riserva) che è anche
@@ -1646,14 +1645,7 @@ func _move_reserve_tray(p: PlayerState) -> Control:
 
 
 func _hide_move_bar() -> void:
-	# Identifica le barre via metadata (NON via name: Godot rinomina i duplicati
-	# quando il queue_free differito lascia la vecchia barra in scena durante l'add,
-	# e il match per nome falliva -> barre accumulate su popup_layer che bloccavano
-	# anche _end_turn). remove_child è immediato: get_child_count torna corretto subito.
-	for ch in popup_layer.get_children():
-		if ch.has_meta("move_bar"):
-			popup_layer.remove_child(ch)
-			ch.queue_free()
+	_clear_choice_bar()
 
 
 func _finish_card() -> void:
@@ -2283,6 +2275,7 @@ func _show_popup(prompt: String, items: Array, cb: Callable) -> void:
 func _clear_choice_bar() -> void:
 	if choice_flow:
 		for c in choice_flow.get_children():
+			choice_flow.remove_child(c)
 			c.queue_free()
 	if choice_bar:
 		choice_bar.visible = false
