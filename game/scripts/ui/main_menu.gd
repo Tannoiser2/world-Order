@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.58"
+const VERSION := "v0.7.59"
 const CHANGELOG := [
+	"v0.7.59 — FIX: annullare il COMMERCIO non consuma più la giocata del turno né scarta la carta. Prima «Annulla» nel Commercio chiudeva la carta (come se l'avessi giocata): ora la carta resta in mano e puoi giocarne un'altra.",
 	"v0.7.58 — SCONTO esaurendo alleati: ora si fa CLICCANDO le carte delle tue nazioni alleate della Regione direttamente sulla plancia (un click la attiva per lo sconto, un altro la annulla); la barra in alto mostra lo sconto in tempo reale (−N Dip) con «Conferma sconto» / «Salta». Niente più popup.",
 	"v0.7.57 — SCELTE nella BARRA in alto (niente più popup sopra la board): le scelte a opzioni (es. quante Armate spostare, scegli una risorsa/bersaglio) ora compaiono come BOTTONI chiari in una barra subito sotto l'HUD, che spinge giù la mappa senza coprirla. UI pulita.",
 	"v0.7.56 — INFLUENZA sempre SULLA MAPPA: anche la scelta dello slot per Engage, Invest e Build a Base ora si fa toccando una casella evidenziata sul tabellone (verde = permanente, viola = temporanea), come per add_influence. Eliminato il popup «Influenza: quale slot?» — meno testo sopra la board.",

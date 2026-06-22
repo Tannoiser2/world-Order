@@ -2041,9 +2041,10 @@ func _trade_cancel() -> void:
 	_trade_armies = 0
 	_trade_mode = false
 	_trade_active_res = ""
+	# Annullare il Commercio NON consuma la giocata del turno né scarta la carta: la
+	# carta resta in mano e puoi giocarne un'altra (_cancel_card, non _advance_play).
+	_cancel_card()
 	_status("Commercio annullato.")
-	_refresh()
-	_advance_play()
 
 
 ## Imposta la transazione di R per RAGGIUNGERE la quantità target sulla resource

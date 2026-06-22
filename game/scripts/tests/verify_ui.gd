@@ -338,6 +338,21 @@ func _init() -> void:
 		GameConfig.powers = saved_powers
 		await process_frame
 
+		# Bug fix: ANNULLARE il Commercio non consuma la giocata del turno né scarta la
+		# carta (resta in mano → puoi giocarne un'altra).
+		var ptc: PlayerState = board._active()
+		board.playing_card = {}; board._plays_left = 1; board._trade_mode = false
+		var card_trade := {"display_name": "TradeTest", "effect_ops": [{"op": "trade"}]}
+		ptc.hand.append(card_trade)
+		board._play_card(card_trade)            # apre il Commercio (trade_mode)
+		var in_trade: bool = board._trade_mode and not board.playing_card.is_empty()
+		board._trade_cancel()                   # annulla
+		var tcancel_ok: bool = board._plays_left == 1 and board.playing_card.is_empty() \
+			and (card_trade in ptc.hand) and not (card_trade in ptc.played) and not board._trade_mode
+		print("[%s] Annulla Commercio: giocata non consumata, carta resta in mano" % ["OK" if (in_trade and tcancel_ok) else "FAIL"])
+		if not (in_trade and tcancel_ok): fails += 1
+		ptc.hand.erase(card_trade)
+
 		# Trade action interattiva: export di una risorsa (cap dai simboli amici) e
 		# import di un'altra; +1 Diplomazia comprando dagli altri.
 		var pt: PlayerState = board._active()
