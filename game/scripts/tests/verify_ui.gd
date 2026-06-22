@@ -182,7 +182,8 @@ func _init() -> void:
 		if not bb_ok: fails += 1
 		pbb.allied_countries.erase(bb_country)
 
-		# Scelta slot Influenza: con permanente libero il giocatore sceglie; sennò temporaneo.
+		# Scelta slot Influenza (Engage): con permanente libero il giocatore sceglie (popup);
+		# sennò temporaneo.
 		var trk2: InfluenceTrack = board.gs.regions["americas"]["track"]
 		for i in range(trk2.perm.size()): trk2.perm[i] = null     # libera i permanenti
 		var got := {"v": ""}
@@ -194,8 +195,28 @@ func _init() -> void:
 		got["v"] = ""
 		board._pick_slot("americas", func(s): got["v"] = s)        # nessun popup → temporaneo
 		var temp_ok: bool = got["v"] == "temporary"
-		print("[%s] Scelta slot Influenza: permanente se libero, altrimenti temporaneo" % ["OK" if perm_ok and temp_ok else "FAIL"])
+		print("[%s] Scelta slot Influenza (Engage): permanente se libero, altrimenti temporaneo" % ["OK" if perm_ok and temp_ok else "FAIL"])
 		if not (perm_ok and temp_ok): fails += 1
+
+		# add_influence sulla mappa: un click su una casella valida posa l'Influenza
+		# (Regione + slot) e prosegue.
+		var pinf: PlayerState = board._active()
+		for i in range(board.gs.regions["africa"]["track"].temp.size()):
+			board.gs.regions["africa"]["track"].temp[i] = null
+		var afr_t0: int = 0
+		for o in board.gs.regions["africa"]["track"].temp:
+			if o == pinf.power: afr_t0 += 1
+		var card_inf := {"display_name": "Inf", "effect_ops": [{"op": "add_influence"}]}
+		pinf.hand.append(card_inf); board._plays_left = 9
+		board._play_card(card_inf)
+		var inf_mode: bool = board.awaiting == "influence_cell"
+		board._on_influence_cell("africa", "temporary")
+		var afr_t1: int = 0
+		for o in board.gs.regions["africa"]["track"].temp:
+			if o == pinf.power: afr_t1 += 1
+		var inf_ok: bool = inf_mode and afr_t1 == afr_t0 + 1 and board.awaiting == "" and board.playing_card.is_empty()
+		print("[%s] add_influence sulla mappa: click su casella → Influenza posata" % ["OK" if inf_ok else "FAIL"])
+		if not inf_ok: fails += 1
 
 		# Carta auto-risolta (gain_money), nessun target.
 		var money_b: int = ac.money

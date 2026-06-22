@@ -95,8 +95,9 @@ var awaiting_op: Dictionary = {}
 ## cliccabili e il cassetto plancia va CHIUSO per non coprire/bloccare la mappa.
 const AWAITING_REGION := ["region", "move", "convert_influence", "reset_influence"]
 ## Tutti gli stati di interazione con la mappa (Regioni + Country sul tabellone).
-const AWAITING_MAP := ["region", "move", "convert_influence", "reset_influence", "board_country"]
+const AWAITING_MAP := ["region", "move", "convert_influence", "reset_influence", "board_country", "influence_cell"]
 var _move_ctx: Dictionary = {}   # stato dello spostamento Armate multi-Regione
+var _influence_pick: Dictionary = {}   # scelta Influenza sulla MAPPA: {regions, force, cb}
 var _used_ongoing: Dictionary = {}   # power -> [tag] abilità once-per-round già usate nel round
 var _commerce_flipped: Dictionary = {}  # venditore(power) -> [indici] carte Commerce già girate nel round
 var _plays_left := 1                  # carte ancora giocabili nel turno corrente (1 base)
@@ -250,6 +251,8 @@ func _layout_overlays() -> void:
 	_layout_influence_cubes()
 	_layout_army_badges()
 	_layout_engage_tokens()
+	if awaiting == "influence_cell":
+		_layout_influence_cells()
 	_layout_majority()
 	_layout_score_markers()
 	_layout_turn_order_markers()
@@ -964,13 +967,20 @@ func _advance_play() -> void:
 	var op: Dictionary = play_queue.pop_front()
 	var name := String(op.get("op", ""))
 	match name:
-		"engage", "add_influence", "place_armies":
-			# Bonus Influenza condizionale: salta l'add_influence se la condizione
-			# (aver esportato certe risorse nel Trade della carta) non è soddisfatta.
-			if name == "add_influence" and _has_cond_influence() and not _cond_influence_ok():
+		"add_influence":
+			# Bonus Influenza condizionale: salta se la condizione (aver esportato certe
+			# risorse nel Trade della carta) non è soddisfatta.
+			if _has_cond_influence() and not _cond_influence_ok():
 				_status("Nessun bonus Influenza: condizione di Export non soddisfatta.")
 				_advance_play()
 				return
+			# Influenza DIRETTAMENTE sulla mappa: si chiude il cassetto, si evidenziano le
+			# caselle valide di TUTTE le Regioni e un click = scelta (Regione + slot).
+			var force_slot := "permanent" if bool(op.get("permanent", false)) else ""
+			if not _begin_influence_pick(gs.regions.keys(), force_slot, _apply_add_influence):
+				_status("Nessuno slot Influenza libero.")
+				_advance_play()
+		"engage", "place_armies":
 			awaiting = "region"
 			awaiting_op = op
 			_status("Tocca una Regione sulla mappa per: %s" % name)
@@ -1085,18 +1095,6 @@ func _resolve_region_op(region: String) -> void:
 			"Engage in %s (costo %d Dip)" % [region.replace("_", " "), int(gs.regions[region]["engage_cost"])],
 			func(chosen: Array): _resolve_engage(region, chosen))
 		return
-	if name == "add_influence":
-		# Se la carta forza il permanente lo usa; altrimenti il giocatore sceglie.
-		if bool(op.get("permanent", false)):
-			gs.regions[region]["track"].add(p.power, "permanent")
-			_status("Influenza permanente su %s." % region.replace("_", " "))
-			_layout_overlays(); _advance_play()
-		else:
-			_pick_slot(region, func(slot):
-				gs.regions[region]["track"].add(p.power, slot)
-				_status("Influenza (%s) su %s." % [slot, region.replace("_", " ")])
-				_layout_overlays(); _advance_play())
-		return
 	match name:
 		"place_armies":
 			var a: Dictionary = gs.regions[region]["armies"]
@@ -1106,9 +1104,9 @@ func _resolve_region_op(region: String) -> void:
 	_advance_play()
 
 
-## Slot dove mettere l'Influenza: se c'è un permanente libero il giocatore SCEGLIE
-## (regolamento: "you can choose which of the available types of slots to use"),
-## altrimenti va in temporaneo. cb riceve "permanent" o "temporary".
+## Slot dove mettere l'Influenza (usato da Engage): se c'è un permanente libero il
+## giocatore SCEGLIE (regolamento: "you can choose which of the available types of
+## slots to use"), altrimenti va in temporaneo. cb riceve "permanent" o "temporary".
 func _pick_slot(region: String, cb: Callable) -> void:
 	var track: InfluenceTrack = gs.regions[region]["track"]
 	var perm_val := -1
@@ -1126,6 +1124,114 @@ func _pick_slot(region: String, cb: Callable) -> void:
 		{"label": "Permanente  (+%d VP, resta)" % perm_val, "value": "permanent"},
 		{"label": "Temporanea  (+%d VP)" % temp_val, "value": "temporary"},
 	], cb)
+
+
+## Coordinata normalizzata della PROSSIMA casella Influenza permanente libera della
+## Regione (riga «permanent_fill» per quelle aggiunte in gioco); [] se nessuna libera.
+func _next_free_perm_pos(region: String) -> Array:
+	var conf: Dictionary = layout.get("influence_slots", {}).get(region, {})
+	var track: InfluenceTrack = gs.regions[region].get("track")
+	if track == null:
+		return []
+	var k := _starting_perm_count(region)
+	for i in track.perm.size():
+		if track.perm[i] == null:
+			var coords: Array = conf.get("permanent_fill", []) if i >= k else conf.get("permanent", [])
+			var idx: int = i - k if i >= k else i
+			return coords[idx] if idx < coords.size() else []
+	return []
+
+
+## Coordinata normalizzata della PROSSIMA casella Influenza temporanea libera; [] se nessuna.
+func _next_free_temp_pos(region: String) -> Array:
+	var conf: Dictionary = layout.get("influence_slots", {}).get(region, {})
+	var track: InfluenceTrack = gs.regions[region].get("track")
+	if track == null:
+		return []
+	var coords: Array = conf.get("temporary", [])
+	for i in track.temp.size():
+		if track.temp[i] == null and i < coords.size():
+			return coords[i]
+	return []
+
+
+## Avvia la scelta dell'Influenza SULLA MAPPA: chiude il cassetto ed evidenzia le
+## caselle valide (verde = permanente, viola = temporanea). `force` può limitare a
+## "permanent"/"temporary". cb riceve (region, slot). Ritorna false se nessuna casella.
+func _begin_influence_pick(regions: Array, force: String, cb: Callable) -> bool:
+	_influence_pick = {"regions": regions, "force": force, "cb": cb}
+	awaiting = "influence_cell"
+	if _count_influence_cells() == 0:
+		_influence_pick = {}
+		awaiting = ""
+		return false
+	_after_change()   # chiude il cassetto: serve la mappa
+	_status("Tocca una casella evidenziata per posare l'Influenza (verde = permanente, viola = temporanea).")
+	return true
+
+
+## Quante caselle Influenza valide ci sono per la scelta corrente.
+func _count_influence_cells() -> int:
+	var n := 0
+	var force := String(_influence_pick.get("force", ""))
+	for region in _influence_pick.get("regions", []):
+		if force != "temporary" and not _next_free_perm_pos(region).is_empty():
+			n += 1
+		if force != "permanent" and not _next_free_temp_pos(region).is_empty():
+			n += 1
+	return n
+
+
+## Disegna le caselle Influenza cliccabili (sopra gli overlay) per la scelta corrente.
+func _layout_influence_cells() -> void:
+	var force := String(_influence_pick.get("force", ""))
+	for region in _influence_pick.get("regions", []):
+		if force != "temporary":
+			var pp := _next_free_perm_pos(region)
+			if not pp.is_empty():
+				_add_influence_cell(region, "permanent", pp)
+		if force != "permanent":
+			var tp := _next_free_temp_pos(region)
+			if not tp.is_empty():
+				_add_influence_cell(region, "temporary", tp)
+
+
+func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
+	var s := board_native.y * 0.034
+	var b := Button.new()
+	b.flat = true
+	b.mouse_filter = Control.MOUSE_FILTER_STOP
+	b.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
+	b.size = Vector2(s, s)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.3, 0.9, 0.45, 0.45) if slot == "permanent" else Color(0.9, 0.45, 0.9, 0.45)
+	sb.border_color = Color(1, 1, 1, 0.97)
+	sb.set_border_width_all(maxi(2, int(s * 0.16)))
+	sb.set_corner_radius_all(int(s * 0.18))
+	for st in ["normal", "hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(st, sb)
+	b.tooltip_text = "Influenza %s in %s" % ["permanente" if slot == "permanent" else "temporanea", region.replace("_", " ")]
+	b.set_meta("influence_cell", {"region": region, "slot": slot})
+	b.pressed.connect(_on_influence_cell.bind(region, slot))
+	overlay.add_child(b)
+
+
+## Posa l'Influenza scelta sulla mappa (callback di add_influence) e prosegue la carta.
+func _apply_add_influence(region: String, slot: String) -> void:
+	gs.regions[region]["track"].add(_active().power, slot)
+	_status("Influenza (%s) su %s." % [slot, region.replace("_", " ")])
+	_layout_overlays()
+	_advance_play()
+
+
+## Click su una casella Influenza: chiude la scelta e applica la callback (region, slot).
+func _on_influence_cell(region: String, slot: String) -> void:
+	var ip := _influence_pick
+	_influence_pick = {}
+	awaiting = ""
+	var cb: Variant = ip.get("cb")
+	if cb is Callable and (cb as Callable).is_valid():
+		(cb as Callable).call(region, slot)
 
 
 func _resolve_engage(region: String, chosen: Array) -> void:
