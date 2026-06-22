@@ -990,18 +990,19 @@ func _init() -> void:
 	var f2: bool = bai._commerce_flip_any("eu")   # carta 2 → true
 	var f3: bool = bai._commerce_flip_any("eu")   # tutte girate → false
 	var flip_ok: bool = f1 and f2 and not f3
-	# #9 — applica 2 carte (deck di 2); #10 — China incassa 10 (1 trade_with, 1 Commerce).
+	# #9 — applica 2 carte (le carte RIVELATE del round); #10 — China incassa 10 (1 trade_with, 1 Commerce).
 	bai._commerce_flipped = {}
-	bai._auto_inf_deck = [
+	bai._auto_inf_shown = [
 		{"art": "y", "rows": {"russia": {"region": "africa", "army": false, "trade_with": null},
 			"eu": {"region": "south_asia", "army": false, "trade_with": null}}},
 		{"art": "x", "rows": {"russia": {"region": "central_asia", "army": false, "trade_with": "china"},
 			"eu": {"region": "europe", "army": false, "trade_with": null}}}]
 	var china_m0: int = bai.gs.player_by_power("china").money
+	var ru_af0: int = bai.gs.regions["africa"]["track"].count("russia")
 	var ai_lines: Array = []
 	bai._apply_auto_influence(ai_lines)
-	var two_cards: bool = bai._auto_inf_deck.is_empty()
-	var money10: bool = bai.gs.player_by_power("china").money == china_m0 + 10
+	var two_cards: bool = bai.gs.regions["africa"]["track"].count("russia") > ru_af0   # 1a carta applicata
+	var money10: bool = bai.gs.player_by_power("china").money == china_m0 + 10           # 2a carta: trade China +10
 	var ai_ok: bool = flip_ok and two_cards and money10
 	print("[%s] Auto-Influence #9/#10: 2 carte applicate + commercio condizionato (China +10)" % ["OK" if ai_ok else "FAIL"])
 	if not ai_ok: fails += 1

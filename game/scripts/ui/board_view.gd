@@ -86,6 +86,7 @@ var growth_pool: Array = []             # tutte le Growth card (per livello)
 var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per potenza
 var focus_bonuses: Dictionary = {}      # ready/produce/ongoing per ogni Focus (domestic/diplomatic/military)
 var _auto_inf_deck: Array = []          # mazzo Auto-Influence (potenze neutrali, <4 giocatori)
+var _auto_inf_shown: Array = []         # le 2 carte Auto-Influence del round (mostrate sulla mappa)
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
 var _trade_import_src: Dictionary = {}  # R -> venditore scelto ("reserve" o power)
 var _trade_mode := false                # Commercio attivo: la resource track della plancia è interattiva
@@ -328,6 +329,32 @@ func _layout_overlays() -> void:
 	_layout_score_markers()
 	_layout_turn_order_markers()
 	_layout_round_marker()
+	_layout_auto_influence_cards()
+
+
+## Mostra le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori) in alto a
+## SINISTRA sulla mappa (vicino al titolo), così si vede cosa fanno le potenze non giocanti.
+func _layout_auto_influence_cards() -> void:
+	if _auto_inf_shown.is_empty():
+		return
+	var cw := board_native.x * 0.062
+	var ch := cw / 0.71
+	var gap := board_native.x * 0.006
+	var x0 := board_native.x * 0.205   # a destra del titolo "WORLD ORDER"
+	var y0 := board_native.y * 0.042
+	for i in _auto_inf_shown.size():
+		var card: Dictionary = _auto_inf_shown[i]
+		var art := String(card.get("art", ""))
+		if art == "":
+			continue
+		var tr := TextureRect.new()
+		tr.texture = load("res://assets/cards/%s" % art)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.position = Vector2(x0 + i * (cw + gap), y0)
+		tr.size = Vector2(cw, ch)
+		overlay.add_child(tr)
 
 
 ## Posa i cubi Influenza sulle caselle stampate di ogni Regione: una casella per
@@ -4368,6 +4395,9 @@ func _flip_commerce_faceup_on_produce(power: String, types: Array) -> void:
 ## Avvia la PREPARATION guidata del round (reveal/turn order/produzione primaria/pesca
 ## sono già stati fatti): scelta del Focus, un giocatore alla volta in ordine di turno.
 func _begin_preparation() -> void:
+	# Rivela le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori): restano
+	# VISIBILI sulla mappa per tutto il round; l'effetto si applica in Aftermath.
+	_draw_auto_influence()
 	# Round 1: NIENTE preparazione guidata - tutti partono con Focus Domestic.
 	if gs.round <= 1:
 		for pp in gs.players:
@@ -4626,6 +4656,21 @@ func _cost_text(cost: Dictionary) -> String:
 ## Add Auto-Influence: con meno di 4 giocatori, le potenze NEUTRALI piazzano
 ## Influenza/Armate da una carta Auto-Influence (così contano per scoring e
 ## maggioranze). Aggiunge le righe al riepilogo e ritorna l'art della carta.
+## Pesca le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori) in _auto_inf_shown,
+## così sono VISIBILI sulla mappa per tutto il round; l'effetto si applica poi in Aftermath.
+func _draw_auto_influence() -> void:
+	_auto_inf_shown = []
+	if gs.players.size() >= 4:
+		return
+	for _i in 2:
+		if _auto_inf_deck.is_empty():
+			_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
+			_auto_inf_deck.shuffle()
+		if _auto_inf_deck.is_empty():
+			break
+		_auto_inf_shown.append(_auto_inf_deck.pop_back())
+
+
 func _apply_auto_influence(lines: Array) -> String:
 	var player_powers := []
 	for p in gs.players:
@@ -4634,14 +4679,17 @@ func _apply_auto_influence(lines: Array) -> String:
 		return ""   # tutte le potenze sono controllate da giocatori
 	lines.append("- Auto-Influence (potenze neutrali) -")
 	var first_art := ""
-	# Si applicano DUE carte Auto-Influence per round (pag. 18), una alla volta.
-	for _i in 2:
-		if _auto_inf_deck.is_empty():
-			_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
-			_auto_inf_deck.shuffle()
-		if _auto_inf_deck.is_empty():
-			break
-		var card: Dictionary = _auto_inf_deck.pop_back()
+	# Applica le carte gia' RIVELATE a inizio round; in fallback (test) ne pesca 2 (pag. 18).
+	var cards: Array = _auto_inf_shown.duplicate()
+	if cards.is_empty():
+		for _i in 2:
+			if _auto_inf_deck.is_empty():
+				_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
+				_auto_inf_deck.shuffle()
+			if _auto_inf_deck.is_empty():
+				break
+			cards.append(_auto_inf_deck.pop_back())
+	for card in cards:
 		if first_art == "":
 			first_art = String(card.get("art", ""))
 		var trade_players: Array = GamePhases.add_auto_influence(gs, card, player_powers)

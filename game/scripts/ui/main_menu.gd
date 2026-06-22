@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.86"
+const VERSION := "v0.7.87"
 const CHANGELOG := [
+	"v0.7.87 - CARTE AUTO-INFLUENZA visibili: nelle partite a 2-3 giocatori le 2 carte Auto-Influence delle potenze NEUTRALI ora si vedono sulla mappa, in alto vicino al titolo, e restano visibili per tutto il round (vengono rivelate a inizio round; l'effetto si applica in Aftermath come prima).",
 	"v0.7.86 - MULTIPLAYER: gli snapshot dell'host ora includono lo STATO DI INTERAZIONE (cosa attende il turno: scegli Regione, casella d'Influenza, ecc.), cosi' un client puo' essere pilotato dall'host e renderizzare gli highlight giusti durante il proprio turno. Base per il turno interattivo in rete. Ancora nulla di visibile in partita (manca la lobby).",
 	"v0.7.85 - MULTIPLAYER (nucleo di rete): aggiunto il modulo NetSession host-authoritative con trasporto WebSocket (per la LAN ora, Internet poi con un relay) e un trasporto 'loopback' per i test. Il protocollo gestisce lobby, avvio e l'inoltro comando -> host -> snapshot REDATTO al client (ogni giocatore vede solo la propria mano). Nulla di visibile in partita ancora: manca la lobby nel menu e la sincronizzazione del turno interattivo (prossimi passi). +7 test di rete.",
 	"v0.7.84 - Anteprima carte e regole del turno: la TRADUZIONE italiana ora appare SOVRAPPOSTA alla parte bassa della carta ingrandita (come a tradurre la carta stessa, copre l'inglese), dopo ~1 secondo che si sta fermi col mouse, con carattere piu' piccolo. Inoltre NON si puo' piu' premere 'Fine turno' senza aver prima giocato (o passato con la Moneta +10) una carta. Annullare un'azione NON brucia il turno: la carta resta in mano e puoi sceglierne un'altra (gia' corretto).",
