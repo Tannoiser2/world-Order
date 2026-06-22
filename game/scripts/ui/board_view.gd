@@ -1225,10 +1225,92 @@ func _advance_play() -> void:
 				_status("Prosperità: Beni di consumo insufficienti.")
 			_after_change()
 			_advance_play()
+		"repeat":
+			# Ripeti il "body" `times` volte: lo si ESPANDE in cima alla coda così ogni
+			# sotto-op si risolve INTERATTIVAMENTE (con i suoi target). Eseguirlo via
+			# EffectExecutor differirebbe place_armies/add_influence (niente target).
+			var rtimes := int(op.get("times", 1))
+			var rbody: Array = op.get("body", [])
+			var expanded := []
+			for _t in range(rtimes):
+				for bo in rbody:
+					expanded.append((bo as Dictionary).duplicate(true))
+			for i in range(expanded.size() - 1, -1, -1):
+				play_queue.push_front(expanded[i])
+			_advance_play()
+		"spend_for_gain":
+			_resolve_spend_for_gain(op)
+		"research_free":
+			_resolve_research_free(op)
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
 			_advance_play()
+
+
+## spend_for_gain: spendi fino a spend_max money; per ogni `per` money speso applichi
+## `gain` (es. +3 Diplomazia). Scelta a popup (Non spendere / soglie abbordabili).
+func _resolve_spend_for_gain(op: Dictionary) -> void:
+	var p := _active()
+	var spend_max := int(op.get("spend_max", 0))
+	var per := maxi(1, int(op.get("per", 1)))
+	var gain_op: Dictionary = op.get("gain", {})
+	var gtxt := _gain_op_text(gain_op)
+	var items := [{"label": "Non spendere", "value": 0}]
+	var amt := per
+	while amt <= spend_max:
+		if p.money >= amt:
+			items.append({"label": "Spendi %d money  ->  %s" % [amt, _times_text(amt / per, gtxt)], "value": amt})
+		amt += per
+	_show_popup("Quanto money spendi?", items, func(choice):
+		var spent := int(choice)
+		if spent > 0 and p.spend({"money": spent}):
+			for _i in range(spent / per):
+				EffectExecutor.run(gs, p.power, [gain_op])
+			_status("Spesi %d money: %s." % [spent, _times_text(spent / per, gtxt)])
+		_after_change()
+		_advance_play())
+
+
+## research_free: scegli una carta del Market (costo <= max) GRATIS e giocala SUBITO
+## (i suoi effetti vengono anteposti alla coda di risoluzione).
+func _resolve_research_free(op: Dictionary) -> void:
+	var max_cost := int(op.get("max", 6))
+	var items := []
+	for c in market_display:
+		if int(c.get("market_cost", 999)) <= max_cost:
+			items.append({"label": "%s (costo %d R)" % [c.get("display_name", "?"), int(c.get("market_cost", 0))], "value": c})
+	if items.is_empty():
+		_status("Research gratis: nessuna carta nel Market entro %d Research." % max_cost)
+		_advance_play()
+		return
+	_show_popup("Research gratis: scegli una carta (costo <= %d) da giocare subito:" % max_cost, items, func(choice):
+		var card: Dictionary = choice
+		_market_take(card)                 # rimuove dal Market e rivela una nuova carta
+		_active().played.append(card)
+		var ops: Array = card.get("effect_ops", [])
+		for i in range(ops.size() - 1, -1, -1):
+			play_queue.push_front((ops[i] as Dictionary).duplicate(true))
+		_status("Research gratis: giochi %s." % card.get("display_name", "?"))
+		_after_change()
+		_advance_play())
+
+
+## Descrizione breve di un op "gain_*" (per i testi delle scelte).
+func _gain_op_text(gop: Dictionary) -> String:
+	match String(gop.get("op", "")):
+		"gain_resource":
+			return "%d %s" % [int(gop.get("amount", 0)), RES_LABEL.get(String(gop.get("type", "")), gop.get("type", ""))]
+		"gain_money":
+			return "%d money" % int(gop.get("amount", 0))
+		"gain_armies":
+			return "%d Armate" % int(gop.get("amount", 0))
+		_:
+			return String(gop.get("op", "effetto"))
+
+
+func _times_text(n: int, gtxt: String) -> String:
+	return "%dx %s" % [n, gtxt] if n != 1 else gtxt
 
 
 func _resolve_region_op(region: String) -> void:

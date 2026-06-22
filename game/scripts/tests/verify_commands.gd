@@ -138,6 +138,14 @@ func _init() -> void:
 	check.call("increase_production: +1 traccia Diplomazia", int(pp.production.get("diplomacy", 0)) == dipl0 + 1)
 	check.call("increase_production: avanza la preparazione", board._prep_idx == idxp0 + 1)
 
+	# 9) Effetti carte: 'repeat' esegue il body `times` volte (espansione nella coda).
+	board.playing_card = {"display_name": "TestRepeat", "effect_ops": []}
+	board.play_queue = [{"op": "repeat", "times": 2, "body": [{"op": "gain_money", "amount": 5}]}]
+	var rp = board._active()
+	var m0r: int = rp.money
+	board._advance_play()
+	check.call("repeat: body eseguito 2 volte (+10 money)", rp.money == m0r + 10)
+
 	print("Verifica command bus: %s" % ("OK" if fails == 0 else "FALLITA (%d)" % fails))
 	board.queue_free()
 	await process_frame
