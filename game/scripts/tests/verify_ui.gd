@@ -473,12 +473,12 @@ func _init() -> void:
 			board._commerce_flipped = {}   # carte prodotto tutte scoperte all'inizio
 			var s2_money0: int = seller2.money
 			board._open_trade_ui()
-			var def_src: String = board._trade_selected_src(psrc, "services")   # default = banca
+			var def_src: String = board._trade_selected_src(psrc, "services")   # default = Riserva (solo alleate)
 			board._trade_pick_src("services", seller2_pw)                       # scelgo il venditore
-			var picked_cap: int = board._trade_import_cap_sel(psrc, "services") # = 1 (offerta venditore)
-			board._trade_set_target("services", 1)                             # compra 1 dal venditore
+			var picked_cap: int = board._trade_import_cap_sel(psrc, "services") # = 2 alleate + 1 venditore = 3
+			board._trade_set_target("services", 1)                             # compra 1 (viene dal venditore)
 			board._trade_confirm()
-			var src_ok: bool = def_src == "bank" and picked_cap == 1 and seller2.money == s2_money0 + 10
+			var src_ok: bool = def_src == "reserve" and picked_cap == 3 and seller2.money == s2_money0 + 10
 			print("[%s] Trade: scelta venditore via bandierina (compra dal giocatore scelto)" % ["OK" if src_ok else "FAIL"])
 			if not src_ok: fails += 1
 			psrc.allied_countries = sv_allies3

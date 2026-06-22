@@ -73,7 +73,7 @@ var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per
 var focus_bonuses: Dictionary = {}      # ready/produce/ongoing per ogni Focus (domestic/diplomatic/military)
 var _auto_inf_deck: Array = []          # mazzo Auto-Influence (potenze neutrali, <4 giocatori)
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
-var _trade_import_src: Dictionary = {}  # R -> sorgente d'import scelta ("bank" o power)
+var _trade_import_src: Dictionary = {}  # R -> venditore scelto ("reserve" o power)
 var _trade_mode := false                # Commercio attivo: la resource track della plancia è interattiva
 var _trade_active_res := ""             # risorsa selezionata di cui si stanno mostrando le caselle valide
 var _trade_armies := 0                  # Armate vendute dalla riserva in questo Commercio (#14, 20 cad.)
@@ -1929,33 +1929,36 @@ func _commerce_flip_any(power: String) -> bool:
 	return false
 
 
-## Sorgenti d'importazione di R, in ordine: prima il mercato (nazioni amiche),
-## poi gli altri giocatori che ancora hanno una Commerce card scoperta che mostra R.
-## Ritorna [{src:"bank"|power, n:int}] (n = quante unità quella sorgente può dare).
+## Import di R: la quantità importabile è la SOMMA dei simboli Import delle tue Country
+## alleate (base, sempre disponibile dalla Riserva) PIÙ quanto vende il GIOCATORE che
+## scegli (le sue Commerce card scoperte; +1 Diplomazia comprando da un vero giocatore).
+## Le bandiere dei giocatori sono mutuamente esclusive (ne scegli UNA), ma quella scelta
+## si AGGIUNGE alla base delle alleate. Ritorna [{src:"reserve"|power, n:int}] dove n è la
+## quantità TOTALE importabile con quella scelta (Riserva = solo base; giocatore = base +
+## sua vendita).
 func _import_sources(p: PlayerState, R: String) -> Array:
+	var base := _trade_allied_import(p, R)   # simboli Import delle tue alleate (base)
 	var out := []
-	var bank := _trade_allied_import(p, R)
-	if bank > 0:
-		out.append({"src": "bank", "n": bank})
+	# Riserva/Mercato: solo la base delle alleate (default, niente Diplomazia). La mostro
+	# solo se hai dei simboli Import (altrimenti importeresti 0 dalla sola Riserva).
+	if base > 0:
+		out.append({"src": "reserve", "n": base})
 	var td := _trade_deal(p.power)
 	for other in (td.get("import_from", {}) as Dictionary):
 		if not ((td["import_from"][other] as Array).has(R)):
 			continue   # la relazione commerciale non include R
-		# In 2-3 giocatori si compra anche dalle potenze NEUTRALI (pag. 13/14): le loro
-		# Commerce card si girano comunque; la +1 Diplomazia si ha solo dai veri giocatori.
-		var n := _commerce_faceup_for(other, R)   # carte prodotto scoperte che mostrano R
-		if n > 0:
-			out.append({"src": other, "n": n})
+		# In 2-3 giocatori si compra anche dalle potenze NEUTRALI: le loro Commerce card
+		# si girano comunque; la +1 Diplomazia si ha solo dai veri giocatori.
+		var sells := _commerce_faceup_for(other, R)   # quanto vende (carte prodotto scoperte)
+		if sells > 0:
+			out.append({"src": other, "n": base + sells})   # base alleate + vendita del giocatore
 	return out
 
 
-## Quante unità di R puoi importare: simboli Import sulle amiche + offerte dagli
-## altri giocatori (Commerce card non ancora girate).
+## Capacità d'import di R = i simboli Import delle tue Country alleate (NON la somma
+## delle sorgenti: la Riserva e i venditori sono "da chi", non capacità che si somma).
 func _trade_import_cap(p: PlayerState, R: String) -> int:
-	var n := 0
-	for s in _import_sources(p, R):
-		n += int(s["n"])
-	return n
+	return _trade_allied_import(p, R)
 
 
 func _trade_delta() -> int:
@@ -2007,7 +2010,7 @@ func _trade_selected_src(p: PlayerState, R: String) -> String:
 		if _trade_src_qty(p, R, chosen) > 0:
 			return chosen
 	var srcs := _import_sources(p, R)
-	return String(srcs[0]["src"]) if not srcs.is_empty() else "bank"
+	return String(srcs[0]["src"]) if not srcs.is_empty() else "reserve"
 
 
 ## Cap d'import di R dalla SOLA sorgente selezionata (così scegli da chi comprare).
@@ -2032,7 +2035,8 @@ func _trade_adjust(R: String, kind: String, delta: int) -> void:
 	var sel: Dictionary = _trade_sel[kind]
 	var other: Dictionary = _trade_sel["import" if kind == "export" else "export"]
 	var maxT := int(_trade_deal(p.power).get(kind + "s", 2))
-	var cap := _trade_export_cap(p, R) if kind == "export" else _trade_import_cap(p, R)
+	# Import: cap = base alleate + venditore SELEZIONATO (somma), non solo la base.
+	var cap := _trade_export_cap(p, R) if kind == "export" else _trade_import_cap_sel(p, R)
 	var newq := clampi(int(sel.get(R, 0)) + delta, 0, cap)
 	if newq > 0 and other.has(R):
 		return  # una risorsa in una sola transazione (export O import)
@@ -2074,19 +2078,23 @@ func _trade_confirm() -> void:
 	for R in (_trade_sel["import"] as Dictionary):
 		var q := int(_trade_sel["import"][R])
 		var cost := int(Actions.IMPORT_COST.get(R, 0))
-		# Compri da UNA sorgente scelta (banca, un giocatore o una potenza neutrale).
+		p.money -= cost * q              # paghi il costo per TUTTE le unità importate
+		# La quantità si compone: prima il GIOCATORE scelto (fino a quanto vende), poi la
+		# RISERVA (i simboli Import delle tue alleate). Solo il giocatore dà money/Diplomazia.
 		var src := _trade_selected_src(p, R)
-		p.money -= cost * q
-		if src != "bank":
-			var seller := gs.player_by_power(src)
-			_commerce_consume(src, R, q)   # gira le carte prodotto necessarie a coprire q (anche neutrali)
-			if seller != null:
-				# Giocatore reale: incassa il money e prende +1 Servizio (bonus di vendita);
-				# comprando da lui guadagni +1 Diplomazia.
-				seller.money += cost * q
-				seller.gain_resource("services", 1, 0)
-				from_players += q
-			# Potenza neutrale (2-3 giocatori): paghi la banca, niente +1 Diplomazia.
+		if src != "reserve":
+			var from_seller := mini(q, _commerce_faceup_for(src, R))   # quante vengono dal venditore
+			if from_seller > 0:
+				_commerce_consume(src, R, from_seller)   # gira solo le carte che servono (anche neutrali)
+				var seller := gs.player_by_power(src)
+				if seller != null:
+					# Giocatore reale: incassa il money delle SUE unità e prende +1 Servizio;
+					# comprando da lui guadagni +1 Diplomazia.
+					seller.money += cost * from_seller
+					seller.gain_resource("services", 1, 0)
+					from_players += from_seller
+				# Potenza neutrale (2-3 giocatori): niente money/Diplomazia.
+		# Le unità oltre la vendita del giocatore vengono dalla Riserva (base alleate).
 		p.gain_resource(R, q, 0)
 	# +1 Diplomazia SOLO se hai comprato da un altro giocatore (pag. 13), non per
 	# un import qualsiasi dalla banca/potenze neutrali.
@@ -2970,13 +2978,15 @@ func _show_trade_bar(p: PlayerState) -> void:
 		choice_flow.add_child(hint)
 	else:
 		var R := _trade_active_res
-		var rl := Label.new(); rl.text = "%s — compra da:" % RES_LABEL.get(R, R)
+		var base := _trade_allied_import(p, R)
+		var rl := Label.new()
+		rl.text = "%s — importabili %d (alleate %d + venditore) · scegli da chi:" % [RES_LABEL.get(R, R), _trade_import_cap_sel(p, R), base]
 		rl.add_theme_color_override("font_color", Color(0.8, 0.9, 1.0))
 		rl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(rl)
 		var srcs := _import_sources(p, R)
 		if srcs.is_empty():
-			var no := Label.new(); no.text = "(nessuna sorgente: puoi solo VENDERE)"
+			var no := Label.new(); no.text = "(niente simboli Import né venditori: puoi solo VENDERE)"
 			no.add_theme_color_override("font_color", Color(0.75, 0.7, 0.6))
 			no.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			choice_flow.add_child(no)
@@ -3030,19 +3040,21 @@ func _trade_armies_row(p: PlayerState, ex_max: int) -> Control:
 	return row
 
 
-## Bottone di una sorgente d'import (banca o potenza) nel Commercio: bandierina ALTA
-## QUANTO IL TESTO (icona del bottone, mai gigante) oppure "Banca". Forma chiara da
-## pulsante; quello selezionato ha il bordo dorato.
+## Bottone di un VENDITORE d'import (Riserva o superpotenza) nel Commercio: indica DA CHI
+## prendi le unità (la capacità viene dalle tue alleate, mostrata a parte). Bandiera alta
+## quanto il testo; quello selezionato ha il bordo dorato.
 func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 	var src := String(s["src"])
 	var fb := Button.new()
 	fb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var fh := _base_fs() + 8
-	if src == "bank":
-		var names := _allied_importer_names(_active(), R)
-		fb.tooltip_text = "Import tramite le TUE Country alleate" + (": " + ", ".join(names) if not names.is_empty() else "") + "  (fino a %d)" % int(s["n"])
+	var base := _trade_allied_import(_active(), R)   # simboli Import alleate (base sempre presente)
+	if src == "reserve":
+		fb.tooltip_text = "Solo le tue alleate (Riserva): importi fino a %d, niente +1 Diplomazia" % int(s["n"])
 	else:
-		fb.tooltip_text = "Compra dalla potenza %s  (vende %d, +1 Diplomazia)" % [src.to_upper(), int(s["n"])]
+		var inc := int(s["n"]) - base
+		fb.tooltip_text = "%s vende %d → totale importabile %d (%d alleate + %d %s), +1 Diplomazia" % [
+			POWER_LABEL.get(src, src.to_upper()), inc, int(s["n"]), base, inc, POWER_LABEL.get(src, src.to_upper())]
 	var fsb := StyleBoxFlat.new(); fsb.set_corner_radius_all(5); fsb.bg_color = Color(0.2, 0.22, 0.28)
 	fsb.content_margin_left = 7; fsb.content_margin_right = 7
 	fsb.content_margin_top = 3; fsb.content_margin_bottom = 3
@@ -3055,23 +3067,15 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 	for stn in ["normal", "hover", "pressed", "focus"]:
 		fb.add_theme_stylebox_override(stn, fsb)
 	fb.add_theme_font_size_override("font_size", _base_fs())
-	if src == "bank":
-		# Non è una "banca": sono le TUE Country alleate (i loro simboli Import). Mostra
-		# i nomi se sono pochi, altrimenti "Tue alleate ×N".
-		var names := _allied_importer_names(_active(), R)
-		if names.size() == 1:
-			fb.text = "%s ×%d" % [names[0], int(s["n"])]
-		elif names.size() == 2:
-			fb.text = "%s, %s" % [names[0], names[1]]
-		else:
-			fb.text = "Tue alleate ×%d" % int(s["n"])
+	if src == "reserve":
+		fb.text = "Solo alleate ×%d" % int(s["n"])
 	else:
-		# Bandiera (icona) + NOME della superpotenza, così è CHIARO da quale giocatore
-		# compri (es. "Europa" vs "USA" se entrambi vendono Servizi). Toccarla la sblocca.
+		# Bandiera (icona) + NOME della superpotenza + «+M» (quanto AGGIUNGE alla base): è
+		# chiaro da quale giocatore compri e che la sua quantità si somma alle tue alleate.
 		fb.icon = load("res://assets/flags/%s.png" % src)
 		fb.expand_icon = true
 		fb.add_theme_constant_override("icon_max_width", int(fh * 1.4))
-		fb.text = "%s ×%d" % [POWER_LABEL.get(src, src.to_upper()), int(s["n"])]
+		fb.text = "%s +%d (=%d)" % [POWER_LABEL.get(src, src.to_upper()), int(s["n"]) - base, int(s["n"])]
 	fb.pressed.connect(_trade_pick_src.bind(R, src))
 	return fb
 
