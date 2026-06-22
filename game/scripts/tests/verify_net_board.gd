@@ -74,6 +74,23 @@ func _init() -> void:
 		"OK" if cmd_ok else "FAIL", str(got["seat"]), str(got["type"])])
 	if not cmd_ok: fails += 1
 
+	# 5) PAYLOAD end-to-end: il client invia un Move, l'host lo applica e ribroadcasta;
+	#    il risultato compare nello stato dell'host E nello snapshot ricevuto dal client.
+	host_board.active_seat = 1            # tocca al client (seggio 1 = china)
+	host_board.awaiting = "move"
+	host_board._move_ctx = {"free": true, "max": 2, "min": 0, "moved": 0, "source": null, "allowed": [], "exclude": []}
+	host_board.gs.players[1].armies_available = 2
+	host_board.gs.regions["europe"]["armies"]["china"] = 0
+	client_board.apply_command(GameCommands.move_army(1, 99, "_reserve", "europe"))
+	await process_frame
+	var host_moved: bool = int(host_board.gs.regions["europe"]["armies"].get("china", 0)) == 1 \
+		and int(host_board.gs.players[1].armies_available) == 1
+	print("[%s] host applica il Move del client (riserva 2->1, Europa china=1)" % ["OK" if host_moved else "FAIL"])
+	if not host_moved: fails += 1
+	var client_sees: bool = int(client_board.gs.regions["europe"]["armies"].get("china", 0)) == 1
+	print("[%s] il client vede il Move nello snapshot ribroadcastato" % ["OK" if client_sees else "FAIL"])
+	if not client_sees: fails += 1
+
 	host_board.queue_free()
 	client_board.queue_free()
 	await process_frame

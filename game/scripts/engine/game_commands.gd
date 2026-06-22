@@ -17,6 +17,8 @@ const KNOWN := [
 	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
+	# Azioni a PAYLOAD pieno (la selezione si compone in locale, poi si invia il risultato)
+	"produce", "trade", "move_army", "move_finish",
 	# Get a Growth Card (Azione) e acquisto al Market (Research)
 	"buy_growth", "buy_market",
 	# Aftermath (fase per-giocatore; gating sul giocatore Aftermath, non su active_seat)
@@ -73,6 +75,31 @@ static func exhaust_ally(seat: int, seq: int, country_id: String) -> Dictionary:
 	return make("exhaust_ally", seat, seq, {"country_id": country_id})
 
 
+## Produce (azione domestica): `sel` mappa tipo_risorsa -> quantità da produrre. La
+## selezione si compone in locale sulla resource track; il comando porta il RISULTATO.
+static func produce(seat: int, seq: int, sel: Dictionary) -> Dictionary:
+	return make("produce", seat, seq, {"sel": sel.duplicate(true)})
+
+
+## Trade (Commercio): `export`/`import` mappano risorsa -> quantità; `import_src` mappa
+## risorsa -> venditore scelto ("reserve" o potenza); `armies` = Armate vendute dalla riserva.
+static func trade(seat: int, seq: int, export_sel: Dictionary, import_sel: Dictionary, import_src: Dictionary, armies: int) -> Dictionary:
+	return make("trade", seat, seq, {
+		"export": export_sel.duplicate(true), "import": import_sel.duplicate(true),
+		"import_src": import_src.duplicate(true), "armies": armies})
+
+
+## Move: UN singolo spostamento di 1 Armata da `src` (id Regione o "_reserve") a `dest`
+## (id Regione). Ogni passo è un comando; l'host applica costo/limiti e ribroadcasta.
+static func move_army(seat: int, seq: int, src: String, dest: String) -> Dictionary:
+	return make("move_army", seat, seq, {"src": src, "dest": dest})
+
+
+## Move: termina la fase di spostamento (verifica il minimo e consuma la giocata).
+static func move_finish(seat: int, seq: int) -> Dictionary:
+	return make("move_finish", seat, seq, {})
+
+
 static func buy_growth(seat: int, seq: int, card_id: String) -> Dictionary:
 	return make("buy_growth", seat, seq, {"card_id": card_id})
 
@@ -124,6 +151,18 @@ static func valid_shape(cmd: Variant) -> bool:
 				and String(args.get("slot", "")) in ["permanent", "temporary"]
 		"pick_allied_country", "exhaust_ally":
 			return typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
+		"produce":
+			return typeof(args.get("sel")) == TYPE_DICTIONARY
+		"trade":
+			return typeof(args.get("export")) == TYPE_DICTIONARY \
+				and typeof(args.get("import")) == TYPE_DICTIONARY \
+				and typeof(args.get("import_src")) == TYPE_DICTIONARY \
+				and typeof(args.get("armies")) == TYPE_INT
+		"move_army":
+			return typeof(args.get("src")) == TYPE_STRING and String(args["src"]) != "" \
+				and typeof(args.get("dest")) == TYPE_STRING and String(args["dest"]) != ""
+		"move_finish":
+			return true
 		"buy_growth", "buy_market":
 			return typeof(args.get("card_id")) == TYPE_STRING and String(args["card_id"]) != ""
 		"aftermath_token":

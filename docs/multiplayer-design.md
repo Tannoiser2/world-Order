@@ -185,8 +185,12 @@ Tutti compatibili con questa architettura ma rimandati.
     `pick_influence_cell`, `pick_allied_country`, `exhaust_ally`
   - [x] v0.7.78: `buy_growth`, `buy_market`, e Aftermath (`aftermath_token`,
     `aftermath_prosperity`, `aftermath_continue`) con gating per FASE (`_acting_seat()`)
-  - [ ] **Resta**: `produce` e `trade` (comandi a payload pieno con la selezione),
-    `move_army` (drag&drop), `pass_turn`/`play_strategic_asset`.
+  - [x] **v0.7.90**: `produce`, `trade` (comandi a payload pieno: la selezione si
+    compone in locale, il comando porta il risultato), `move_army`/`move_finish`
+    (ogni passo è un comando, incluso il rientro in Riserva con `dest="_reserve"`).
+    Lo snapshot di interazione ora sincronizza anche `_move_ctx`/`_produce_mode`/`_trade_mode`.
+    Test `verify_commands` (forma+gating) e `verify_net_board` (Move client->host end-to-end).
+  - [ ] **Resta**: `pass_turn`/`play_strategic_asset` come comandi espliciti.
   - [ ] **Step B**: estrarre `SessionContext` e spostarci `awaiting`/`playing_card`/temp.
 - [~] **Fase 1/2 — nucleo rete** (v0.7.85): modulo `NetSession` (host-authoritative)
   con trasporto **WebSocket** (`host_lan`/`join_lan`) e **loopback** in-process per i test;

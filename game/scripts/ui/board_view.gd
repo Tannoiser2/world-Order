@@ -1749,23 +1749,44 @@ func _on_move_region(region: String) -> void:
 	if not _move_valid_dest(region):
 		_status("Destinazione non valida per questo spostamento.")
 		return
-	_do_move_step(region)
+	_cmd_move_army(String(c["source"]), region)
 
 
-## Esegue lo spostamento di 1 Armata dalla sorgente alla destinazione, pagando il
-## costo (per "move"). Resetta la sorgente; chiude se raggiunto il massimo.
-func _do_move_step(dest: String) -> void:
+## Applica UN passo di spostamento: 1 Armata da `src` ("_reserve" o id Regione) a `dest`,
+## pagando il costo (per "move"). Resetta la sorgente; chiude se raggiunto il massimo.
+## Ritorna false se non eseguibile (es. money insufficiente), così il bus non logga il comando.
+func _apply_move_step(src: String, dest: String) -> bool:
 	var c := _move_ctx
 	var p := _active()
-	var src: Variant = c["source"]
+	if dest == "_reserve":
+		# Rientro in Riserva (annulla uno spostamento): gratis, non conta nel max.
+		if src == "_reserve":
+			return false
+		var sa0: Dictionary = gs.regions.get(src, {}).get("armies", {})
+		if int(sa0.get(p.power, 0)) <= 0:
+			return false
+		sa0[p.power] = int(sa0.get(p.power, 0)) - 1
+		p.armies_available += 1
+		c["moved"] = maxi(0, int(c.get("moved", 0)) - 1)
+		_status("Armata: %s -> Riserva (rientro)." % src.replace("_", " "))
+		_refresh_move_ui()
+		return true
+	if int(c.get("moved", 0)) >= int(c.get("max", 1)):
+		return false
+	# Validità della sorgente (Riserva con carri, oppure una Regione con tue Armate).
+	if src == "_reserve":
+		if p.armies_available <= 0:
+			return false
+	elif int((gs.regions.get(src, {}).get("armies", {}) as Dictionary).get(p.power, 0)) <= 0:
+		return false
 	if not bool(c["free"]):
 		if p.money < Actions.MOVE_COST:
 			_status("Money insufficiente: serve %d per spostare un'Armata." % Actions.MOVE_COST)
 			c["source"] = null
 			_refresh_move_ui()
-			return
+			return false
 		p.money -= Actions.MOVE_COST
-	if String(src) == "_reserve":
+	if src == "_reserve":
 		p.armies_available -= 1
 	else:
 		var sa: Dictionary = gs.regions[src]["armies"]
@@ -1774,24 +1795,28 @@ func _do_move_step(dest: String) -> void:
 	da[p.power] = int(da.get(p.power, 0)) + 1
 	c["moved"] = int(c["moved"]) + 1
 	c["source"] = null
-	var from_txt := 'Riserva' if String(src) == "_reserve" else String(src).replace("_", " ")
+	var from_txt := 'Riserva' if src == "_reserve" else src.replace("_", " ")
 	_status("Armata: %s -> %s%s." % [from_txt, dest.replace("_", " "), "" if bool(c["free"]) else "  (-%d money)" % Actions.MOVE_COST])
 	if int(c["moved"]) >= int(c["max"]):
-		_finish_move()
+		_apply_move_finish()
 	else:
 		_refresh_move_ui()
+	return true
 
 
-func _finish_move() -> void:
+## Termina la fase di spostamento (verifica il minimo). Ritorna false se il minimo non
+## è raggiunto (resta in Move).
+func _apply_move_finish() -> bool:
 	var c := _move_ctx
 	if int(c.get("moved", 0)) < int(c.get("min", 0)):
 		_status("Devi spostare almeno %d Armate." % int(c["min"]))
-		return
+		return false
 	_move_ctx = {}
 	awaiting = ""
 	_hide_move_bar()
 	_layout_overlays()
 	_advance_play()
+	return true
 
 
 # --- Move via DRAG&DROP (input dell'azione Move): trascini i carri tra Riserva e
@@ -1833,8 +1858,7 @@ func _region_can_drop(_at: Vector2, data: Variant, region: String) -> bool:
 	return _move_valid_dest(region)
 
 func _region_do_drop(_at: Vector2, data: Variant, region: String) -> void:
-	_move_ctx["source"] = String((data as Dictionary)["move_src"])
-	_do_move_step(region)   # gestisce costo, trasferimento, moved++, cap e fine
+	_cmd_move_army(String((data as Dictionary)["move_src"]), region)   # costo/trasferimento/cap via bus
 
 ## Drop sul vassoio Riserva: riporta 1 Armata dalla Regione alla Riserva (gratis,
 ## non conta nel max - annulla lo spostamento).
@@ -1842,16 +1866,8 @@ func _reserve_can_drop(_at: Vector2, data: Variant) -> bool:
 	return data is Dictionary and String((data as Dictionary).get("move_src", "_reserve")) != "_reserve"
 
 func _reserve_do_drop(_at: Vector2, data: Variant) -> void:
-	var src := String((data as Dictionary)["move_src"])
-	var p := _active()
-	var sa: Dictionary = gs.regions[src]["armies"]
-	if int(sa.get(p.power, 0)) <= 0:
-		return
-	sa[p.power] = int(sa.get(p.power, 0)) - 1
-	p.armies_available += 1
-	_move_ctx["moved"] = maxi(0, int(_move_ctx.get("moved", 0)) - 1)
-	_status("Armata: %s -> Riserva (rientro)." % src.replace("_", " "))
-	_refresh_move_ui()
+	# Rientro in Riserva = move con destinazione "_reserve" (passa per il bus come gli altri).
+	_cmd_move_army(String((data as Dictionary)["move_src"]), "_reserve")
 
 
 ## Ridisegna mappa, barra Move e messaggio di stato in base allo stato corrente.
@@ -1879,7 +1895,7 @@ func _refresh_move_bar() -> void:
 	var done := Button.new()
 	done.text = "Fine spostamento"
 	done.add_theme_font_size_override("font_size", _base_fs() + 1)
-	done.pressed.connect(_finish_move)
+	done.pressed.connect(_cmd_move_finish)
 	choice_flow.add_child(done)
 	if int(c.get("moved", 0)) == 0:
 		var cancel := Button.new()
@@ -2271,7 +2287,9 @@ func _trade_armies_adjust(delta: int) -> void:
 	_trade_rerender()
 
 
-func _trade_confirm() -> void:
+## Applica il Commercio dalla selezione in `_trade_sel`/`_trade_import_src`/`_trade_armies`
+## (riempiti dal bottone Conferma in locale o dal comando `trade` ricevuto dalla rete).
+func _apply_trade() -> void:
 	var p := _active()
 	_trade_exported = (_trade_sel["export"] as Dictionary).duplicate()  # per i bonus condizionali post-Trade
 	for R in (_trade_sel["export"] as Dictionary):
@@ -2485,7 +2503,7 @@ func _show_produce_bar(p: PlayerState) -> void:
 		plus.disabled = int(_produce_sel.get("armies", 0)) >= mini(arm_cap, int(p.resources.get("raw_materials", 0)))
 		plus.pressed.connect(_produce_armies_adjust.bind(1))
 		choice_flow.add_child(plus)
-	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_produce_confirm)
+	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_produce)
 	choice_flow.add_child(ok)
 	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_produce_cancel)
 	choice_flow.add_child(cancel)
@@ -2500,7 +2518,9 @@ func _produce_cancel() -> void:
 	_cancel_card()
 
 
-func _produce_confirm() -> void:
+## Applica la selezione di Produce accumulata in `_produce_sel` (lo riempie il
+## bottone Conferma in locale, o il comando `produce` quando arriva dalla rete).
+func _apply_produce() -> void:
 	var p := _active()
 	var summary := []
 	# Primarie prima (così le secondarie possono consumarle).
@@ -3342,7 +3362,7 @@ func _show_trade_bar(p: PlayerState) -> void:
 		var chg := Button.new(); chg.text = "Cambia prodotto"
 		chg.pressed.connect(func(): _trade_active_res = ""; _trade_rerender())
 		choice_flow.add_child(chg)
-	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_trade_confirm)
+	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_trade)
 	choice_flow.add_child(ok)
 	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_trade_cancel)
 	choice_flow.add_child(cancel)
@@ -4032,6 +4052,34 @@ func apply_command(cmd: Dictionary) -> bool:
 			if cn2.is_empty():
 				return false
 			_on_exhaust_toggle(cn2)
+		"produce":
+			# Risultato del Produce: applica la selezione (tipo_risorsa -> quantità).
+			if not _produce_mode:
+				return false
+			_produce_sel = (a.get("sel", {}) as Dictionary).duplicate(true)
+			_apply_produce()
+		"trade":
+			# Risultato del Commercio: ricostruisce la selezione dal payload e la applica.
+			if not _trade_mode:
+				return false
+			_trade_sel = {
+				"export": (a.get("export", {}) as Dictionary).duplicate(true),
+				"import": (a.get("import", {}) as Dictionary).duplicate(true),
+			}
+			_trade_import_src = (a.get("import_src", {}) as Dictionary).duplicate(true)
+			_trade_armies = int(a.get("armies", 0))
+			_apply_trade()
+		"move_army":
+			# Un singolo passo di spostamento (src -> dest); l'host valida costo/limiti.
+			if awaiting != "move":
+				return false
+			if not _apply_move_step(String(a["src"]), String(a["dest"])):
+				return false
+		"move_finish":
+			if awaiting != "move":
+				return false
+			if not _apply_move_finish():
+				return false
 		"buy_growth":
 			var gc := _growth_by_id(String(a["card_id"]))
 			if gc.is_empty():
@@ -4109,6 +4157,10 @@ func _ui_snapshot() -> Dictionary:
 			"regions": (_influence_pick.get("regions", []) as Array).duplicate(),
 			"force": String(_influence_pick.get("force", "")),
 		} if not _influence_pick.is_empty() else {},
+		# Stato del Move (per pilotare il client durante lo spostamento Armate).
+		"move_ctx": _move_ctx.duplicate(true) if not _move_ctx.is_empty() else {},
+		"produce_mode": _produce_mode,
+		"trade_mode": _trade_mode,
 	}
 
 
@@ -4122,6 +4174,10 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	playing_card = {"display_name": "(in gioco)"} if bool(ui.get("playing", false)) else {}
 	var ip: Dictionary = ui.get("influence_pick", {})
 	_influence_pick = {"regions": ip.get("regions", []), "force": String(ip.get("force", ""))} if not ip.is_empty() else {}
+	var mc: Dictionary = ui.get("move_ctx", {})
+	_move_ctx = mc.duplicate(true) if not mc.is_empty() else {}
+	_produce_mode = bool(ui.get("produce_mode", false))
+	_trade_mode = bool(ui.get("trade_mode", false))
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4201,6 +4257,27 @@ func _cmd_pick_allied_country(cn: Dictionary) -> void:
 
 func _cmd_exhaust_ally(cn: Dictionary) -> void:
 	apply_command(GameCommands.exhaust_ally(active_seat, _next_seq(), String(cn.get("id", ""))))
+
+
+## Produce/Trade: la selezione è composta in locale (resource track), il bottone Conferma
+## spedisce il RISULTATO come comando (in rete il client la compone e l'host la applica).
+func _cmd_produce() -> void:
+	apply_command(GameCommands.produce(active_seat, _next_seq(), _produce_sel))
+
+
+func _cmd_trade() -> void:
+	apply_command(GameCommands.trade(active_seat, _next_seq(),
+		(_trade_sel.get("export", {}) as Dictionary), (_trade_sel.get("import", {}) as Dictionary),
+		_trade_import_src, _trade_armies))
+
+
+## Move: ogni spostamento (sorgente -> destinazione) e la fine sono comandi distinti.
+func _cmd_move_army(src: String, dest: String) -> void:
+	apply_command(GameCommands.move_army(active_seat, _next_seq(), src, dest))
+
+
+func _cmd_move_finish() -> void:
+	apply_command(GameCommands.move_finish(active_seat, _next_seq()))
 
 
 func _cmd_buy_growth(card: Dictionary, _nl: int) -> void:
