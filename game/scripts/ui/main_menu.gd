@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.39"
+const VERSION := "v0.7.40"
 const CHANGELOG := [
+	"v0.7.40 — COMMERCIO ORA SULLA TUA PLANCIA (niente più finestra separata): si lavora direttamente sulla resource track della plancia. Tocchi un prodotto (anello evidenziato sul token) e compaiono le caselle valide 0-10: verso 0 VENDI, verso 10 COMPRI, col denaro su ogni casella; il token si sposta dove tocchi. In cima al cassetto una barra mostra il Δ money, le bandierine per scegliere da quale potenza comprare, e Conferma/Annulla.",
 	"v0.7.39 — CARTE PRODOTTO MULTIPLE: ogni potenza ha 2 carte prodotto (Commerce), 3 per la Russia, ora mostrate tutte nel cassetto; quelle usate nel round appaiono girate/grigie. Comprando un prodotto da una potenza si gira la CARTA SPECIFICA che lo mostra, quindi può venderlo una volta per ogni carta scoperta (prima si poteva comprare quel prodotto da lei una sola volta a round). Il limite d'acquisto da una potenza dipende dalle sue carte ancora scoperte.",
 	"v0.7.38 — COMMERCIO rifatto: niente più tabella di testo. Ogni risorsa ha la sua traccia 0-10; tocchi una casella per spostare la risorsa — verso 0 VENDI, verso 10 COMPRI — con il denaro guadagnato/speso scritto su ogni casella. Per comprare da un altro giocatore scegli la sua BANDIERINA tra le sorgenti a fianco (🏦 banca o le potenze che vendono quella risorsa), e il limite si adatta a quanto offre. (Il trascinamento drag&drop arriverà come passo successivo.)",
 	"v0.7.37 — AUTO-INFLUENCE completo (partite a 2-3 giocatori): ora le potenze neutrali applicano DUE carte Auto-Influence per round (prima una sola), elencate nel riepilogo di fine round con dove piazzano Influenza/Armate. Il money del commercio (10) ora è CONDIZIONATO: una potenza neutrale lo dà a un giocatore solo se quel giocatore ha una Commerce card a faccia in su (che viene girata); se le ha già girate tutte, niente money.",
