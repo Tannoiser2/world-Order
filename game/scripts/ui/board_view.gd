@@ -578,7 +578,7 @@ func _make_region_button(region: String) -> Button:
 			"selected": st.bg_color = Color(0.95, 0.8, 0.2, 0.46); st.border_color = Color(1, 0.9, 0.3, 1)
 			"dest": st.bg_color = Color(0.2, 0.6, 0.95, 0.42); st.border_color = Color(0.4, 0.9, 1, 1)
 			_: st.bg_color = Color(0.2, 0.6, 0.95, 0.42); st.border_color = Color(0.4, 0.9, 1, 1)
-		st.set_border_width_all(maxi(4, int(board_native.y * 0.006)))
+		st.set_border_width_all(maxi(2, int(board_native.y * 0.003)))
 		st.set_corner_radius_all(6)
 	else:
 		st.bg_color = Color(0, 0, 0, 0)
@@ -741,7 +741,7 @@ func _layout_engage_tokens() -> void:
 					btn.position = Vector2(px, py)
 					btn.size = Vector2(w, h)
 					var bst := StyleBoxFlat.new(); bst.bg_color = Color(0, 0, 0, 0)
-					bst.set_border_width_all(maxi(2, int(h * 0.14))); bst.border_color = Color(1, 0.95, 0.4, 0.95)
+					bst.set_border_width_all(maxi(1, int(h * 0.09))); bst.border_color = Color(1, 0.95, 0.4, 0.95)
 					bst.set_corner_radius_all(4)
 					for stn in ["normal", "hover", "pressed", "focus"]:
 						btn.add_theme_stylebox_override(stn, bst)
@@ -804,7 +804,7 @@ func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool, with_pre
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0, 0, 0, 0)
 	sb.border_color = Color(0.4, 1, 0.5) if highlight else Color(0, 0, 0, 0)
-	sb.set_border_width_all(int(board_native.y * 0.004) if highlight else 0)
+	sb.set_border_width_all(maxi(2, int(minf(sz.x, sz.y) * 0.028)) if highlight else 0)
 	sb.set_corner_radius_all(int(board_native.y * 0.006))
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, sb)
@@ -824,7 +824,7 @@ func _country_card_button(cn: Dictionary, sz: Vector2, highlight: bool, with_pre
 		hl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		var hs := StyleBoxFlat.new()
 		hs.bg_color = Color(0.4, 1.0, 0.5, 0.10)
-		hs.set_border_width_all(maxi(3, int(sz.y * 0.045)))
+		hs.set_border_width_all(maxi(2, int(sz.y * 0.024)))
 		hs.border_color = Color(0.45, 1.0, 0.55)
 		hs.set_corner_radius_all(int(sz.y * 0.03))
 		hl.add_theme_stylebox_override("panel", hs)
@@ -1307,7 +1307,7 @@ func _add_influence_cell(region: String, slot: String, pos: Array) -> void:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.25, 1.0, 0.45, 0.62) if slot == "permanent" else Color(1.0, 0.4, 1.0, 0.62)
 	sb.border_color = Color(1, 1, 1, 0.95)
-	sb.set_border_width_all(maxi(1, int(s * 0.08)))   # cornice SOTTILE
+	sb.set_border_width_all(maxi(1, int(s * 0.05)))   # cornice SOTTILE
 	sb.set_corner_radius_all(int(s * 0.20))
 	var hv := sb.duplicate()
 	hv.bg_color = Color(0.3, 1.0, 0.55, 0.85) if slot == "permanent" else Color(1.0, 0.5, 1.0, 0.85)
@@ -2902,7 +2902,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			var fst := StyleBoxFlat.new()
 			if in_prep:
 				fst.bg_color = Color(0.95, 0.8, 0.2, 0.16)
-				fst.set_border_width_all(maxi(2, int(ph * 0.012))); fst.border_color = Color(1.0, 0.85, 0.3, 0.95)
+				fst.set_border_width_all(maxi(1, int(ph * 0.007))); fst.border_color = Color(1.0, 0.85, 0.3, 0.95)
 				fst.set_corner_radius_all(6)
 				fb.tooltip_text = "Scegli Focus %s" % FOCUS_NAME[f]
 			else:
@@ -3044,7 +3044,7 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 				halo.offset_left = -ts * 0.62 + off; halo.offset_right = ts * 0.62 + off
 				halo.offset_top = -ts * 0.62; halo.offset_bottom = ts * 0.62
 				var hs := StyleBoxFlat.new(); hs.bg_color = Color(1.0, 0.85, 0.3, 0.30)
-				hs.set_corner_radius_all(int(ts)); hs.set_border_width_all(maxi(2, int(ts * 0.12))); hs.border_color = Color(1.0, 0.85, 0.3, 0.95)
+				hs.set_corner_radius_all(int(ts)); hs.set_border_width_all(maxi(1, int(ts * 0.06))); hs.border_color = Color(1.0, 0.85, 0.3, 0.95)
 				halo.add_theme_stylebox_override("panel", hs)
 				area.add_child(halo)
 			var tok := TextureRect.new()
@@ -3207,7 +3207,7 @@ func _trade_src_flag_btn(R: String, s: Dictionary, selected: bool) -> Button:
 	fsb.content_margin_top = 3; fsb.content_margin_bottom = 3
 	# Sorgente SELEZIONATA = sbloccata: bordo e sfondo dorati, ben evidenti.
 	if selected:
-		fsb.set_border_width_all(3); fsb.border_color = Color(1.0, 0.85, 0.3)
+		fsb.set_border_width_all(2); fsb.border_color = Color(1.0, 0.85, 0.3)
 		fsb.bg_color = Color(0.42, 0.34, 0.12)
 	else:
 		fsb.set_border_width_all(1); fsb.border_color = Color(0.5, 0.6, 0.75, 0.75)
