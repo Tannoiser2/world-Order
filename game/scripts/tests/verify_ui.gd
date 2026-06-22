@@ -423,23 +423,23 @@ func _init() -> void:
 		par.allied_countries = sv_allies_a
 		board.trade_deals = sv_td_a
 
-		# Commerce per-carta: Russia vende fino a 3 Energia O 3 Materie Prime per carta;
-		# girare una carta consuma anche l'altra risorsa (una risorsa per carta).
+		# Commerce per-carta (UNA carta per trade): Russia vende fino a 3 Energia O 3
+		# Materie Prime per UNA carta; per trade se ne gira una sola (non si sommano).
 		var sv_td_cc: Dictionary = board.trade_deals
 		board.trade_deals = DataLoader.load_trade_deals()
 		board._commerce_flipped = {}
-		var ru_cap_e: int = board._commerce_faceup_for("russia", "energy")          # 3 carte × 3 = 9
-		var ru_n1: int = board._commerce_consume("russia", "energy", 2)             # 2 ≤ 3 → 1 carta
-		var ru_raw1: int = board._commerce_faceup_for("russia", "raw_materials")    # carta girata: 2×3 = 6
-		var ru_n2: int = board._commerce_consume("russia", "energy", 4)             # 4 > 3 → 2 carte
-		var cc_ok: bool = ru_cap_e == 9 and ru_n1 == 1 and ru_raw1 == 6 and ru_n2 == 2
-		# EU: 1 carta = 1 Servizi O 1 Beni; comprarne uno consuma la carta (cala anche l'altro).
+		var ru_cap_e: int = board._commerce_faceup_for("russia", "energy")          # 1 carta = 3 (non 9)
+		var ru_n1: int = board._commerce_consume("russia", "energy", 2)             # gira 1 carta
+		var ru_raw1: int = board._commerce_faceup_for("russia", "raw_materials")    # carta migliore rimasta: 3
+		var ru_n2: int = board._commerce_consume("russia", "energy", 4)             # gira 1 carta (cap = 3)
+		var cc_ok: bool = ru_cap_e == 3 and ru_n1 == 1 and ru_raw1 == 3 and ru_n2 == 1
+		# EU: 1 carta = 1 Servizi O 1 Beni; per trade una sola carta → cap 1.
 		board._commerce_flipped = {}
-		var eu_cg0: int = board._commerce_faceup_for("eu", "consumer_goods")        # 2 carte → 2
+		var eu_cg0: int = board._commerce_faceup_for("eu", "consumer_goods")        # 1 carta → 1
 		board._commerce_consume("eu", "consumer_goods", 1)                          # gira 1 carta
-		var eu_sv1: int = board._commerce_faceup_for("eu", "services")              # carta condivisa: 1
-		var eu_ok: bool = eu_cg0 == 2 and eu_sv1 == 1
-		print("[%s] Commerce per-carta: Russia 3 Energia/carta (O Materie), EU 1 Servizi O Beni" % ["OK" if (cc_ok and eu_ok) else "FAIL"])
+		var eu_sv1: int = board._commerce_faceup_for("eu", "services")              # carta rimasta: 1
+		var eu_ok: bool = eu_cg0 == 1 and eu_sv1 == 1
+		print("[%s] Commerce per-carta: una carta per trade (Russia 3 max, EU 1 max)" % ["OK" if (cc_ok and eu_ok) else "FAIL"])
 		if not (cc_ok and eu_ok): fails += 1
 		board.trade_deals = sv_td_cc
 		board._commerce_flipped = {}

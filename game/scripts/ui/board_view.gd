@@ -1784,40 +1784,38 @@ func _commerce_cards(power: String) -> Array:
 	return trade_deals.get("commerce_cards", {}).get(power, [])
 
 
-## Quante unità di R può ancora vendere `power` questo round = somma delle quantità
-## di R sulle sue carte prodotto a faccia in su.
+## Quante unità di R può vendere `power` in UN trade = capacità della MIGLIORE singola
+## carta prodotto scoperta. NON si sommano le carte: per trade se ne gira UNA sola
+## (max 3 dalla Russia, +1 Diplomazia). Le altre carte servono per altri trade/giocatori.
 func _commerce_faceup_for(power: String, R: String) -> int:
 	var flipped: Array = _commerce_flipped.get(power, [])
-	var n := 0
+	var best := 0
 	var cards := _commerce_cards(power)
 	for i in cards.size():
 		if i not in flipped:
-			n += int((cards[i] as Dictionary).get(R, 0))
-	return n
+			best = maxi(best, int((cards[i] as Dictionary).get(R, 0)))
+	return best
 
 
-## Esaurisce (gira) le carte prodotto di `power` necessarie a coprire `q` unità di R.
-## Ogni carta girata è consumata PER INTERO (anche la sua altra risorsa: è il vincolo
-## "una risorsa per carta"). Ritorna il numero di carte girate.
-func _commerce_consume(power: String, R: String, q: int) -> int:
+## Esaurisce (gira) UNA sola carta prodotto di `power` per vendere R: quella scoperta
+## con più R (limite "una carta per trade"). Ritorna le carte girate (0 o 1).
+func _commerce_consume(power: String, R: String, _q: int) -> int:
 	if not _commerce_flipped.has(power):
 		_commerce_flipped[power] = []
 	var flipped: Array = _commerce_flipped[power]
 	var cards := _commerce_cards(power)
-	var need := q
-	var done := 0
+	var best_i := -1
+	var best_q := 0
 	for i in cards.size():
-		if need <= 0:
-			break
-		if i in flipped:
-			continue
-		var qty := int((cards[i] as Dictionary).get(R, 0))
-		if qty <= 0:
-			continue
-		flipped.append(i)
-		need -= qty
-		done += 1
-	return done
+		if i not in flipped:
+			var cq := int((cards[i] as Dictionary).get(R, 0))
+			if cq > best_q:
+				best_q = cq
+				best_i = i
+	if best_i >= 0:
+		flipped.append(best_i)
+		return 1
+	return 0
 
 
 ## Gira una qualunque carta prodotto di `power` a faccia in su (Auto-Influence, pag. 18).
