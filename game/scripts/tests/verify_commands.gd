@@ -112,6 +112,32 @@ func _init() -> void:
 	board._aftermath_choice_p = null
 	check.call("_acting_seat fuori Aftermath = active_seat", board._acting_seat() == board.active_seat)
 
+	# 8) Increase Production (passo Choose Focus della Preparazione).
+	check.call("increase_production shape: type vuoto ammesso (salta)",
+		GameCommands.valid_shape(GameCommands.increase_production(0, 1, "")))
+	check.call("increase_production shape ok",
+		GameCommands.valid_shape(GameCommands.increase_production(0, 1, "diplomacy")))
+	board.playing_card = {}
+	board.awaiting = ""
+	board.gs.round = 2
+	var pp = board.gs.players[board.gs.turn_order[0]]
+	pp.money = 20
+	pp.production = {"energy":1,"raw_materials":1,"food":1,"consumer_goods":1,"services":1,"diplomacy":1,"armies":1}
+	board._begin_preparation()
+	for _i in range(2): await process_frame
+	var seatp: int = board.active_seat
+	var dipl0: int = int(pp.production.get("diplomacy", 0))
+	var idxp0: int = board._prep_idx
+	# Diplomatic (f=1): produce Diplomazia e OFFRE l'aumento (non avanza ancora).
+	board.apply_command(GameCommands.choose_focus(seatp, board._next_seq(), 1))
+	for _i in range(2): await process_frame
+	check.call("choose_focus in prep: offre aumento, non avanza", board._prep_idx == idxp0)
+	# Aumenta la Produzione di Diplomazia: +1 alla traccia e avanza la preparazione.
+	board.apply_command(GameCommands.increase_production(seatp, board._next_seq(), "diplomacy"))
+	for _i in range(2): await process_frame
+	check.call("increase_production: +1 traccia Diplomazia", int(pp.production.get("diplomacy", 0)) == dipl0 + 1)
+	check.call("increase_production: avanza la preparazione", board._prep_idx == idxp0 + 1)
+
 	print("Verifica command bus: %s" % ("OK" if fails == 0 else "FALLITA (%d)" % fails))
 	board.queue_free()
 	await process_frame

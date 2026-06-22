@@ -944,9 +944,13 @@ func _init() -> void:
 	while not b2.game_over and safety < 400:
 		safety += 1
 		# PREPARAZIONE (round 2+): ogni giocatore sceglie il Focus cliccando una colonna
-		# sulla plancia → qui simulato con _do_focus(0) (Domestic), che applica e avanza.
+		# sulla plancia → _do_focus(0) (Domestic), poi l'eventuale offerta di aumento
+		# Produzione si chiude saltandola (increase_production "").
 		if b2._ui_phase == "Preparazione":
-			b2._do_focus(0)
+			if b2._prep_awaiting_increase:
+				b2._cmd_increase_production("")
+			else:
+				b2._do_focus(0)
 			await process_frame
 			continue
 		# "Continua" può stare nel popup (riepiloghi), nella barra scelte (Aftermath) o nel
