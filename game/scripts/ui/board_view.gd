@@ -3059,12 +3059,22 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 		hand_pinned.add_child(_section("Mano avversario: %d carte (coperte)" % p.hand.size()))
 		hand_box = null
 		return
-	# Barra con toggle per collassare la mano (così non copre mai la plancia).
+	# Durante una SCELTA (dopo aver giocato una carta: nazione alleata, ecc.) o durante
+	# il Commercio, la mano si COLLASSA da sola così non copre la plancia/le scelte.
+	# Per le scelte sulla MAPPA è già tutta la plancia a chiudersi (_update_drawer_state).
+	var auto_hide: bool = awaiting != "" or _trade_mode
 	var bar := Button.new()
 	bar.flat = true
+	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
+	if auto_hide:
+		bar.text = "Mano nascosta durante la scelta — %d carte" % p.hand.size()
+		bar.disabled = true
+		hand_pinned.add_child(bar)
+		hand_box = null
+		return
+	# Barra con toggle per collassare la mano (così non copre mai la plancia).
 	var plays_txt := "" if _plays_left == 1 else "  ·  %d giocate" % _plays_left if _plays_left > 0 else "  ·  turno esaurito"
 	bar.text = "%s  La tua mano (%d)%s" % ["[+]" if hand_collapsed else "[–]", p.hand.size(), plays_txt]
-	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
 	if hand_collapsed:
