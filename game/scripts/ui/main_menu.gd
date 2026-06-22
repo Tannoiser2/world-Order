@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.34"
+const VERSION := "v0.7.35"
 const CHANGELOG := [
+	"v0.7.35 — L'anteprima ingrandita (flyover) delle carte al passaggio del mouse è ora ANCORATA A DESTRA e più contenuta: prima compariva grande al centro e copriva la board e i testi delle scelte nei popup.",
 	"v0.7.34 — Research: ora puoi ESAURIRE le Country alleate (ancora ready) per aggiungere il loro valore ai punti Research, da spendere nel Market (come da regolamento: es. Singapore +2, Tajikistan +1). I pulsanti compaiono nella schermata Research.",
 	"v0.7.33 — Schermata RESEARCH/MARKET rifatta e LEGGIBILE: le carte Market e Growth sono ora dimensionate per stare in una riga senza accavallarsi (le Growth mostrate in orizzontale), con il pannello scrollabile e adattato allo schermo. Aggiunte le regole del Market: comprando una carta ne compare una nuova a sinistra; puoi spendere 2 Research per scartare le 3 carte più a destra; a fine Research si scartano le carte più a destra (2 in 2 giocatori, 1 in 3, nessuna in 4).",
 	"v0.7.32 — Regole allineate al regolamento (audit). Le ABILITÀ SPECIALI delle potenze ora contano davvero nello scoring: USA penalità se ha la maggioranza di Influenza in meno di 4 Regioni, Russia +VP per ogni Regione di zona con più Armate, Cina VP per le Regioni con FDI. A fine partita: +2 VP per ogni Strategic Asset non usato e +3 per l'Executive Order non usata. Spareggio del vincitore corretto (1° bonus Maggioranza → più cubi Influenza → vittoria condivisa). Azioni corrette: nel Trade il bene da 20 sono le Armate (la Diplomazia non si commercia) e la +1 Diplomazia si ha solo comprando da un altro giocatore; Engage richiede una Country alleata nella Regione; Invest/Build a Base una sola volta per Paese; Move solo in zona d'interesse o dove hai una Base; Build a Base muove fino al valore del Paese (non più 1 fisso); la Diplomazia in eccesso (>10) va persa. NATO USA↔EU validata sulle potenze in gioco.",

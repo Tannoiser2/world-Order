@@ -695,11 +695,14 @@ func _attach_preview(btn: Control, tex: Texture2D) -> void:
 	if tex == null or card_preview == null:
 		return
 	btn.mouse_entered.connect(func():
-		var h: float = minf(size.y * 0.7, 520.0)
+		# Anteprima ANCORATA A DESTRA (e più contenuta) così non copre il centro
+		# della board né i testi delle scelte nei popup.
+		var h: float = minf(size.y * 0.6, 440.0)
 		var w: float = h * 0.71
+		var margin := 16.0
 		card_preview.texture = tex
 		card_preview.size = Vector2(w, h)
-		card_preview.position = Vector2((size.x - w) * 0.5, (size.y - h) * 0.5)
+		card_preview.position = Vector2(size.x - w - margin, (size.y - h) * 0.5)
 		card_preview.visible = true)
 	btn.mouse_exited.connect(func(): card_preview.visible = false)
 
