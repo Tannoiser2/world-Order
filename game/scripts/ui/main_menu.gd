@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.69"
+const VERSION := "v0.7.70"
 const CHANGELOG := [
+	"v0.7.70 - NUOVO LAYOUT piu' ergonomico: la BOARD del giocatore e' ora una finestra SEPARATA a SINISTRA, sempre visibile, e la MAPPA sta a DESTRA - zoomando la mappa la board non si ingrandisce e non serve piu' collassarla. Nel pannello board, in colonna: plancia, poi carta Commercio + carte prodotto, poi carte nazione alleate, poi carte crescita. La MANO resta a tutta larghezza in basso: aperta si sovrappone a mappa e board (non comprime le carte), collassata e' una barra sottile. Le linguette in basso scelgono quale board guardare (sempre visibile).",
 	"v0.7.69 - Tante migliorie: (1) COMMERCIO: niente più cerchi blu - ogni prodotto e' la sua ICONA; toccala per selezionarla (si illumina e va in primo piano), ri-toccala per deselezionarla o (se due prodotti stanno sulla stessa casella) passare all'altro; poi la trascini o tocchi una casella per spostarla. (2) IMPORT: +1 Diplomazia solo comprando l'INTERA carta del venditore (es. tutti e 3 dalla Russia), come da regolamento. (3) PREPARAZIONE: il round 1 non si fa (tutti partono Domestic); dal round 2 il Focus si sceglie cliccando una COLONNA evidenziata sulla plancia (niente piu' bottoni). (4) Tolti i simboli non sempre visualizzabili dal font (frecce, ecc.), sostituiti con testo.",
 	"v0.7.68 - IMPORT nel Commercio com'è giusto: la quantità che puoi importare di un prodotto è la SOMMA dei simboli Import delle tue Country alleate PIÙ quanto vende il GIOCATORE che scegli. Le bandiere dei venditori sono alternative TRA LORO (ne scegli una), ma quella scelta si AGGIUNGE alla base delle tue alleate (es. 'importabili 2 alleate + 1 da Europa = 3'). 'Solo alleate' = compri dalla Riserva senza Diplomazia; scegliendo una superpotenza le sue unità le paghi a lei e prendi +1 Diplomazia. La barra mostra il totale e la composizione.",
 

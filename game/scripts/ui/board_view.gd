@@ -54,7 +54,8 @@ var choice_flow: HFlowContainer   # contenuto della barra scelte (prompt + botto
 var drawer: Panel                   # foglio in basso, mostrato a richiesta
 var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
-var hand_pinned: VBoxContainer   # mano del giocatore, fissa in basso nel cassetto
+var hand_pinned: VBoxContainer   # mano del giocatore, in un pannello full-width in basso
+var hand_panel: Panel            # pannello MANO a tutta larghezza (overlay su mappa+board)
 var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
 var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
@@ -2474,9 +2475,8 @@ func _build_drawer() -> void:
 	drawer_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	drawer_content.add_theme_constant_override("separation", 8)
 	scroll.add_child(drawer_content)
-	hand_pinned = VBoxContainer.new()
-	hand_pinned.add_theme_constant_override("separation", 2)
-	col.add_child(hand_pinned)
+	# La MANO è un pannello a TUTTA LARGHEZZA in basso (sopra le linguette), creato a parte
+	# (vedi sotto): aperta si SOVRAPPONE a mappa+board, così non comprime le carte della board.
 
 	# Barra delle linguette (bandiere) con sfondo solido, così non si sovrappone
 	# alla mappa: è una barra a sé in fondo.
@@ -2514,6 +2514,23 @@ func _build_drawer() -> void:
 		tab_bar.add_child(b)
 	drawer_power = _active().power
 
+	# Pannello MANO a tutta larghezza, in basso (sopra le linguette). Si SOVRAPPONE sia
+	# alla mappa sia alla board quando è aperto (overlay), così non comprime le carte.
+	hand_panel = Panel.new()
+	var hpst := StyleBoxFlat.new()
+	hpst.bg_color = Color(0.05, 0.06, 0.09, 0.97)
+	hpst.set_corner_radius_all(8)
+	hand_panel.add_theme_stylebox_override("panel", hpst)
+	add_child(hand_panel)
+	var hpm := MarginContainer.new()
+	hpm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		hpm.add_theme_constant_override(m, 6)
+	hand_panel.add_child(hpm)
+	hand_pinned = VBoxContainer.new()
+	hand_pinned.add_theme_constant_override("separation", 2)
+	hpm.add_child(hand_pinned)
+
 
 ## Scala font/altezze in base alla viewport reale (responsive). La mappa riempie
 ## lo schermo dietro; HUD in alto, schede in basso, cassetto nel mezzo.
@@ -2543,13 +2560,26 @@ func _layout_ui() -> void:
 	tab_bg.size = Vector2(w, tab_h)
 	tab_bar.position = Vector2(4, h - tab_h + 2)
 	tab_bar.size = Vector2(w - 8, tab_h - 4)
-	# La mappa occupa SOLO lo spazio tra HUD (+barra scelte) in alto e linguette in basso.
-	map_viewport.position = Vector2(0, hud_h + choice_h)
-	map_viewport.size = Vector2(w, maxf(1.0, h - hud_h - choice_h - tab_h))
-	var dy := h * 0.30   # il cassetto copre ~62% dello schermo: ci sta tutto
-	drawer.visible = drawer_open
-	drawer.position = Vector2(0, dy)
-	drawer.size = Vector2(w, maxf(80, h - tab_h - dy - 4))
+	# NUOVO LAYOUT: pannello BOARD a SINISTRA, mappa a DESTRA (finestra separata, sempre
+	# visibile). Così zoomando la mappa la board non si ingrandisce e non serve collassarla.
+	# In basso si riserva una barra MANO (sopra le linguette); aperta, la mano si espande
+	# verso l'alto SOVRAPPONENDOSI a mappa+board (overlay), senza comprimerle.
+	var content_top := hud_h + choice_h
+	var bar_h := _base_fs() * 2.4
+	var content_h := maxf(1.0, h - content_top - tab_h - bar_h)
+	var board_w := clampf(w * 0.40, 300.0, w * 0.52)
+	drawer.visible = true
+	drawer.position = Vector2(0, content_top)
+	drawer.size = Vector2(board_w, content_h)
+	map_viewport.position = Vector2(board_w, content_top)
+	map_viewport.size = Vector2(maxf(1.0, w - board_w), content_h)
+	# Pannello MANO a tutta larghezza, ancorato in basso (sopra le linguette).
+	if hand_panel:
+		var hand_open: bool = hand_box != null and is_instance_valid(hand_box)
+		var hand_h := (_hand_card_height() + bar_h + 18.0) if hand_open else bar_h
+		hand_h = clampf(hand_h, bar_h, h - content_top - tab_h)
+		hand_panel.position = Vector2(0, h - tab_h - hand_h)
+		hand_panel.size = Vector2(w, hand_h)
 	# Finché l'utente non zooma/panna a mano, la mappa si ri-adatta (centrata) alla
 	# viewport corrente ad ogni layout: così riempie sempre lo spazio disponibile.
 	if not _user_adjusted and size.x > 0 and size.y > 0:
@@ -2564,38 +2594,25 @@ func _base_fs() -> int:
 
 
 func _on_power_tab(power: String) -> void:
-	if awaiting in AWAITING_MAP:
-		return   # interazione con la mappa: il cassetto resta chiuso
-	if drawer_open and drawer_power == power:
-		drawer_open = false
-	else:
-		drawer_open = true
-		drawer_power = power
+	# Il pannello board è SEMPRE visibile: la linguetta sceglie solo QUALE board mostrare.
+	drawer_open = true
+	drawer_power = power
 	_refresh()
 
 
 ## Apertura/chiusura automatica: chiuso quando si deve toccare la mappa; aperto
 ## sulla propria plancia quando serve scegliere un Country alleato.
 func _update_drawer_state() -> void:
-	# Preparazione: plancia del giocatore che sta scegliendo il Focus sempre aperta.
-	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
-		drawer_open = true
-		drawer_power = _active().power
-		return
-	# Aftermath: board CHIUSA, così la mappa è piena per cliccare gli Engage token da
-	# scartare; la Prosperità è un bottone nella barra in alto.
+	# NUOVO LAYOUT: il pannello board è SEMPRE visibile a fianco della mappa (non si
+	# collassa più). Mostra la potenza scelta con le linguette, di default il giocatore
+	# di turno; durante Commercio/Produce/sconto/Preparazione torna sul giocatore attivo.
+	drawer_open = true
 	if _aftermath_choice_p != null:
-		drawer_open = false
+		drawer_power = _aftermath_choice_p.power
 		return
-	if not drawer_open:
-		drawer_power = _active().power
-	if _trade_mode or _produce_mode or not _exhaust_ctx.is_empty():
-		drawer_open = true   # Commercio / Produce / sconto alleati: plancia aperta e interattiva
-		drawer_power = _active().power
-	elif awaiting in AWAITING_MAP:
-		drawer_open = false   # serve toccare la mappa: chiudi la plancia
-	elif awaiting == "allied_country":
-		drawer_open = true
+	if _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() \
+			or (_ui_phase == "Preparazione" and _prep_idx < gs.players.size()) \
+			or awaiting == "allied_country" or awaiting in AWAITING_MAP:
 		drawer_power = _active().power
 
 
@@ -2691,20 +2708,27 @@ func _refresh_drawer_content() -> void:
 	# scelte in alto (_show_trade_bar / _show_produce_bar). Qui resta solo la plancia
 	# interattiva (track risorse) da toccare/trascinare.
 
-	# Riga in colonne: plancia - nazioni amiche - commercio - strategic asset.
-	# Niente più etichette di testo: le sezioni si riconoscono dalle carte stesse.
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 14)
-	top.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	drawer_content.add_child(top)
-	top.add_child(_build_plancia_view(p, is_active))
-	_build_allies_section(p, is_active, top)
-	_build_commerce_section(p, is_active, top)
-	# Le carte STRATEGICHE non si ripetono più sulla board: stanno solo nella mano
-	# (più grandi), per evitare il doppione (vedi _hand_strategic_token).
-	_build_growth_section(p, is_active, top)
+	# Pannello board IN COLONNA (dall'alto): plancia · carta Commercio + carte prodotto ·
+	# carte nazione alleate · carte crescita. La mano resta in basso (hand_pinned).
+	var colv := VBoxContainer.new()
+	colv.add_theme_constant_override("separation", 8)
+	colv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	drawer_content.add_child(colv)
+	# 1) Plancia del giocatore.
+	colv.add_child(_build_plancia_view(p, is_active))
+	# 2) Carta Commercio + carte prodotto (a seguire sulla destra) — una riga.
+	var trade_row := HBoxContainer.new()
+	trade_row.add_theme_constant_override("separation", 10)
+	colv.add_child(trade_row)
+	_build_commerce_section(p, is_active, trade_row)
+	# 3) Carte nazione alleate.
+	_build_allies_section(p, is_active, colv)
+	# 4) Carte crescita (ultima riga).
+	_build_growth_section(p, is_active, colv)
 	_build_ongoing_section(p, is_active)
-	_build_hand_section(p, is_active)
+	# La MANO (pannello full-width in basso) è SEMPRE quella del giocatore di turno,
+	# indipendentemente da quale board si sta guardando con le linguette.
+	_build_hand_section(_active(), true)
 
 
 ## Rapporto altezza/larghezza delle immagini plancia (~700x499).
@@ -2746,10 +2770,11 @@ const RES_TOKENS := ["energy", "raw_materials", "food", "consumer_goods", "servi
 const FOCUS_ZONES := [[0.02, 0.33], [0.34, 0.66], [0.67, 0.99]]
 
 
-## Altezza della plancia: limiti proporzionali + tetto assoluto (no plancia gigante).
+## Altezza della plancia: si adatta alla LARGHEZZA del pannello board (a destra), così
+## non trabocca; con tetto proporzionale all'altezza e assoluto.
 func _plancia_height() -> float:
-	# Più alta (usa lo spazio verticale del cassetto): si legge meglio.
-	return minf(minf((size.x - 24.0) * PLANCIA_RATIO, size.y * 0.50), 520.0)
+	var board_w := clampf(size.x * 0.40, 300.0, size.x * 0.52)
+	return minf(minf((board_w - 30.0) * PLANCIA_RATIO, size.y * 0.42), 460.0)
 
 
 func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
