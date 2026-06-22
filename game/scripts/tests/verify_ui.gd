@@ -953,6 +953,13 @@ func _init() -> void:
 				b2._do_focus(0)
 			await process_frame
 			continue
+		# AZIONE: non si chiude il turno senza aver agito. Qui si "passa" giocando la prima
+		# carta a faccia in giù (+10 money), senza interazioni, poi il turno e' valido.
+		if b2._ui_phase == "Azione" and not b2._played_this_turn and b2.playing_card.is_empty() \
+				and b2.popup_layer.get_child_count() == 0 and not b2._active().hand.is_empty():
+			b2._play_facedown_money(b2._active().hand[0])
+			await process_frame
+			continue
 		# "Continua" può stare nel popup (riepiloghi), nella barra scelte (Aftermath) o nel
 		# pannello Market (Research, nuova "board mercato" a destra).
 		var cont: Button = _find_button(b2.popup_layer, "Continua")

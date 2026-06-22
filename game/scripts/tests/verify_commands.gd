@@ -5,11 +5,13 @@ extends SceneTree
 ## Uso: godot --headless --path game --script res://scripts/tests/verify_commands.gd
 
 func _init() -> void:
-	var fails := 0
+	# NB: il contatore deve stare in un Dictionary (riferimento): un int locale verrebbe
+	# CATTURATO PER VALORE dalla lambda e i FAIL non si propagherebbero al riepilogo.
+	var cnt := {"fails": 0}
 	var check := func(name: String, cond: bool) -> void:
 		print("[%s] %s" % ["OK" if cond else "FAIL", name])
 		if not cond:
-			fails += 1
+			cnt["fails"] += 1
 
 	GameConfig.powers = ["usa", "china", "russia", "eu"]
 	var board: Node = load("res://scenes/board.tscn").instantiate()
@@ -39,6 +41,7 @@ func _init() -> void:
 
 	# 3) end_turn dal seggio attivo: avanza il conteggio turni e cambia seggio.
 	board.playing_card = {}
+	board._played_this_turn = true   # simula che la carta del turno e' gia' stata giocata
 	var seat0: int = board.active_seat
 	var ok_end: bool = board.apply_command(GameCommands.end_turn(seat0, board._next_seq()))
 	check.call("end_turn accettato", ok_end)
@@ -146,7 +149,25 @@ func _init() -> void:
 	board._advance_play()
 	check.call("repeat: body eseguito 2 volte (+10 money)", rp.money == m0r + 10)
 
-	print("Verifica command bus: %s" % ("OK" if fails == 0 else "FALLITA (%d)" % fails))
+	# 10) 'Fine turno' bloccato finché non si gioca (o si passa) una carta.
+	board._ui_phase = "Azione"
+	board.playing_card = {}
+	board.awaiting = ""
+	board._plays_left = 1
+	board._played_this_turn = false
+	board.game_over = false
+	var ap = board._active()
+	if ap.hand.is_empty():
+		ap.hand = [{"display_name": "X", "effect_ops": []}]
+	var rtc_e: int = board.round_turn_count
+	board._end_turn()
+	check.call("end_turn BLOCCATO senza aver giocato", board.round_turn_count == rtc_e)
+	board._play_facedown_money(ap.hand[0])   # passa: +10 money
+	check.call("dopo aver passato: _played_this_turn vero", board._played_this_turn)
+	board._end_turn()
+	check.call("end_turn ora CONSENTITO", board.round_turn_count == rtc_e + 1)
+
+	print("Verifica command bus: %s" % ("OK" if cnt["fails"] == 0 else "FALLITA (%d)" % cnt["fails"]))
 	board.queue_free()
 	await process_frame
 	quit()
