@@ -906,7 +906,10 @@ func _init() -> void:
 	var safety := 0
 	while not b2.game_over and safety < 400:
 		safety += 1
+		# "Continua" può stare nel popup (riepiloghi) o nella barra scelte (Aftermath su mappa).
 		var cont: Button = _find_button(b2.popup_layer, "Continua")
+		if cont == null:
+			cont = _find_button(b2.choice_bar, "Continua")
 		if cont:
 			cont.pressed.emit()
 		else:

@@ -4,9 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.62"
+const VERSION := "v0.7.63"
 const CHANGELOG := [
-	"v0.7.62 — I RIEPILOGHI (fine round / fine partita) non coprono più la board: sono ora un pannello ANCORATO A DESTRA, scrollabile, con la mappa visibile a sinistra e solo un velo leggero. «Continua» chiude.",
+	"v0.7.63 — COMMERCIO tutto nella BARRA IN ALTO (non più ancorato alla plancia) e bandiere delle sorgenti «compra da:» ALTE QUANTO IL TESTO (niente più icone giganti). I bottoni di OGNI scelta ora hanno una chiara FORMA da pulsante (sfondo, bordo, padding). Tolti i caratteri non riconosciuti (la «Banca» e «la Moneta +10» al posto delle emoji). Selezionando una carta della mano ora si VEDE bene: bordo verde sulla scelta e le altre carte si oscurano. AFTERMATH tutto sulla mappa/plancia: gli Engage token si scartano TOCCANDOLI sulla mappa (→ money o Difesa) e la Prosperità si aumenta toccando la prossima corona sulla plancia; intestazione e «Continua» nella barra in alto. Anche il PRODUCE ora ha i controlli nella barra in alto.",
 	"v0.7.61 — La barra del MOVE non galleggia più sulla mappa: i controlli (vassoio Riserva da cui trascinare i carri, «Fine spostamento» e «Annulla» se non hai ancora mosso) sono ora nella barra in alto, che spinge giù la mappa senza coprirla. «Annulla» (prima di muovere) ridà la carta senza consumare la giocata.",
 	"v0.7.60 — PRODUCE sulla PLANCIA (niente popup): come il Commercio, ora imposti quanto produrre toccando le caselle sulla resource track (entro la tua Produzione). Le caselle mostrano il guadagno e, per le secondarie, il costo in primarie (es. «+2 −2,−2»); le Armate si producono con ± nella barra in cima (−1 Materia cad.). Conferma/Annulla in cima al cassetto.",
 	"v0.7.59 — FIX: annullare il COMMERCIO non consuma più la giocata del turno né scarta la carta. Prima «Annulla» nel Commercio chiudeva la carta (come se l'avessi giocata): ora la carta resta in mano e puoi giocarne un'altra.",

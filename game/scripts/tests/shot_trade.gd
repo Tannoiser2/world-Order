@@ -13,6 +13,7 @@ func _initialize() -> void:
 	var p = board._active()
 	p.armies_available = maxi(p.armies_available, 6)
 	board._open_trade_ui()
+	board._trade_select_res("energy")   # mostra le bandierine "compra da:" nella barra in alto
 	for _i in range(10):
 		await process_frame
 	await create_timer(0.3).timeout
