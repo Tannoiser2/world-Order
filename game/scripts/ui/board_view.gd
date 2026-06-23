@@ -96,6 +96,12 @@ var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per
 var _exhaust_ctx: Dictionary = {}       # scelta sconto attiva: {region, title, cb} (click sulle carte)
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _produce_mode := false              # Produce attivo: si imposta sulla resource track della plancia
+# Scelta a "popup" (barra in alto) durante la risoluzione di una carta. La callback NON è
+# serializzabile: la tiene SOLO l'host; il client vede prompt+etichette (sincronizzati) e
+# rimanda l'INDICE scelto col comando popup_choice, che l'host esegue chiamando la callback.
+var _popup_cb: Callable = Callable()
+var _popup_items: Array = []            # [{label, value}] sull'host; [{label}] sul client
+var _popup_prompt := ""
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
@@ -2587,29 +2593,51 @@ func _pick_choice(options: Array, cb: Callable) -> void:
 ## Scelta a bottoni nella BARRA SCELTE in alto (niente più popup sopra la board):
 ## il prompt va nello stato, ogni opzione è un bottone chiaro, più "Annulla".
 func _show_popup(prompt: String, items: Array, cb: Callable) -> void:
-	_clear_choice_bar()
+	# Salva lo stato (host): prompt + opzioni + callback. La barra la costruisce
+	# _render_popup_bar, usata anche dal client che la ricostruisce dallo snapshot.
+	_popup_prompt = prompt
+	_popup_items = items
+	_popup_cb = cb
 	_status(prompt)
+	_render_popup_bar()
+	_net_sync()   # mostra subito la scelta anche al client
+
+
+## True se c'è una scelta a popup in corso (host o client).
+func _popup_active() -> bool:
+	return not _popup_items.is_empty()
+
+
+## Costruisce la barra della scelta a popup dallo stato. I bottoni inviano l'INDICE col
+## command bus (_cmd_popup_choice): l'host esegue la callback, il client la inoltra.
+func _render_popup_bar() -> void:
+	_clear_choice_bar()
+	if not _popup_active():
+		return
 	var pl := Label.new()
-	pl.text = prompt
+	pl.text = _popup_prompt
 	pl.add_theme_color_override("font_color", Color(0.95, 0.9, 0.6))
 	pl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(pl)
-	for it in items:
+	for i in _popup_items.size():
 		var b := Button.new()
-		b.text = String(it["label"])
+		b.text = String((_popup_items[i] as Dictionary).get("label", "?"))
 		b.add_theme_font_size_override("font_size", _base_fs() + 1)
-		b.pressed.connect(func():
-			_clear_choice_bar()
-			cb.call(it["value"]))
+		b.pressed.connect(_cmd_popup_choice.bind(i))
 		choice_flow.add_child(b)
 	var cancel := Button.new()
 	cancel.text = "Annulla"
-	cancel.pressed.connect(func():
-		_clear_choice_bar()
-		_cmd_cancel_card())
+	cancel.pressed.connect(_cmd_cancel_card)
 	choice_flow.add_child(cancel)
 	choice_bar.visible = true
 	_layout_ui()
+
+
+## Cancella lo stato della scelta a popup (dopo una scelta o un annullo).
+func _clear_popup() -> void:
+	_popup_cb = Callable()
+	_popup_items = []
+	_popup_prompt = ""
 
 
 ## Svuota e nasconde la barra scelte (e ridà spazio alla mappa).
@@ -2636,6 +2664,7 @@ func _cancel_card() -> void:
 	active_mods = {}
 	awaiting = ""
 	_move_ctx = {}
+	_clear_popup()
 	_hide_move_bar()
 	_status("Giocata annullata.")
 	_after_change()
@@ -2953,7 +2982,11 @@ func _refresh() -> void:
 	# Barre di scelta a contenuto DETERMINISTICO (dipendono solo dallo stato): Commercio
 	# e Produce si (ri)costruiscono qui in alto. L'Aftermath e le sotto-scelte gestiscono
 	# la propria barra a parte (per non sovrascrivere una sotto-scelta in corso).
-	if _trade_mode:
+	if _popup_active():
+		# Scelta a popup (es. "quante Armate", "quanto money"): ricostruita dallo stato, così
+		# anche il CLIENT la vede e la sceglie (l'host esegue la callback).
+		_render_popup_bar()
+	elif _trade_mode:
 		_show_trade_bar(p)
 	elif _produce_mode:
 		_show_produce_bar(p)
@@ -4126,6 +4159,18 @@ func apply_command(cmd: Dictionary) -> bool:
 			if cn.is_empty():
 				return false
 			_on_allied_pressed(cn)
+		"popup_choice":
+			# Solo l'host ha la callback: applica la scelta chiamandola col value dell'opzione.
+			if not _popup_active() or not _popup_cb.is_valid():
+				return false
+			var pidx := int(a["index"])
+			if pidx < 0 or pidx >= _popup_items.size():
+				return false
+			var pval: Variant = (_popup_items[pidx] as Dictionary).get("value")
+			var pcb := _popup_cb
+			_clear_popup()         # PRIMA di chiamare cb (può aprire un altro popup)
+			_clear_choice_bar()
+			pcb.call(pval)
 		"exhaust_ally":
 			var cn2 := _ally_by_id(String(a["country_id"]))
 			if cn2.is_empty():
@@ -4295,7 +4340,19 @@ func _ui_snapshot() -> Dictionary:
 		# questo ogni istanza userebbe il PROPRIO mescolamento -> carte diverse host/client.
 		"region_available": _region_available_snapshot(),
 		"auto_inf_shown": _auto_inf_shown.duplicate(true),
+		# Scelta a popup in corso (prompt + ETICHETTE, niente value/callback): così il client
+		# la vede e la può scegliere, rimandando l'indice (vedi _cmd_popup_choice).
+		"popup": _popup_snapshot(),
 	}
+
+
+func _popup_snapshot() -> Dictionary:
+	if not _popup_active():
+		return {}
+	var labels := []
+	for it in _popup_items:
+		labels.append(String((it as Dictionary).get("label", "?")))
+	return {"prompt": _popup_prompt, "labels": labels}
 
 
 ## Mappa rid -> Country card SCOPERTE in quella Regione (per sincronizzare il tabellone).
@@ -4353,6 +4410,16 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 			(region_countries[rid] as Dictionary)["available"] = (ra[rid] as Array).duplicate(true)
 	if ui.has("auto_inf_shown"):
 		_auto_inf_shown = (ui.get("auto_inf_shown", []) as Array).duplicate(true)
+	# Scelta a popup: il client ricostruisce prompt + etichette (senza value/callback, che
+	# restano sull'host). Quando l'host la chiude, lo snapshot non la porta più -> si pulisce.
+	var pop: Dictionary = ui.get("popup", {})
+	if pop.is_empty():
+		_clear_popup()
+	else:
+		_popup_prompt = String(pop.get("prompt", ""))
+		_popup_items = []
+		for l in (pop.get("labels", []) as Array):
+			_popup_items.append({"label": String(l)})
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4460,6 +4527,11 @@ func _cmd_produce_cancel() -> void:
 ## altrimenti il client esce dalla risoluzione ma l'host resta in awaiting -> blocco.
 func _cmd_cancel_card() -> void:
 	apply_command(GameCommands.cancel_card(active_seat, _next_seq()))
+
+
+## Scelta a popup: invia l'INDICE dell'opzione (l'host esegue la callback).
+func _cmd_popup_choice(index: int) -> void:
+	apply_command(GameCommands.popup_choice(active_seat, _next_seq(), index))
 
 
 ## Move: ogni spostamento (sorgente -> destinazione) e la fine sono comandi distinti.
