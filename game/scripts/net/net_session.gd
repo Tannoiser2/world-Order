@@ -81,6 +81,16 @@ func is_active() -> bool:
 	return role != Role.NONE
 
 
+## Chiude il trasporto e azzera il ruolo (da chiamare prima di liberare il nodo, così la
+## porta del server si libera SUBITO e un nuovo host non trova "porta occupata").
+func close() -> void:
+	if _peer != null:
+		_peer.close()
+		_peer = null
+	role = Role.NONE
+	_started = false
+
+
 func is_host() -> bool:
 	return role == Role.HOST
 

@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.90"
+const VERSION := "v0.7.91"
 const CHANGELOG := [
+	"v0.7.91 - LOBBY: messaggi ONESTI sul Web. Da BROWSER non si puo' OSPITARE (una pagina web non puo' fare da server: prima dava un fuorviante 'porta occupata? Errore 1') e nemmeno unirsi a una LAN in 'ws://' (la pagina e' HTTPS e il browser blocca il contenuto misto). Quindi la LAN diretta funziona solo tra APP NATIVE (desktop/Android); per giocare da browser/telefono servira' un piccolo relay 'wss://' (versione online, prossimo passo). Aggiunta anche la chiusura immediata del socket quando si lascia la lobby (niente piu' 'porta occupata' ri-ospitando su nativo).",
 	"v0.7.90 - MULTIPLAYER (turno completo in rete): le ultime azioni mancanti ora passano per il COMMAND BUS, quindi un client le puo' eseguire a distanza e l'host le arbitra: PRODUCE (la selezione di quanto produrre si compone in locale, poi si invia il risultato), COMMERCIO/TRADE (export/import per risorsa, venditore scelto, vendita Armate) e MOVE delle Armate (ogni spostamento sorgente->destinazione e il rientro in Riserva sono comandi singoli; l'host applica costo e limiti). Lo stato del Move viene sincronizzato negli snapshot cosi' il client sa quante Armate gli restano. In Hot Seat nulla cambia. +13 test (command bus + integrazione host/client via loopback con un Move end-to-end).",
 	"v0.7.89 - LOBBY LAN (multiplayer giocabile in rete locale): nel menu, scegliendo «Online (LAN)» compare la lobby. Un giocatore fa «Ospita (LAN)» (mostra il proprio IP da condividere) e gli altri «Unisciti» inserendo quell'IP; quando tutti sono collegati l'host preme «Avvia partita» e tutti entrano nella stessa partita. L'host arbitra (possiede lo stato) e a ogni mossa invia a ciascun client il proprio stato REDATTO (ognuno vede solo la propria mano); i client inviano le mosse all'host. La modalità Hot Seat resta invariata. Prossimo passo: rifinire il turno interattivo lato client e poi la versione via Internet (relay).",
 	"v0.7.88 - FIX IMPORTANTE sullo SCORING: per un bug (i numeri da JSON sono float e 'int in [float]' e' sempre falso in Godot) il controllo del round di punteggio era SEMPRE falso, quindi lo Scoring delle REGIONI non avveniva MAI, ne' al round 3 ne' al 6! Ora i round 3 e 6 segnano correttamente le maggioranze d'area delle Regioni. Inoltre, come da regolamento, ad OGNI round di punteggio (3 e 6) si segnano anche i 3 token Maggioranza (piu' money / armate sul board / Country alleate), prima conteggiati solo a fine partita.",
@@ -450,6 +451,12 @@ func _build_lobby(box: VBoxContainer) -> void:
 
 
 func _on_host() -> void:
+	# Da BROWSER non si puo' ospitare: una pagina web non puo' aprire una porta in
+	# ascolto (server). L'hosting LAN funziona solo dalle build NATIVE (desktop/Android).
+	if OS.has_feature("web"):
+		_lobby_status.text = "Dal browser non si puo' OSPITARE (un sito web non puo' fare da server). " \
+			+ "Ospita dall'app desktop/Android e qui usa «Unisciti», oppure attendi la versione online con relay."
+		return
 	_free_net()
 	_net = NetSession.new()
 	_net.name = "NetSession"
@@ -471,6 +478,12 @@ func _on_join() -> void:
 	var ip := _ip_edit.text.strip_edges()
 	if ip == "":
 		_lobby_status.text = "Inserisci l'IP dell'host."
+		return
+	# Dal browser (pagina HTTPS) un collegamento LAN in 'ws://' viene bloccato dal browser
+	# (mixed content): serve un relay sicuro 'wss://'. La LAN diretta funziona tra app native.
+	if OS.has_feature("web") and not (ip.begins_with("wss://")):
+		_lobby_status.text = "Dal browser la LAN non e' raggiungibile (HTTPS blocca 'ws://'). " \
+			+ "Servira' un relay 'wss://' (versione online). Per la LAN usa l'app nativa."
 		return
 	_free_net()
 	_net = NetSession.new()
@@ -515,6 +528,7 @@ func _on_started(_seat: int, _powers: Array) -> void:
 ## Chiude e rimuove la sessione di rete corrente (se presente).
 func _free_net() -> void:
 	if _net != null:
+		_net.close()   # libera SUBITO il socket/porta (queue_free e' differito)
 		_net.queue_free()
 		_net = null
 	GameConfig.net = null
