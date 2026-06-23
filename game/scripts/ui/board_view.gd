@@ -1921,7 +1921,7 @@ func _refresh_move_bar() -> void:
 		var cancel := Button.new()
 		cancel.text = "Annulla"
 		cancel.add_theme_font_size_override("font_size", _base_fs() + 1)
-		cancel.pressed.connect(_cancel_card)   # niente mosse fatte: annulla e ridai la carta
+		cancel.pressed.connect(_cmd_cancel_card)   # niente mosse fatte: annulla e ridai la carta
 		choice_flow.add_child(cancel)
 	choice_bar.visible = true
 	_layout_ui()
@@ -2606,7 +2606,7 @@ func _show_popup(prompt: String, items: Array, cb: Callable) -> void:
 	cancel.text = "Annulla"
 	cancel.pressed.connect(func():
 		_clear_choice_bar()
-		_cancel_card())
+		_cmd_cancel_card())
 	choice_flow.add_child(cancel)
 	choice_bar.visible = true
 	_layout_ui()
@@ -4167,6 +4167,8 @@ func apply_command(cmd: Dictionary) -> bool:
 			if not _produce_mode:
 				return false
 			_produce_cancel()
+		"cancel_card":
+			_cancel_card()
 		"buy_growth":
 			var gc := _growth_by_id(String(a["card_id"]))
 			if gc.is_empty():
@@ -4452,6 +4454,12 @@ func _cmd_trade_cancel() -> void:
 
 func _cmd_produce_cancel() -> void:
 	apply_command(GameCommands.produce_cancel(active_seat, _next_seq()))
+
+
+## Annulla la giocata in corso (Move o scelta a popup). In rete deve passare dall'host,
+## altrimenti il client esce dalla risoluzione ma l'host resta in awaiting -> blocco.
+func _cmd_cancel_card() -> void:
+	apply_command(GameCommands.cancel_card(active_seat, _next_seq()))
 
 
 ## Move: ogni spostamento (sorgente -> destinazione) e la fine sono comandi distinti.
