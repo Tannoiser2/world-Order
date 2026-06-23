@@ -1,0 +1,15 @@
+# Blueprint Render (https://render.com) per il relay multiplayer — piano FREE.
+# DEVE stare nella RADICE del repo: Render rileva il Blueprint solo qui.
+# Uso: Render -> "New +" -> "Blueprint" -> collega questo repo -> Apply.
+# Render builda la cartella relay/ e ti dà un URL HTTPS pubblico.
+# Il tuo URL per il gioco sarà:  wss://<nome-servizio>.onrender.com
+services:
+  - type: web
+    name: world-order-relay
+    runtime: node
+    rootDir: relay
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /
+    autoDeploy: true
