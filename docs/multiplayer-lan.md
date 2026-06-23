@@ -13,9 +13,24 @@ Le build native si generano da GitHub Actions:
 2. Premi **Run workflow** (oppure pubblica un tag `v*`).
 3. A fine run scarica gli **artifacts**:
    - `world-order-desktop` → eseguibili **Linux** (`world-order.x86_64`) e **Windows** (`world-order.exe`). ✅ **Disponibile.**
+   - `world-order-macos` → **`world-order.zip`** (dentro c'è `world-order.app`), build **universale** Intel + Apple Silicon (M1/M2/M3). ✅ **Disponibile.**
    - `world-order-android` → **`world-order.apk`** (Android). ⚠️ **In lavorazione**: l'export Android in CI fallisce con un errore di configurazione opaco di Godot (in indagine); il job è tollerante all'errore così non blocca le build desktop.
 
-> Gli eseguibili hanno il `.pck` incorporato: un singolo file da lanciare.
+> Gli eseguibili Linux/Windows hanno il `.pck` incorporato: un singolo file da lanciare.
+
+## macOS — primo avvio (importante)
+
+L'app `.app` **non è firmata né notarizzata** (è una build personale via CI), quindi al primo avvio macOS la blocca come "di sviluppatore non identificato". Per sbloccarla, una volta sola:
+
+1. Scarica `world-order-macos`, **scompatta** lo `.zip` → ottieni `world-order.app`.
+2. Apri il **Terminale** nella cartella dove sta l'app ed esegui:
+   ```sh
+   xattr -dr com.apple.quarantine world-order.app
+   ```
+   In alternativa: **click destro** sull'app → **Apri** → confermi **Apri** nel dialogo.
+3. Da lì in poi si avvia con un doppio clic come una normale app.
+
+> Se vuoi una build firmata/notarizzata (apertura senza passaggi extra) serve un account Apple Developer: si può aggiungere più avanti.
 
 ## Android (intanto)
 
