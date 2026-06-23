@@ -82,6 +82,25 @@ jobs:
       - name: Import project
         run: godot --headless --path game --import || true
 
+      - name: Editor Settings (path Java/Android SDK per l'export)
+        run: |
+          # L'export Android richiede i path di Java SDK (e Android SDK) nelle Editor
+          # Settings di Godot. Li ricaviamo dall'immagine e li scriviamo DOPO l'import
+          # (cosi' un eventuale file generato dall'import non li sovrascrive).
+          JAVA_SDK="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")}"
+          ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
+          echo "JAVA_HOME=$JAVA_HOME ANDROID_HOME=$ANDROID_HOME -> JAVA_SDK=$JAVA_SDK ANDROID_SDK=$ANDROID_SDK"
+          ES="$HOME/.config/godot/editor_settings-4.3.tres"
+          mkdir -p "$(dirname "$ES")"
+          if [ -f "$ES" ]; then
+            sed -i '/export\/android\/java_sdk_path/d' "$ES"
+            sed -i '/export\/android\/android_sdk_path/d' "$ES"
+            sed -i "s#^\[resource\]#[resource]\nexport/android/android_sdk_path = \"$ANDROID_SDK\"\nexport/android/java_sdk_path = \"$JAVA_SDK\"#" "$ES"
+          else
+            printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "$ANDROID_SDK" "$JAVA_SDK" > "$ES"
+          fi
+          echo "----- editor_settings-4.3.tres -----"; cat "$ES"
+
       - name: Export Android APK
         run: |
           mkdir -p build/android
