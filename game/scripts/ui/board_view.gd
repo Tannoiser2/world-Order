@@ -105,6 +105,12 @@ var _produce_mode := false              # Produce attivo: si imposta sulla resou
 var _popup_cb: Callable = Callable()
 var _popup_items: Array = []            # [{label, value}] sull'host; [{label}] sul client
 var _popup_prompt := ""
+# "Get a Growth Card": scelta della Growth a CARTE (overlay). Come per i popup, l'host è
+# l'autorità ma il selettore deve apparire a CHI agisce: si sincronizza solo il LIVELLO
+# (le carte le ricalcola ogni vista da gs) e si rende nel _refresh per il giocatore attivo,
+# così in rete non spunta sullo schermo dell'host mentre il client resta bloccato.
+var _growth_pick: Dictionary = {}       # {} = inattivo; {level:int} = scelta Growth in corso
+var _growth_pick_shown := false         # overlay già costruito in questa vista (evita ricostruzioni)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
@@ -2032,14 +2038,27 @@ func _pick_country(prompt: String, countries: Array, cb: Callable) -> void:
 ## permettersi (paga il costo in risorse, guadagna i VP). Risolve sul gioco.
 ## Get a Growth Card: mostra le Growth del livello giusto come CARTE (immagini con
 ## flyover); le acquistabili sono cliccabili, le altre in grigio (costo non coperto).
+## "Get a Growth Card": NON costruisce più il selettore in locale (in rete spuntava sullo
+## schermo dell'host mentre il client restava bloccato). Attiva uno STATO sincronizzato
+## (il solo livello); il selettore a carte lo disegna _refresh per CHI agisce (_render_growth_pick).
 func _pick_growth() -> void:
 	var p := _active()
 	var nl := _next_growth_level(p)
-	var avail := _available_growth(p)
-	if avail.is_empty():
+	if _available_growth(p).is_empty():
 		_status("Get a Growth Card: nessuna Growth di livello %d disponibile." % nl)
 		_advance_play()
 		return
+	_growth_pick = {"level": nl}
+	_after_change()   # ridisegna: il selettore compare per il giocatore attivo
+
+
+## Disegna il selettore Growth a carte (overlay) dallo stato sincronizzato. Lo chiama _refresh
+## SOLO per il giocatore che agisce (in rete: il client; in hot-seat: il locale), mai sull'host
+## che sta solo arbitrando il turno altrui.
+func _render_growth_pick() -> void:
+	var p := _active()
+	var nl := int(_growth_pick.get("level", _next_growth_level(p)))
+	var avail := _available_growth(p)
 	for c in popup_layer.get_children():
 		c.queue_free()
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2082,7 +2101,7 @@ func _pick_growth() -> void:
 		cell.add_child(info)
 		row.add_child(cell)
 	var skip := Button.new(); skip.text = "- Salta -"
-	skip.pressed.connect(func(): _close_popup(); _after_change(); _advance_play())
+	skip.pressed.connect(_cmd_growth_skip)
 	vb.add_child(skip)
 
 
@@ -2090,6 +2109,15 @@ func _buy_growth_action(card: Dictionary, nl: int) -> void:
 	var p := _active()
 	if Actions.execute_get_growth(p, card, nl):
 		_status("Ottenuta Growth: %s (+%d VP)." % [card.get("display_name", "?"), int(card.get("victory_points", 0))])
+	_growth_pick = {}
+	_close_popup()
+	_after_change()
+	_advance_play()
+
+
+## "Salta" del selettore Growth: chiude la scelta senza comprare e prosegue la carta.
+func _growth_skip() -> void:
+	_growth_pick = {}
 	_close_popup()
 	_after_change()
 	_advance_play()
@@ -3042,6 +3070,16 @@ func _refresh() -> void:
 		_aftermath_bar(_aftermath_choice_p)
 	elif net != null and net.is_client():
 		_clear_choice_bar()
+	# GROWTH: selettore a carte (overlay) per CHI agisce, ricostruito dallo stato sincronizzato.
+	# Si costruisce una sola volta (evita sfarfallio/ricostruzioni a ogni refresh) e si chiude
+	# quando lo stato si svuota. In rete così compare sul client, non sull'host che arbitra.
+	if not _growth_pick.is_empty() and i_acting:
+		if not _growth_pick_shown:
+			_render_growth_pick()
+			_growth_pick_shown = true
+	elif _growth_pick_shown:
+		_close_popup()
+		_growth_pick_shown = false
 	# RESEARCH: ricostruisce il pannello Market dallo stato sincronizzato (punti + Market),
 	# così il CLIENT vede il proprio passo Research e può comprare/cambiare/Continuare.
 	if _ui_phase == "Research" and market_content != null:
@@ -3063,13 +3101,14 @@ func _update_net_debug() -> void:
 	var pl: PlayerState = _view_player()
 	var hand_n := (pl.hand.size() if pl != null else -1)
 	_net_debug.text = ("NET %s  mine=%d act=%d aw=%s\n"
-		+ "play=%s pop=%s exh=%s mv=%s tr=%s pr=%s\n"
+		+ "play=%s pop=%s exh=%s gr=%s mv=%s tr=%s pr=%s\n"
 		+ "phase=%s plays=%d played=%s hand=%d  endTurn=%s") % [
 		("HOST" if net.is_host() else "CLIENT"), net.my_seat, active_seat,
 		("'" + awaiting + "'") if awaiting != "" else "-",
 		"Y" if not playing_card.is_empty() else "-",
 		"Y" if _popup_active() else "-",
 		"Y" if not _exhaust_ctx.is_empty() else "-",
+		"Y" if not _growth_pick.is_empty() else "-",
 		"Y" if not _move_ctx.is_empty() else "-",
 		"Y" if _trade_mode else "-",
 		"Y" if _produce_mode else "-",
@@ -4335,6 +4374,11 @@ func apply_command(cmd: Dictionary) -> bool:
 			if gc.is_empty():
 				return false
 			_buy_growth_action(gc, _next_growth_level(_active()))
+		"growth_skip":
+			# "Salta" del selettore Growth (chiude la scelta senza comprare).
+			if _growth_pick.is_empty():
+				return false
+			_growth_skip()
 		"buy_market":
 			var mc := _market_by_id(String(a["card_id"]))
 			if mc.is_empty():
@@ -4474,6 +4518,9 @@ func _ui_snapshot() -> Dictionary:
 			"title": String(_exhaust_ctx.get("title", "")),
 			"sel": _exhaust_sel.duplicate(true),
 		} if not _exhaust_ctx.is_empty() else {},
+		# Selettore "Get a Growth Card" in corso: solo il livello (le carte le ricalcola il client
+		# da gs). Così il selettore appare a CHI agisce e non resta intrappolato sull'host.
+		"growth_pick": {"level": int(_growth_pick.get("level", 0))} if not _growth_pick.is_empty() else {},
 	}
 
 
@@ -4560,6 +4607,10 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	else:
 		_exhaust_ctx = {"region": String(exh.get("region", "")), "title": String(exh.get("title", ""))}
 		_exhaust_sel = (exh.get("sel", {}) as Dictionary).duplicate(true)
+	# Selettore Growth: il client ricostruisce il livello (le carte da gs). Quando l'host chiude,
+	# lo snapshot non lo porta più -> _refresh chiude l'overlay sul client.
+	var grp: Dictionary = ui.get("growth_pick", {})
+	_growth_pick = {"level": int(grp.get("level", 0))} if not grp.is_empty() else {}
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4726,6 +4777,10 @@ func _cmd_move_finish() -> void:
 
 func _cmd_buy_growth(card: Dictionary, _nl: int) -> void:
 	apply_command(GameCommands.buy_growth(active_seat, _next_seq(), String(card.get("id", ""))))
+
+
+func _cmd_growth_skip() -> void:
+	apply_command(GameCommands.growth_skip(active_seat, _next_seq()))
 
 
 func _cmd_buy_market(card: Dictionary) -> void:
