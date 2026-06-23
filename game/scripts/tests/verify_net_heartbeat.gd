@@ -65,10 +65,10 @@ func _init() -> void:
 			break
 	var target_id := String(((host.region_countries.get(rid0, {}) as Dictionary).get("available", [])[0] as Dictionary).get("id", ""))
 
-	# SIMULA LO SNAPSHOT PERSO: cambio l'id loopback del client cosi' il broadcast dell'host
-	# NON lo raggiunge (i comandi client->host continuano a funzionare).
-	var saved_id: int = client_net._loop_id
-	client_net._loop_id = 999999
+	# SIMULA LO SNAPSHOT PERSO solo nella direzione host->client: tolgo il client dalla lista di
+	# consegna del broadcast. I comandi client->host (e la loro attribuzione per connessione)
+	# restano integri - come nella realta', dove perdere uno snapshot non cambia il mittente.
+	host_net._loop_clients.erase(client_net)
 
 	# Il client sceglie la Country: il comando ARRIVA all'host, che risolve... ma lo snapshot
 	# di ritorno si PERDE. Esattamente lo screenshot: host avanti, client fermo.
@@ -84,7 +84,7 @@ func _init() -> void:
 	if not s1: fails += 1
 
 	# RIPRISTINO la consegna e batto il HEARTBEAT: l'host ribroadcasta lo stato corrente.
-	client_net._loop_id = saved_id
+	host_net._loop_clients.append(client_net)
 	host._net_sync()
 	await process_frame
 

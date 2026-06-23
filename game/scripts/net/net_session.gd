@@ -303,7 +303,11 @@ func _handle(from_id: int, msg: Dictionary) -> void:
 			started.emit(my_seat, powers)
 		"command":
 			# Solo l'HOST riceve comandi: li applica e ribroadcasta (la Vista fa entrambe).
-			command_received.emit(int(msg.get("seat", -1)), msg.get("cmd", {}))
+			# Il seggio del MITTENTE viene dalla CONNESSIONE (autenticato), NON dal payload: un
+			# client non puo' spacciarsi per un altro seggio. Mittente sconosciuto -> -1, che il
+			# gating scarta. Conta soprattutto con piu' giocatori (ogni client il proprio seggio).
+			var sender_seat := int((_seats.get(from_id, {}) as Dictionary).get("seat", -1))
+			command_received.emit(sender_seat, msg.get("cmd", {}))
 		"snapshot":
 			snapshot_received.emit(msg.get("state", {}))
 
