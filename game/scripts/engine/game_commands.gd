@@ -17,6 +17,9 @@ const KNOWN := [
 	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
+	# Scelta a "popup" (es. quante Armate / quanto money): il client invia l'INDICE scelto,
+	# l'host esegue la callback corrispondente (non serializzabile).
+	"popup_choice",
 	# Azioni a PAYLOAD pieno (la selezione si compone in locale, poi si invia il risultato)
 	"produce", "trade", "move_army", "move_finish",
 	# Annullo di Commercio/Produce e della giocata in corso (Move/scelte): deve passare
@@ -79,6 +82,11 @@ static func pick_allied_country(seat: int, seq: int, country_id: String) -> Dict
 
 static func exhaust_ally(seat: int, seq: int, country_id: String) -> Dictionary:
 	return make("exhaust_ally", seat, seq, {"country_id": country_id})
+
+
+## Scelta a popup: `index` = posizione dell'opzione scelta (l'host ha le opzioni+callback).
+static func popup_choice(seat: int, seq: int, index: int) -> Dictionary:
+	return make("popup_choice", seat, seq, {"index": index})
 
 
 ## Produce (azione domestica): `sel` mappa tipo_risorsa -> quantità da produrre. La
@@ -182,6 +190,8 @@ static func valid_shape(cmd: Variant) -> bool:
 				and String(args.get("slot", "")) in ["permanent", "temporary"]
 		"pick_allied_country", "exhaust_ally":
 			return typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
+		"popup_choice":
+			return typeof(args.get("index")) == TYPE_INT and int(args["index"]) >= 0
 		"produce":
 			return typeof(args.get("sel")) == TYPE_DICTIONARY
 		"trade":
