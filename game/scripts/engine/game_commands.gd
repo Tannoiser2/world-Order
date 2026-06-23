@@ -27,6 +27,9 @@ const KNOWN := [
 	"popup_choice",
 	# Azioni a PAYLOAD pieno (la selezione si compone in locale, poi si invia il risultato)
 	"produce", "trade", "move_army", "move_finish",
+	# Avvio del Commercio dalla carta Trade Deals (azione libera): l'host entra in trade_mode
+	# e lo ribroadcasta, così anche il client compone il Commercio (prima era solo locale).
+	"begin_trade",
 	# Annullo di Commercio/Produce e della giocata in corso (Move/scelte): deve passare
 	# dall'host, altrimenti il client esce ma l'host resta dentro -> tutto bloccato.
 	"trade_cancel", "produce_cancel", "cancel_card",
@@ -123,6 +126,11 @@ static func exhaust_skip(seat: int, seq: int) -> Dictionary:
 ## selezione si compone in locale sulla resource track; il comando porta il RISULTATO.
 static func produce(seat: int, seq: int, sel: Dictionary) -> Dictionary:
 	return make("produce", seat, seq, {"sel": sel.duplicate(true)})
+
+
+## Avvio del Commercio (azione libera dalla carta Trade Deals): l'host entra in trade_mode.
+static func begin_trade(seat: int, seq: int) -> Dictionary:
+	return make("begin_trade", seat, seq, {})
 
 
 ## Trade (Commercio): `export`/`import` mappano risorsa -> quantità; `import_src` mappa
@@ -238,7 +246,7 @@ static func valid_shape(cmd: Variant) -> bool:
 		"pick_board_country":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != "" \
 				and typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
-		"exhaust_confirm", "exhaust_skip":
+		"exhaust_confirm", "exhaust_skip", "begin_trade":
 			return true
 		"produce":
 			return typeof(args.get("sel")) == TYPE_DICTIONARY
