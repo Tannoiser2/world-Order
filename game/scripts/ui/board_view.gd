@@ -75,6 +75,8 @@ var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
 var tab_bg: Panel                   # sfondo solido della barra linguette
 var _net_debug: Label = null        # riquadro diagnostico (solo in rete): stato di sync vivo
+var _last_snapshot_sig := 0         # client: hash dell'ultimo snapshot APPLICATO (dedup anti-flicker)
+var _net_heartbeat: Timer = null    # host: ribroadcast periodico per recuperare snapshot persi
 var drawer_open := false
 var drawer_power := ""              # potenza la cui plancia è mostrata nel cassetto
 var ui_theme: Theme                 # font/scala globale proporzionale alla viewport
@@ -264,6 +266,17 @@ func _ready() -> void:
 		net.snapshot_received.connect(apply_remote_snapshot)
 		if net.is_host():
 			net.command_received.connect(_on_net_command)
+			# HEARTBEAT: l'host ribroadcasta lo stato corrente a intervalli. Gli snapshot sono
+			# inviati UNA volta sola: se un client ne perde uno (o non riesce ad applicarlo)
+			# resta bloccato un passo indietro per sempre (visto dal vivo: host risolve, client
+			# fermo). Il battito lo riallinea entro ~1s. È idempotente e, grazie al dedup per
+			# hash sul client, NON ridisegna quando lo stato non è cambiato (niente sfarfallio).
+			_net_heartbeat = Timer.new()
+			_net_heartbeat.wait_time = 1.0
+			_net_heartbeat.one_shot = false
+			_net_heartbeat.timeout.connect(_net_sync)
+			add_child(_net_heartbeat)
+			_net_heartbeat.start()
 		# DIAGNOSTICA (solo in rete): un riquadro in basso a sinistra con lo stato di sync
 		# vivo (chi agisce, cosa si attende, barre/carte pendenti). Quando il gioco "si
 		# ferma", UNA foto di questo angolo dice subito quale stato è bloccato.
@@ -4378,6 +4391,14 @@ func apply_command(cmd: Dictionary) -> bool:
 func apply_remote_snapshot(state: Dictionary) -> void:
 	if state.is_empty():
 		return
+	# DEDUP: l'host ribroadcasta lo stato a ogni battito (per recuperare snapshot persi). Se è
+	# IDENTICO all'ultimo già applicato, non ridisegnare: evita sfarfallio e interruzioni del
+	# drag quando nulla è cambiato. Quando invece il client era rimasto indietro (snapshot perso),
+	# l'hash differisce e qui sotto si riallinea, sbloccando il turno.
+	var sig := state.hash()
+	if sig == _last_snapshot_sig:
+		return
+	_last_snapshot_sig = sig
 	var gsd: Dictionary = state.get("gs", state)
 	gs = GameState.from_dict(gsd)
 	if state.has("ui"):
