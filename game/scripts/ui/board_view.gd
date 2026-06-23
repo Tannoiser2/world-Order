@@ -885,8 +885,9 @@ func _layout_engage_tokens() -> void:
 				var px := bx if region in stack_down else bx + n * w * 1.05
 				var py := by + n * h * 1.05 if region in stack_down else by
 				# In Aftermath il token del giocatore di turno è CLICCABILE (scarta per
-				# money o Difesa): lo si tocca direttamente sulla mappa.
-				if _aftermath_choice_p != null and _aftermath_choice_p == p:
+				# money o Difesa): lo si tocca direttamente sulla mappa. SOLO per chi agisce:
+				# altrimenti l'host potrebbe scartare il token del client (azione sbagliata).
+				if _aftermath_choice_p != null and _aftermath_choice_p == p and _i_acting():
 					var btn := Button.new()
 					# Niente `flat`: il bordo giallo (evidenziazione del token cliccabile)
 					# deve restare visibile, non solo all'hover.
@@ -4001,8 +4002,10 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 	var tdcard := _country_card_button({"art": td["art"], "display_name": "Trade Deals"}, Vector2(cardw, cardw * 0.71), false)
 	tdcard.disabled = false
 	tdcard.focus_mode = Control.FOCUS_NONE
-	if is_active:
-		tdcard.pressed.connect(_open_trade_ui)
+	# Avvio del Commercio: solo per il giocatore LOCALE nel proprio turno, e INSTRADATO all'host
+	# (così non resta un Commercio locale che l'host ignora). In hot-seat _is_my_turn() è sempre true.
+	if is_active and _is_my_turn():
+		tdcard.pressed.connect(_cmd_begin_trade)
 	col.add_child(tdcard)
 	# Carte prodotto (Commerce card): 2 (3 per la Russia), un po' più PICCOLE così la loro
 	# riga è larga quanto la carta Commercio. Le carte usate sono girate/grigie.
@@ -4389,6 +4392,12 @@ func apply_command(cmd: Dictionary) -> bool:
 				return false
 			_produce_sel = (a.get("sel", {}) as Dictionary).duplicate(true)
 			_apply_produce()
+		"begin_trade":
+			# Avvio del Commercio (azione libera dalla carta Trade Deals): l'host entra in
+			# trade_mode e ribroadcasta, così anche il client compone il Commercio dalla barra.
+			if not playing_card.is_empty() or _trade_mode or _produce_mode:
+				return false
+			_open_trade_ui()
 		"trade":
 			# Risultato del Commercio: ricostruisce la selezione dal payload e la applica.
 			if not _trade_mode:
@@ -4839,6 +4848,14 @@ func _cmd_trade() -> void:
 		_trade_import_src, _trade_armies))
 
 
+## Avvio del Commercio dalla carta Trade Deals: instradato all'host (che entra in trade_mode e
+## ribroadcasta), così anche il client compone il Commercio. Prima era LOCALE -> il client
+## entrava in Commercio ma l'host no, e il risultato veniva rifiutato.
+func _cmd_begin_trade() -> void:
+	if not _i_acting(): return
+	apply_command(GameCommands.begin_trade(active_seat, _next_seq()))
+
+
 ## Annullo via command bus (in rete deve passare dall'host, altrimenti i due schermi
 ## divergono: il client uscirebbe dal Commercio/Produce ma l'host resterebbe dentro).
 func _cmd_trade_cancel() -> void:
@@ -4894,18 +4911,22 @@ func _cmd_research_continue() -> void:
 
 
 func _cmd_aftermath_token_money(p: PlayerState, region: String) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.aftermath_token(gs.players.find(p), _next_seq(), region, "money"))
 
 
 func _cmd_aftermath_token_defense(p: PlayerState, region: String) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.aftermath_token(gs.players.find(p), _next_seq(), region, "defense"))
 
 
 func _cmd_aftermath_prosperity(p: PlayerState) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.aftermath_prosperity(gs.players.find(p), _next_seq()))
 
 
 func _cmd_aftermath_continue() -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.aftermath_continue(_acting_seat(), _next_seq()))
 
 
@@ -5538,7 +5559,7 @@ func _aftermath_continue() -> void:
 
 ## Tocco su un Engage token in Aftermath: sotto-scelta money vs Difesa nella barra.
 func _on_aftermath_token(p: PlayerState, region: String) -> void:
-	if _aftermath_choice_p != p or region not in p.engage_tokens:
+	if not _i_acting() or _aftermath_choice_p != p or region not in p.engage_tokens:
 		return
 	_aftermath_subchoice = true    # sotto-scelta in corso: _refresh non ricostruisce la barra
 	_clear_choice_bar()
