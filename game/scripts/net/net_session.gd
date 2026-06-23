@@ -23,6 +23,13 @@ enum Role { NONE, HOST, CLIENT }
 
 const PORT_DEFAULT := 8910
 const HOST_ID := 1
+# Buffer dei socket WebSocket. Il default di Godot e' 65535 byte: con piu' client l'host invia
+# uno snapshot per ciascuno NELLO STESSO frame (a 4 giocatori ~38 KB l'uno), e gia' a 2 client
+# il buffer di USCITA va in overflow -> i pacchetti oltre il primo vengono SCARTATI in silenzio
+# (dal vivo: il 1° client si sincronizza, gli altri no). Anche un singolo snapshot a 4 giocatori
+# (~51 KB in base64) sfiora il limite in INGRESSO. Allarghiamo entrambi con ampio margine.
+const WS_BUF := 1 << 22          # 4 MiB per buffer (in/out)
+const WS_MAX_QUEUED := 4096      # pacchetti in coda max
 
 var role: int = Role.NONE
 var my_seat: int = -1
@@ -56,6 +63,9 @@ func host_lan(port: int = PORT_DEFAULT, host_name := "Host") -> int:
 	_seats[HOST_ID] = {"seat": 0, "name": host_name}
 	_next_seat = 1
 	_peer = WebSocketMultiplayerPeer.new()
+	_peer.inbound_buffer_size = WS_BUF
+	_peer.outbound_buffer_size = WS_BUF
+	_peer.max_queued_packets = WS_MAX_QUEUED
 	var err := _peer.create_server(port)
 	if err != OK:
 		_peer = null
@@ -70,6 +80,9 @@ func host_lan(port: int = PORT_DEFAULT, host_name := "Host") -> int:
 func join_lan(ip: String, port: int = PORT_DEFAULT) -> int:
 	role = Role.CLIENT
 	_peer = WebSocketMultiplayerPeer.new()
+	_peer.inbound_buffer_size = WS_BUF
+	_peer.outbound_buffer_size = WS_BUF
+	_peer.max_queued_packets = WS_MAX_QUEUED
 	var err := _peer.create_client("ws://%s:%d" % [ip, port])
 	if err != OK:
 		_peer = null
@@ -102,6 +115,9 @@ func join_relay(url: String, room: String) -> int:
 
 func _relay_connect(url: String) -> int:
 	_relay = WebSocketPeer.new()
+	_relay.inbound_buffer_size = WS_BUF
+	_relay.outbound_buffer_size = WS_BUF
+	_relay.max_queued_packets = WS_MAX_QUEUED
 	var err := _relay.connect_to_url(url)
 	if err != OK:
 		_relay = null
