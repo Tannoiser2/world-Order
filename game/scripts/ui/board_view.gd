@@ -341,6 +341,14 @@ func _is_my_turn() -> bool:
 	return _view_seat() == active_seat
 
 
+## True se la VISTA locale è quella di CHI AGISCE ora (in rete: il client di turno o l'host
+## quando tocca a lui; in Aftermath il giocatore in scelta). I click locali su elementi
+## CONDIVISI (mappa: Regioni, caselle Influenza, carte nazione, alleati) devono passare solo
+## da qui: senza, l'host potrebbe agire al posto del client (azioni sulla finestra sbagliata).
+func _i_acting() -> bool:
+	return (net == null) or (_view_seat() == _acting_seat())
+
+
 ## Stile globale dei Button "normali" (non flat, senza override): sfondo, bordo e
 ## padding così OGNI scelta cliccabile si vede chiaramente come un pulsante.
 ## I bottoni flat (carte, zone Focus...) e quelli con stylebox propria restano invariati.
@@ -403,7 +411,10 @@ func _layout_overlays() -> void:
 	_layout_influence_cubes()
 	_layout_army_badges()
 	_layout_engage_tokens()
-	if awaiting == "influence_cell":
+	# Caselle Influenza cliccabili: SOLO per chi agisce. Altrimenti comparirebbero (e sarebbero
+	# cliccabili) anche sulla mappa dell'altro giocatore -> l'host poteva posare l'Influenza del
+	# client (azione sulla finestra sbagliata).
+	if awaiting == "influence_cell" and _i_acting():
 		_layout_influence_cells()
 	_layout_majority()
 	_layout_score_markers()
@@ -693,20 +704,23 @@ func _clamp_map() -> void:
 
 
 func _make_region_button(region: String) -> Button:
-	var awaiting_region := (awaiting in AWAITING_REGION)
+	# Interattiva SOLO per chi agisce: sull'altra finestra la Regione resta trasparente e lascia
+	# passare il pan (l'host non deve poter scegliere la Regione al posto del client).
+	var acting := _i_acting()
+	var awaiting_region := (awaiting in AWAITING_REGION) and acting
 	var btn := Button.new()
 	# Le Regioni catturano il mouse SOLO quando devi sceglierne una; altrimenti
 	# lasciano passare il drag così puoi trascinare/pannare la mappa anche da zoomata.
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP if awaiting_region else Control.MOUSE_FILTER_IGNORE
 	btn.pressed.connect(_cmd_pick_region.bind(region))
-	# Durante un Move la Regione è anche un DROP TARGET del drag&drop dei carri.
-	if awaiting == "move":
+	# Durante un Move la Regione è anche un DROP TARGET del drag&drop dei carri (solo per chi agisce).
+	if awaiting == "move" and acting:
 		btn.set_drag_forwarding(Callable(), _region_can_drop.bind(region), _region_do_drop.bind(region))
 	# Zona Regione: invisibile di default (il tabellone mostra già nome ed Eng);
 	# si evidenzia solo quando devi SCEGLIERE una Regione. Durante un Move il colore
 	# indica il ruolo: verde = sorgente possibile, giallo = sorgente scelta, blu = destinazione.
 	var st := StyleBoxFlat.new()
-	var role := _move_role(region) if awaiting == "move" else ("pick" if awaiting_region else "")
+	var role := _move_role(region) if (awaiting == "move" and acting) else ("pick" if awaiting_region else "")
 	# IMPORTANTE: un Button `flat` NON disegna lo stylebox "normal" -> l'evidenziazione
 	# sparirebbe. Quindi flat SOLO quando non c'è ruolo (zona trasparente, lascia passare).
 	btn.flat = (role == "")
@@ -923,11 +937,15 @@ func _layout_card_slots() -> void:
 			spacing = absf(float(centers[1][0]) - float(centers[0][0]))
 		var cw: float = spacing * 0.96 * board_native.x
 		var ch: float = cw / 0.71
+		# Bersagli di Improve Relations cliccabili SOLO per chi agisce (evidenziati e attivi):
+		# sull'altra finestra restano carte mostrate ma non selezionabili (niente azione altrui).
+		var pick := awaiting == "board_country" and _i_acting()
 		var avail: Array = region_countries.get(region, {}).get("available", [])
 		for i in mini(avail.size(), centers.size()):
 			# Niente flyover sulle carte sul tabellone: si leggono zoomando la mappa.
-			var card := _country_card_button(avail[i], Vector2(cw, ch), awaiting == "board_country", false)
-			card.pressed.connect(_cmd_pick_board_country.bind(avail[i], region))
+			var card := _country_card_button(avail[i], Vector2(cw, ch), pick, false)
+			if pick:
+				card.pressed.connect(_cmd_pick_board_country.bind(avail[i], region))
 			card.position = Vector2(float(centers[i][0]) * board_native.x - cw * 0.5, float(centers[i][1]) * board_native.y - ch * 0.5)
 			card_layer.add_child(card)
 
@@ -3115,9 +3133,11 @@ func _update_net_debug() -> void:
 	var pl: PlayerState = _view_player()
 	var hand_n := (pl.hand.size() if pl != null else -1)
 	var aft_seat := gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1
+	# NB: myhand = la TUA mano (mai redatta). Host e client mostrano giocatori diversi: valori
+	# diversi NON sono un desync. Per il resto i campi devono coincidere quando si è in sync.
 	_net_debug.text = ("NET %s  mine=%d act=%d aft=%d aw=%s\n"
 		+ "play=%s pop=%s exh=%s gr=%s sum=%s mv=%s tr=%s pr=%s\n"
-		+ "phase=%s plays=%d played=%s hand=%d  endTurn=%s") % [
+		+ "phase=%s plays=%d played=%s myhand=%d  endTurn=%s") % [
 		("HOST" if net.is_host() else "CLIENT"), net.my_seat, active_seat, aft_seat,
 		("'" + awaiting + "'") if awaiting != "" else "-",
 		"Y" if not playing_card.is_empty() else "-",
@@ -4745,24 +4765,32 @@ func _cmd_increase_production(type: String) -> void:
 	apply_command(GameCommands.increase_production(active_seat, _next_seq(), type))
 
 
+# Questi click vivono su elementi CONDIVISI (la mappa/le carte sul tabellone, visibili a
+# entrambi): la guardia _i_acting() impedisce che il giocatore NON di turno (es. l'host
+# durante il turno del client) agisca al posto suo. In hot-seat è sempre vera (no-op).
 func _cmd_pick_region(region: String) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.pick_region(active_seat, _next_seq(), region))
 
 
 func _cmd_pick_influence_cell(region: String, slot: String) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.pick_influence_cell(active_seat, _next_seq(), region, slot))
 
 
 func _cmd_pick_allied_country(cn: Dictionary) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.pick_allied_country(active_seat, _next_seq(), String(cn.get("id", ""))))
 
 
 func _cmd_exhaust_ally(cn: Dictionary) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.exhaust_ally(active_seat, _next_seq(), String(cn.get("id", ""))))
 
 
 ## Improve Relations: scelta della Country sul tabellone e conferma/salta dello sconto.
 func _cmd_pick_board_country(country: Dictionary, region: String) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.pick_board_country(active_seat, _next_seq(), region, String(country.get("id", ""))))
 
 
