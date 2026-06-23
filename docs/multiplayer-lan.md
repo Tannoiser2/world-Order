@@ -12,12 +12,16 @@ Le build native si generano da GitHub Actions:
 1. Vai su **Actions → "Build native apps (LAN multiplayer)"**.
 2. Premi **Run workflow** (oppure pubblica un tag `v*`).
 3. A fine run scarica gli **artifacts**:
-   - `world-order-desktop` → eseguibili **Linux** (`world-order.x86_64`) e **Windows** (`world-order.exe`).
-   - `world-order-android` → **`world-order.apk`** (Android).
+   - `world-order-desktop` → eseguibili **Linux** (`world-order.x86_64`) e **Windows** (`world-order.exe`). ✅ **Disponibile.**
+   - `world-order-android` → **`world-order.apk`** (Android). ⚠️ **In lavorazione**: l'export Android in CI fallisce con un errore di configurazione opaco di Godot (in indagine); il job è tollerante all'errore così non blocca le build desktop.
 
 > Gli eseguibili hanno il `.pck` incorporato: un singolo file da lanciare.
-> L'APK è firmato con una **debug keystore** (va bene per uso personale; Android può
-> chiedere di consentire l'installazione da "origini sconosciute").
+
+## Android (intanto)
+
+Finché la build CI dell'APK non è sistemata, per giocare su Android ci sono due strade:
+- **Esportare l'APK da Godot 4.3** su un PC: apri la cartella `game/`, poi *Progetto → Installa modello build Android* e *Progetto → Esporta → Android*. (Serve l'Android SDK configurato nelle impostazioni editor.)
+- In alternativa, host e client su **PC** (build desktop) sulla stessa rete.
 
 ## Come giocare
 
