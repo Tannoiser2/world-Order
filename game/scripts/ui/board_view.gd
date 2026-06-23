@@ -3177,7 +3177,11 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# Zone Focus cliccabili (solo per il giocatore di turno): toccando la colonna si sposta
 	# la pedina del Focus lì. In PREPARAZIONE le colonne sono EVIDENZIATE (bordo dorato):
 	# è lì che si sceglie il Focus, cliccando direttamente sulla plancia.
-	if is_active:
+	# INTERATTIVO solo per il giocatore LOCALE nel proprio turno: in rete entrambe le finestre
+	# mostrano la plancia del giocatore attivo, ma SOLO la sua deve poterci interagire (altrimenti
+	# l'host comporrebbe/validava il Commercio del client). In hot-seat _is_my_turn() è sempre true.
+	var interactive := is_active and _is_my_turn()
+	if interactive:
 		var in_prep: bool = (_ui_phase == "Preparazione" and _prep_idx < gs.players.size())
 		for f in FOCUS_ZONES.size():
 			var fb := Button.new()
@@ -3215,8 +3219,8 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 	# Token risorsa (immagini reali) sulla traccia RESOURCES 0..10, alla quantità.
 	# Durante il Commercio i prodotti commerciabili stanno alla posizione "staged"
 	# (quantità ± transazione in corso), così vedi il token muoversi verso 0/10.
-	var trading := is_active and _trade_mode
-	var producing := is_active and _produce_mode
+	var trading := interactive and _trade_mode
+	var producing := interactive and _produce_mode
 	var stack: Dictionary = {}
 	for res in RES_TOKENS:
 		# Durante il Commercio i prodotti commerciabili sono TOKEN CLICCABILI (li disegna
@@ -4300,8 +4304,20 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_influence_pick = {"regions": ip.get("regions", []), "force": String(ip.get("force", ""))} if not ip.is_empty() else {}
 	var mc: Dictionary = ui.get("move_ctx", {})
 	_move_ctx = mc.duplicate(true) if not mc.is_empty() else {}
+	# Entrando in Commercio/Produce, il client inizializza la PROPRIA composizione locale
+	# (sull'host lo fa _open_trade_ui/_open_produce_ui; il client non li esegue). Senza questo
+	# cliccare la resource track darebbe errore (chiavi mancanti in _trade_sel).
+	var was_trade := _trade_mode
+	var was_produce := _produce_mode
 	_produce_mode = bool(ui.get("produce_mode", false))
 	_trade_mode = bool(ui.get("trade_mode", false))
+	if _trade_mode and not was_trade:
+		_trade_sel = {"export": {}, "import": {}}
+		_trade_import_src = {}
+		_trade_armies = 0
+		_trade_active_res = ""
+	if _produce_mode and not was_produce:
+		_produce_sel = {}
 	_plays_left = int(ui.get("plays_left", _plays_left))
 	_played_this_turn = bool(ui.get("played_this_turn", _played_this_turn))
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
