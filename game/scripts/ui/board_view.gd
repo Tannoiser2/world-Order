@@ -2943,6 +2943,10 @@ func _refresh() -> void:
 		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
 		# Aftermath (prima la barra la creava solo l'host: a fine round il client si bloccava).
 		_aftermath_bar(_aftermath_choice_p)
+	# RESEARCH: ricostruisce il pannello Market dallo stato sincronizzato (punti + Market),
+	# così il CLIENT vede il proprio passo Research e può comprare/cambiare/Continuare.
+	if _ui_phase == "Research" and market_content != null:
+		_show_research()
 	_layout_ui()
 
 
@@ -4100,6 +4104,26 @@ func apply_command(cmd: Dictionary) -> bool:
 			if mc.is_empty():
 				return false
 			_buy_market(mc)
+		"research_exhaust_ally":
+			if _ui_phase != "Research":
+				return false
+			var rc := {}
+			for c in _research_ready_allies(_active()):
+				if String(c.get("id", "")) == String(a["country_id"]):
+					rc = c
+					break
+			if rc.is_empty():
+				return false
+			_research_exhaust_ally(rc)
+		"research_reshuffle":
+			if _ui_phase != "Research":
+				return false
+			_market_reshuffle_3()
+		"research_continue":
+			if _ui_phase != "Research":
+				return false
+			_research_idx += 1
+			_research_next()
 		"aftermath_token":
 			if _aftermath_choice_p == null:
 				return false
@@ -4179,6 +4203,10 @@ func _ui_snapshot() -> Dictionary:
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
+		# RESEARCH: punti disponibili al giocatore di turno e Market scoperto (vivono nella
+		# Vista, non in gs): servono al client per ricostruire il pannello Research.
+		"research_points": _research_points,
+		"market_display": market_display.duplicate(true),
 	}
 
 
@@ -4200,6 +4228,10 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
 	_aftermath_choice_p = gs.players[aseat] if aseat >= 0 and aseat < gs.players.size() else null
+	# RESEARCH: punti e Market scoperto (così il client ricostruisce il pannello Research).
+	_research_points = int(ui.get("research_points", _research_points))
+	if ui.has("market_display"):
+		market_display = (ui.get("market_display", []) as Array).duplicate(true)
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4308,6 +4340,18 @@ func _cmd_buy_growth(card: Dictionary, _nl: int) -> void:
 
 func _cmd_buy_market(card: Dictionary) -> void:
 	apply_command(GameCommands.buy_market(active_seat, _next_seq(), String(card.get("id", ""))))
+
+
+func _cmd_research_exhaust_ally(country: Dictionary) -> void:
+	apply_command(GameCommands.research_exhaust_ally(active_seat, _next_seq(), String(country.get("id", ""))))
+
+
+func _cmd_research_reshuffle() -> void:
+	apply_command(GameCommands.research_reshuffle(active_seat, _next_seq()))
+
+
+func _cmd_research_continue() -> void:
+	apply_command(GameCommands.research_continue(active_seat, _next_seq()))
 
 
 func _cmd_aftermath_token_money(p: PlayerState, region: String) -> void:
@@ -4688,7 +4732,7 @@ func _show_research() -> void:
 		var reshuffle := Button.new()
 		reshuffle.text = "Cambia Market: -2 Research -> scarta le 3 a destra"
 		reshuffle.disabled = _research_points < 2
-		reshuffle.pressed.connect(_market_reshuffle_3)
+		reshuffle.pressed.connect(_cmd_research_reshuffle)
 		vb.add_child(reshuffle)
 
 	# --- #12: esaurisci Country alleate per aggiungere il loro valore al Research ---
@@ -4704,16 +4748,14 @@ func _show_research() -> void:
 		var acard_w: float = clampf((content_w - 6.0 * (na - 1)) / na, 64.0, 104.0)
 		var acard_h: float = acard_w / 0.71
 		for c in allies:
-			aflow.add_child(_market_card_sized(c, "+%d R" % int(c.get("value", 0)), false, acard_w, acard_h, _research_exhaust_ally.bind(c)))
+			aflow.add_child(_market_card_sized(c, "+%d R" % int(c.get("value", 0)), false, acard_w, acard_h, _cmd_research_exhaust_ally.bind(c)))
 
 	# Niente Growth qui: le Growth card si comprano con l'azione "Get a Growth Card"
 	# durante la fase di Azione, non nel passo Research.
 
 	var done := Button.new()
 	done.text = "Continua"
-	done.pressed.connect(func():
-		_research_idx += 1
-		_research_next())
+	done.pressed.connect(_cmd_research_continue)
 	vb.add_child(done)
 
 
