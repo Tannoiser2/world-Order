@@ -4159,6 +4159,10 @@ func apply_remote_snapshot(state: Dictionary) -> void:
 	gs = GameState.from_dict(gsd)
 	if state.has("ui"):
 		_apply_ui_snapshot(state["ui"])
+	# Ridisegna la MAPPA (Armate, Country card, influenza, Auto-Influence…): _refresh da solo
+	# NON ricostruisce gli overlay, quindi senza questo il client non vedeva aggiornarsi le
+	# pedine/carte sul tabellone pur avendo lo stato corretto.
+	_layout_overlays()
 	_refresh()
 
 
@@ -4207,7 +4211,20 @@ func _ui_snapshot() -> Dictionary:
 		# Vista, non in gs): servono al client per ricostruire il pannello Research.
 		"research_points": _research_points,
 		"market_display": market_display.duplicate(true),
+		# BOARD: stato di tabellone che vive nella Vista (non in gs) e che l'host mescola/ruota:
+		# le Country card SCOPERTE per Regione e le 2 carte Auto-Influence del round. Senza
+		# questo ogni istanza userebbe il PROPRIO mescolamento -> carte diverse host/client.
+		"region_available": _region_available_snapshot(),
+		"auto_inf_shown": _auto_inf_shown.duplicate(true),
 	}
+
+
+## Mappa rid -> Country card SCOPERTE in quella Regione (per sincronizzare il tabellone).
+func _region_available_snapshot() -> Dictionary:
+	var out := {}
+	for rid in region_countries:
+		out[rid] = ((region_countries[rid] as Dictionary).get("available", []) as Array).duplicate(true)
+	return out
 
 
 func _apply_ui_snapshot(ui: Dictionary) -> void:
@@ -4232,6 +4249,17 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_research_points = int(ui.get("research_points", _research_points))
 	if ui.has("market_display"):
 		market_display = (ui.get("market_display", []) as Array).duplicate(true)
+	# BOARD: Country card scoperte per Regione + Auto-Influence del round. L'host è autorità;
+	# il client SPECCHIA (non usa il proprio mescolamento locale). Così le carte nazione
+	# cambiano davvero quando l'host le prende/ruota, e le Auto-Influence compaiono uguali.
+	if ui.has("region_available"):
+		var ra: Dictionary = ui.get("region_available", {})
+		for rid in ra:
+			if not region_countries.has(rid):
+				region_countries[rid] = {"available": [], "deck": []}
+			(region_countries[rid] as Dictionary)["available"] = (ra[rid] as Array).duplicate(true)
+	if ui.has("auto_inf_shown"):
+		_auto_inf_shown = (ui.get("auto_inf_shown", []) as Array).duplicate(true)
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
