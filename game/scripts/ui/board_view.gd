@@ -125,6 +125,11 @@ var _aftermath_choice_p: PlayerState = null  # giocatore in scelta Aftermath (su
 var _aftermath_subchoice := false        # sotto-scelta token in corso (money/Difesa): non ricostruire la barra
 var _aftermath_lines: Array[String] = [] # righe del riepilogo di fine round
 var _aftermath_ai_art := ""             # art della carta Auto-Influence (per il riepilogo)
+# Riepilogo di fine round/partita (le "conseguenze": THREAT, Scoring, Token Maggioranza...).
+# Era un popup costruito SOLO dall'host -> il client non vedeva mai le conseguenze ("fuori
+# sync"). Ora è uno STATO sincronizzato: lo vedono entrambi e il "Continua" passa dall'host.
+var _summary: Dictionary = {}           # {} = nessuno; {lines, art, kind:"round"|"game_over"}
+var _summary_shown := false             # overlay già costruito in questa vista (evita ricostruzioni)
 var _threat_defense: Dictionary = {}    # {region: {power: +Difesa}} da Engage token scartati
 # Stato del gioco di una carta:
 var playing_card: Dictionary = {}
@@ -3080,6 +3085,15 @@ func _refresh() -> void:
 	elif _growth_pick_shown:
 		_close_popup()
 		_growth_pick_shown = false
+	# RIEPILOGO (conseguenze di fine round/partita): recap CONDIVISO, lo vedono ENTRAMBI (non
+	# gated su chi agisce). Costruito una volta, chiuso quando lo stato si svuota (round avanzato).
+	if not _summary.is_empty():
+		if not _summary_shown:
+			_render_summary()
+			_summary_shown = true
+	elif _summary_shown:
+		_close_popup()
+		_summary_shown = false
 	# RESEARCH: ricostruisce il pannello Market dallo stato sincronizzato (punti + Market),
 	# così il CLIENT vede il proprio passo Research e può comprare/cambiare/Continuare.
 	if _ui_phase == "Research" and market_content != null:
@@ -3100,15 +3114,17 @@ func _update_net_debug() -> void:
 		endable = "OFF" if end_turn_btn.disabled else "ON"
 	var pl: PlayerState = _view_player()
 	var hand_n := (pl.hand.size() if pl != null else -1)
-	_net_debug.text = ("NET %s  mine=%d act=%d aw=%s\n"
-		+ "play=%s pop=%s exh=%s gr=%s mv=%s tr=%s pr=%s\n"
+	var aft_seat := gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1
+	_net_debug.text = ("NET %s  mine=%d act=%d aft=%d aw=%s\n"
+		+ "play=%s pop=%s exh=%s gr=%s sum=%s mv=%s tr=%s pr=%s\n"
 		+ "phase=%s plays=%d played=%s hand=%d  endTurn=%s") % [
-		("HOST" if net.is_host() else "CLIENT"), net.my_seat, active_seat,
+		("HOST" if net.is_host() else "CLIENT"), net.my_seat, active_seat, aft_seat,
 		("'" + awaiting + "'") if awaiting != "" else "-",
 		"Y" if not playing_card.is_empty() else "-",
 		"Y" if _popup_active() else "-",
 		"Y" if not _exhaust_ctx.is_empty() else "-",
 		"Y" if not _growth_pick.is_empty() else "-",
+		"Y" if not _summary.is_empty() else "-",
 		"Y" if not _move_ctx.is_empty() else "-",
 		"Y" if _trade_mode else "-",
 		"Y" if _produce_mode else "-",
@@ -4237,8 +4253,10 @@ func apply_command(cmd: Dictionary) -> bool:
 		return true
 	# GATING: il comando deve venire dal seggio che PUÒ agire ora (vedi _acting_seat):
 	# Azione/Preparazione/Research -> giocatore di turno; Aftermath -> giocatore Aftermath.
+	# ECCEZIONE: il "Continua" del riepilogo è un'ACK condivisa (non un'azione di turno): lo può
+	# inviare chiunque veda il recap, quindi non si applica il gate sul seggio di turno.
 	var acting := _acting_seat()
-	if int(cmd["seat"]) != acting:
+	if String(cmd["type"]) != "summary_continue" and int(cmd["seat"]) != acting:
 		push_warning("Comando fuori turno (seat %d, attivo %d): ignorato" % [int(cmd["seat"]), acting])
 		return false
 	var a: Dictionary = cmd["args"]
@@ -4419,6 +4437,14 @@ func apply_command(cmd: Dictionary) -> bool:
 			if _aftermath_choice_p == null:
 				return false
 			_aftermath_continue()
+		"summary_continue":
+			# "Continua" del riepilogo di fine round: avanza il round UNA volta (autorità host),
+			# pulisce lo stato del recap e ribroadcasta (il client chiude il pannello da sé).
+			if _summary.is_empty() or String(_summary.get("kind", "")) != "round":
+				return false
+			_summary = {}
+			_close_popup()
+			_next_round()
 		_:
 			return false
 	_command_log.append(cmd)
@@ -4521,6 +4547,13 @@ func _ui_snapshot() -> Dictionary:
 		# Selettore "Get a Growth Card" in corso: solo il livello (le carte le ricalcola il client
 		# da gs). Così il selettore appare a CHI agisce e non resta intrappolato sull'host.
 		"growth_pick": {"level": int(_growth_pick.get("level", 0))} if not _growth_pick.is_empty() else {},
+		# Riepilogo di fine round/partita (le "conseguenze"): righe + art + tipo. Sincronizzato
+		# così il client le VEDE (prima il popup viveva solo sull'host).
+		"summary": {
+			"lines": (_summary.get("lines", []) as Array).duplicate(),
+			"art": String(_summary.get("art", "")),
+			"kind": String(_summary.get("kind", "round")),
+		} if not _summary.is_empty() else {},
 	}
 
 
@@ -4611,6 +4644,14 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	# lo snapshot non lo porta più -> _refresh chiude l'overlay sul client.
 	var grp: Dictionary = ui.get("growth_pick", {})
 	_growth_pick = {"level": int(grp.get("level", 0))} if not grp.is_empty() else {}
+	# Riepilogo conseguenze: il client lo ricostruisce dallo stato. Quando l'host avanza il round,
+	# lo snapshot non lo porta più -> _refresh chiude il pannello.
+	var smr: Dictionary = ui.get("summary", {})
+	_summary = {
+		"lines": (smr.get("lines", []) as Array).duplicate(),
+		"art": String(smr.get("art", "")),
+		"kind": String(smr.get("kind", "round")),
+	} if not smr.is_empty() else {}
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4813,6 +4854,13 @@ func _cmd_aftermath_prosperity(p: PlayerState) -> void:
 
 func _cmd_aftermath_continue() -> void:
 	apply_command(GameCommands.aftermath_continue(_acting_seat(), _next_seq()))
+
+
+## "Continua" del riepilogo di fine round: chiunque lo veda può avanzare (recap condiviso),
+## quindi si usa il PROPRIO seggio (così il client non viene scartato dal gate del mittente);
+## l'host poi avanza il round una sola volta e ribroadcasta.
+func _cmd_summary_continue() -> void:
+	apply_command(GameCommands.summary_continue(_view_seat(), _next_seq()))
 
 
 func _end_turn() -> void:
@@ -5521,7 +5569,10 @@ func _aftermath_resolve() -> void:
 			gs.add_vp(power, int(mt[power]))
 		_aftermath_lines.append("Token Maggioranza: " + _vp_summary(mt))
 
-	_show_summary(_aftermath_lines, func(): _next_round(), _aftermath_ai_art)
+	# Riepilogo SINCRONIZZATO: lo stato (righe + art) va a entrambi; il "Continua" passa
+	# dall'host (_next_round). Senza questo il client non vedeva le conseguenze del round.
+	_summary = {"lines": _aftermath_lines.duplicate(), "art": _aftermath_ai_art, "kind": "round"}
+	_after_change()
 
 
 ## Reveal Country Cards (Preparation): in ogni Regione ruota una carta - la più
@@ -5578,7 +5629,9 @@ func _game_end() -> void:
 		champs_up.append(String(w).to_upper())
 	lines.append(("Vittoria condivisa: %s" % ", ".join(champs_up)) if champs.size() > 1
 		else "Vincitore: %s" % (champs_up[0] if champs_up.size() > 0 else "-"))
-	_show_summary(lines, func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+	# Riepilogo FINE PARTITA sincronizzato: lo vedono entrambi; il "Continua" torna al menu
+	# in LOCALE su ciascuna istanza (la partita è finita, non serve autorità host).
+	_summary = {"lines": lines.duplicate(), "art": "", "kind": "game_over"}
 	_after_change()
 
 
@@ -5590,10 +5643,14 @@ func _vp_summary(d: Dictionary) -> String:
 	return ", ".join(parts) if parts.size() > 0 else "-"
 
 
-## Popup di riepilogo con un pulsante Continua.
-## Riepilogo (fine round / fine partita): pannello ANCORATO A DESTRA che NON copre la
-## mappa (velo leggero, board visibile a sinistra). Scrollabile; "Continua" chiude.
-func _show_summary(lines: Array, cb: Callable, art := "") -> void:
+## Riepilogo (fine round / fine partita) ricostruito dallo STATO sincronizzato `_summary`:
+## pannello ANCORATO A DESTRA che NON copre la mappa (velo leggero, board visibile a sinistra).
+## Scrollabile. "Continua": a fine round passa dall'host (avanza il round, autorità); a fine
+## partita torna al menu in locale. Lo chiama _refresh su ENTRAMBE le viste (recap condiviso).
+func _render_summary() -> void:
+	var lines: Array = _summary.get("lines", [])
+	var art := String(_summary.get("art", ""))
+	var kind := String(_summary.get("kind", "round"))
 	for c in popup_layer.get_children():
 		c.queue_free()
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -5640,9 +5697,12 @@ func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 	var ok := Button.new()
 	ok.text = "Continua"
 	ok.add_theme_font_size_override("font_size", _base_fs() + 1)
-	ok.pressed.connect(func():
-		_close_popup()
-		cb.call())
+	if kind == "game_over":
+		# Fine partita: ognuno torna al PROPRIO menu (nessuna autorità host richiesta).
+		ok.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+	else:
+		# Fine round: il "Continua" passa dall'host, che avanza il round e ribroadcasta.
+		ok.pressed.connect(_cmd_summary_continue)
 	vb.add_child(ok)
 
 

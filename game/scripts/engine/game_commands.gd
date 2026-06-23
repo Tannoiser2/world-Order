@@ -37,6 +37,8 @@ const KNOWN := [
 	"research_exhaust_ally", "research_reshuffle", "research_continue",
 	# Aftermath (fase per-giocatore; gating sul giocatore Aftermath, non su active_seat)
 	"aftermath_token", "aftermath_prosperity", "aftermath_continue",
+	# "Continua" del riepilogo di fine round (ACK condivisa: la invia chiunque veda il recap)
+	"summary_continue",
 ]
 
 
@@ -192,6 +194,10 @@ static func aftermath_continue(seat: int, seq: int) -> Dictionary:
 	return make("aftermath_continue", seat, seq, {})
 
 
+static func summary_continue(seat: int, seq: int) -> Dictionary:
+	return make("summary_continue", seat, seq, {})
+
+
 ## Validazione STRUTTURALE (forma e tipi), non di merito: le regole le verifica
 ## il motore quando il comando viene applicato.
 static func valid_shape(cmd: Variant) -> bool:
@@ -255,6 +261,6 @@ static func valid_shape(cmd: Variant) -> bool:
 		"aftermath_token":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != "" \
 				and String(args.get("kind", "")) in ["money", "defense"]
-		"aftermath_prosperity", "aftermath_continue":
+		"aftermath_prosperity", "aftermath_continue", "summary_continue":
 			return true
 	return false
