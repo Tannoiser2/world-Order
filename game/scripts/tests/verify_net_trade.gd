@@ -73,6 +73,16 @@ func _init() -> void:
 	cv.queue_free()
 	hv.queue_free()
 
+	# 4) ANNULLA del Commercio dal client: deve passare dall'host così ENTRAMBI escono dal
+	#    Commercio. Prima l'annullo era locale: il client usciva ma l'host restava dentro e
+	#    continuava a ri-mandare trade_mode=true -> tutto bloccato.
+	var sent_cancel: bool = client.apply_command(GameCommands.trade_cancel(1, 99))
+	await process_frame
+	var t4: bool = sent_cancel and host._trade_mode == false and client._trade_mode == false
+	print("[%s] «Annulla» Commercio dal client esce su ENTRAMBI (host=%s, client=%s)" % [
+		"OK" if t4 else "FAIL", str(host._trade_mode), str(client._trade_mode)])
+	if not t4: fails += 1
+
 	host.queue_free()
 	client.queue_free()
 	await process_frame

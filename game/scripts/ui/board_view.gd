@@ -2525,7 +2525,7 @@ func _show_produce_bar(p: PlayerState) -> void:
 		choice_flow.add_child(plus)
 	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_produce)
 	choice_flow.add_child(ok)
-	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_produce_cancel)
+	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_cmd_produce_cancel)
 	choice_flow.add_child(cancel)
 	choice_bar.visible = true
 
@@ -3018,10 +3018,14 @@ func _identity_badge(pl: PlayerState) -> Control:
 	pan.add_child(row)
 	var flag := "res://assets/flags/%s.png" % pl.power
 	if ResourceLoader.exists(flag):
+		# Bandierina alta quanto la riga di testo (EXPAND_IGNORE_SIZE: ignora la dimensione
+		# nativa del PNG, altrimenti la TextureRect diventa enorme).
+		var fh := _base_fs() + 4
 		var tr := TextureRect.new()
 		tr.texture = load(flag)
-		tr.custom_minimum_size = Vector2(30, 20)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.custom_minimum_size = Vector2(fh * 1.5, fh)
 		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(tr)
 	var lab := Label.new()
@@ -3435,7 +3439,7 @@ func _show_trade_bar(p: PlayerState) -> void:
 		choice_flow.add_child(chg)
 	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_trade)
 	choice_flow.add_child(ok)
-	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_trade_cancel)
+	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_cmd_trade_cancel)
 	choice_flow.add_child(cancel)
 	# Riga "Vendi Armate" (#14): un blocco unico che il flow manda a capo se serve.
 	if p.armies_available > 0 or _trade_armies > 0:
@@ -4155,6 +4159,14 @@ func apply_command(cmd: Dictionary) -> bool:
 				return false
 			if not _apply_move_finish():
 				return false
+		"trade_cancel":
+			if not _trade_mode:
+				return false
+			_trade_cancel()
+		"produce_cancel":
+			if not _produce_mode:
+				return false
+			_produce_cancel()
 		"buy_growth":
 			var gc := _growth_by_id(String(a["card_id"]))
 			if gc.is_empty():
@@ -4430,6 +4442,16 @@ func _cmd_trade() -> void:
 	apply_command(GameCommands.trade(active_seat, _next_seq(),
 		(_trade_sel.get("export", {}) as Dictionary), (_trade_sel.get("import", {}) as Dictionary),
 		_trade_import_src, _trade_armies))
+
+
+## Annullo via command bus (in rete deve passare dall'host, altrimenti i due schermi
+## divergono: il client uscirebbe dal Commercio/Produce ma l'host resterebbe dentro).
+func _cmd_trade_cancel() -> void:
+	apply_command(GameCommands.trade_cancel(active_seat, _next_seq()))
+
+
+func _cmd_produce_cancel() -> void:
+	apply_command(GameCommands.produce_cancel(active_seat, _next_seq()))
 
 
 ## Move: ogni spostamento (sorgente -> destinazione) e la fine sono comandi distinti.
