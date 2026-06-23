@@ -16,6 +16,8 @@ signal command_received(seat: int, cmd: Dictionary)  # host: comando da applicar
 signal started(seat: int, powers: Array)      # tutti: partita avviata
 signal connection_failed()
 signal peer_left()
+signal relay_ready(room: String)             # relay: stanza pronta (host: codice da condividere)
+signal relay_error(code: String, msg: String) # relay: rifiuto (no_room/room_taken/room_full/host_gone)
 
 enum Role { NONE, HOST, CLIENT }
 
@@ -36,6 +38,14 @@ var _started := false
 var _loop_clients: Array = []
 var _loop_host: NetSession = null
 var _loop_id := HOST_ID
+
+# Trasporto RELAY (wss://): host e client si collegano ENTRAMBI in uscita al relay,
+# che smista i messaggi (vedi relay/server.js). Cosi' si gioca da browser e via Internet.
+var _relay: WebSocketPeer = null
+var _relay_role := ""        # "host" | "client"
+var _relay_room := ""        # codice stanza richiesto/assegnato
+var _relay_hello_sent := false
+var _relay_open := false
 
 
 # --- Avvio (WebSocket reale) -------------------------------------------------
@@ -68,6 +78,45 @@ func join_lan(ip: String, port: int = PORT_DEFAULT) -> int:
 	return OK
 
 
+# --- Avvio (RELAY wss://) ----------------------------------------------------
+
+## HOST tramite relay: ci si collega in uscita a `url` (ws:// o wss://). Se `room` e'
+## vuoto, il relay genera un codice e lo restituisce via segnale `relay_ready`.
+func host_relay(url: String, room := "", host_name := "Host") -> int:
+	role = Role.HOST
+	my_seat = 0
+	_seats[HOST_ID] = {"seat": 0, "name": host_name}
+	_next_seat = 1
+	_relay_role = "host"
+	_relay_room = room
+	return _relay_connect(url)
+
+
+## CLIENT tramite relay: ci si collega a `url` e si entra nella stanza `room`.
+func join_relay(url: String, room: String) -> int:
+	role = Role.CLIENT
+	_relay_role = "client"
+	_relay_room = room
+	return _relay_connect(url)
+
+
+func _relay_connect(url: String) -> int:
+	_relay = WebSocketPeer.new()
+	var err := _relay.connect_to_url(url)
+	if err != OK:
+		_relay = null
+		role = Role.NONE
+		return err
+	_relay_hello_sent = false
+	_relay_open = false
+	return OK
+
+
+func _relay_send_envelope(env: Dictionary) -> void:
+	if _relay != null and _relay.get_ready_state() == WebSocketPeer.STATE_OPEN:
+		_relay.send_text(JSON.stringify(env))
+
+
 ## HOST senza socket (test / setup locale): seggio 0, pronto per link_loopback.
 func host_loopback() -> void:
 	role = Role.HOST
@@ -87,6 +136,11 @@ func close() -> void:
 	if _peer != null:
 		_peer.close()
 		_peer = null
+	if _relay != null:
+		_relay.close()
+		_relay = null
+	_relay_open = false
+	_relay_hello_sent = false
 	role = Role.NONE
 	_started = false
 
@@ -102,6 +156,9 @@ func is_client() -> bool:
 # --- Loop di rete reale ------------------------------------------------------
 
 func _process(_dt: float) -> void:
+	if _relay != null:
+		_process_relay()
+		return
 	if _peer == null:
 		return
 	_peer.poll()
@@ -110,6 +167,55 @@ func _process(_dt: float) -> void:
 		var msg: Variant = bytes_to_var(_peer.get_packet())
 		if msg is Dictionary:
 			_handle(from_id, msg)
+
+
+# --- Loop di rete via RELAY --------------------------------------------------
+
+func _process_relay() -> void:
+	_relay.poll()
+	var st := _relay.get_ready_state()
+	if st == WebSocketPeer.STATE_OPEN:
+		if not _relay_hello_sent:
+			_relay_hello_sent = true
+			_relay_open = true
+			_relay_send_envelope({"t": "hello", "role": _relay_role, "room": _relay_room})
+		while _relay.get_available_packet_count() > 0:
+			var txt := _relay.get_packet().get_string_from_utf8()
+			var env: Variant = JSON.parse_string(txt)
+			if env is Dictionary:
+				_handle_relay(env)
+	elif st == WebSocketPeer.STATE_CLOSED:
+		# Connessione caduta o mai aperta: avvisa una sola volta e ferma il loop.
+		var was_open := _relay_open
+		_relay = null
+		_relay_open = false
+		if was_open:
+			peer_left.emit()
+		else:
+			connection_failed.emit()
+
+
+func _handle_relay(env: Dictionary) -> void:
+	match String(env.get("t", "")):
+		"welcome":
+			_relay_room = String(env.get("room", _relay_room))
+			relay_ready.emit(_relay_room)
+		"error":
+			relay_error.emit(String(env.get("code", "")), String(env.get("msg", "")))
+			connection_failed.emit()
+			close()
+		"join":
+			_on_peer_connected(int(env.get("id", -1)))
+		"leave":
+			_on_peer_disconnected(int(env.get("id", -1)))
+		"host_gone":
+			relay_error.emit("host_gone", "L'host ha lasciato la partita.")
+			peer_left.emit()
+			close()
+		"from":
+			var msg: Variant = Marshalls.base64_to_variant(String(env.get("d", "")))
+			if msg is Dictionary:
+				_handle(int(env.get("id", -1)), msg)
 
 
 func _on_peer_connected(id: int) -> void:
@@ -190,6 +296,9 @@ func _send(to_id: int, msg: Dictionary) -> void:
 	if _loop_host != null or not _loop_clients.is_empty():
 		_loop_send(to_id, msg)
 		return
+	if _relay != null:
+		_relay_send_envelope({"t": "to", "id": to_id, "d": Marshalls.variant_to_base64(msg)})
+		return
 	if _peer:
 		_peer.set_target_peer(to_id)
 		_peer.put_packet(var_to_bytes(msg))
@@ -199,6 +308,10 @@ func _broadcast(msg: Dictionary) -> void:
 	if not _loop_clients.is_empty():
 		for c in _loop_clients:
 			(c as NetSession)._handle(HOST_ID, msg)
+		return
+	if _relay != null:
+		# Solo l'host fa broadcast; il relay lo recapita a tutti i client.
+		_relay_send_envelope({"t": "all", "d": Marshalls.variant_to_base64(msg)})
 		return
 	if _peer:
 		_peer.set_target_peer(MultiplayerPeer.TARGET_PEER_BROADCAST)

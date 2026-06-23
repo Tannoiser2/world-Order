@@ -209,4 +209,9 @@ Tutti compatibili con questa architettura ma rimandati.
   - [ ] **Resta**: `produce`/`trade`/`move_army` nel command bus (servono per il turno
     interattivo completo del client); test su DISPOSITIVI reali in LAN; **Step B**
     (`SessionContext`); poi Internet (relay).
-- [ ] **Fase 3** — robustezza (riconnessione, AFK, relay per Internet)
+- [x] **Internet (relay `wss://`)** — FATTO. Relay a stanze in `relay/` (Node + `ws`); lato
+  gioco `NetSession.host_relay`/`join_relay` (host e client si collegano in uscita al relay).
+  Lo stesso protocollo redatto comando->host->snapshot viaggia incapsulato (variant base64).
+  Test: `relay/test` (protocollo) + `scripts/tests/verify_relay.gd` (Godot<->relay end-to-end).
+  Sblocca il gioco da browser/telefono e fuori dalla LAN. Vedi `relay/README.md`.
+- [ ] **Fase 3** — robustezza (riconnessione, AFK, matchmaking)
