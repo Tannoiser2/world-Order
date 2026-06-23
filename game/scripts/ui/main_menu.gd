@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.97"
+const VERSION := "v0.7.98"
 const CHANGELOG := [
+	"v0.7.98 - Relay online pre-configurato: il campo «URL relay» nella lobby e' gia' compilato con wss://world-order-relay.onrender.com, cosi' basta «Ospita (Internet)» / «Entra (Internet)» senza incollare nulla (puoi comunque cambiarlo; l'ultimo usato viene ricordato). NOTA: il relay free si 'addormenta' dopo un po' di inattivita' — la PRIMA connessione dopo una pausa puo' metterci ~30-60s (o fallire una volta): se dice 'Relay irraggiungibile', apri una volta https://world-order-relay.onrender.com nel browser per svegliarlo e riprova.",
 	"v0.7.97 - FIX multiplayer (Research di fine round in rete): stesso schema dell'Aftermath. Prima i pulsanti del passo Research (Compra al Market, Cambia Market, esaurisci alleato, «Continua») chiamavano funzioni LOCALI: dal client avanzavano solo il suo stato (desync) o non comparivano affatto, e il Market mostrato era quello locale (diverso da quello dell'host). Ora: tutte le azioni Research passano dal command bus (nuovi comandi research_exhaust_ally/research_reshuffle/research_continue), il pannello Market e i punti Research sono sincronizzati e il client li RICOSTRUISCE dallo stato, e l'attribuzione e' corretta (agisce solo chi e' di turno). +1 test di regressione (verify_net_research).",
 	"v0.7.96 - FIX multiplayer (Aftermath di fine round in rete): prima il client si bloccava perche' in Aftermath 'chi agisce' non e' il giocatore di turno ma il giocatore in scelta, e quel dato non arrivava al client (ne' la barra delle scelte veniva ricostruita da lui). Ora: il seggio Aftermath e' sincronizzato (attribuzione corretta: il client agisce solo sul PROPRIO Aftermath), e il client ricostruisce la barra delle scelte dallo stato (vede «Continua»/Prosperita' e i token Engage), cosi' puo' chiudere il proprio turno di Aftermath senza bloccare la partita. +1 test di regressione (verify_net_aftermath).",
 	"v0.7.95 - FIX multiplayer: la sequenza dei turni non si rompe piu' ('un giocatore avanti, l'altro bloccato'). Causa: un input del CLIENT veniva etichettato col giocatore DI TURNO invece che col proprio seggio, cosi' un tocco della Cina mentre toccava agli USA chiudeva/agiva il turno degli USA (USA avanti, Cina bloccata). Ora: 1) il client puo' agire SOLO come se' stesso e fuori dal proprio turno l'input viene ignorato; 2) l'host forza il seggio del mittente (autenticato dal trasporto), scartando comandi spacciati per un altro giocatore; 3) l'host ribroadcasta lo stato dopo OGNI cambiamento, inclusi gli avanzamenti di fase/turno che non passano da un comando (prima il client poteva restare indietro). +1 test di regressione sui turni in rete (host<->client).",
@@ -220,9 +221,9 @@ var _host_btn: Button
 var _join_btn: Button
 
 # --- Online via Internet (relay wss://) ---
-## URL di default del relay: incollalo qui dopo aver fatto il deploy (vedi relay/README.md),
-## oppure lascialo vuoto e inseriscilo a runtime nel campo della lobby (viene ricordato).
-const RELAY_URL_DEFAULT := ""
+## URL di default del relay: pre-compilato nel campo della lobby (l'utente può comunque
+## sovrascriverlo; l'ultimo usato viene ricordato). Deploy: vedi relay/README.md.
+const RELAY_URL_DEFAULT := "wss://world-order-relay.onrender.com"
 const RELAY_URL_SAVE := "user://relay_url.txt"
 var _relay_url_edit: LineEdit
 var _relay_room_edit: LineEdit
