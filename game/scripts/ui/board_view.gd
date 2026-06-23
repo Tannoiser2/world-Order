@@ -3045,8 +3045,14 @@ func _update_drawer_state() -> void:
 		if _aftermath_choice_p != null:
 			drawer_power = _aftermath_choice_p.power
 			return
+		# In PREPARAZIONE il Focus si sceglie sulla plancia: il giocatore di turno DEVE vederla,
+		# quindi forziamo anche l'apertura del cassetto (sul client non veniva aperto -> non
+		# vedeva le colonne Focus e la scelta sembrava "fuori sync").
+		if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
+			drawer_open = true
+			drawer_power = _active().power
+			return
 		if _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() \
-				or (_ui_phase == "Preparazione" and _prep_idx < gs.players.size()) \
 				or awaiting == "allied_country" or awaiting in AWAITING_MAP:
 			drawer_power = _active().power
 			return
@@ -3091,6 +3097,14 @@ func _refresh() -> void:
 		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
 		# Aftermath (prima la barra la creava solo l'host: a fine round il client si bloccava).
 		_aftermath_bar(_aftermath_choice_p)
+	elif i_acting and _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
+		# PREPARAZIONE: barra del giocatore di turno ricostruita dallo stato. Prima il Focus
+		# (istruzione) e poi, scelto il Focus, l'Aumento Produzione: così la scelta dell'aumento
+		# appare a CHI agisce (il client) e non resta sullo schermo dell'host ("sempre su USA").
+		if _prep_awaiting_increase:
+			_show_increase_bar()
+		else:
+			_prep_bar()
 	elif net != null and net.is_client():
 		_clear_choice_bar()
 	# GROWTH: selettore a carte (overlay) per CHI agisce, ricostruito dallo stato sincronizzato.
@@ -4542,6 +4556,11 @@ func _ui_snapshot() -> Dictionary:
 		# correttamente la propria mano e il tasto «Fine turno».
 		"plays_left": _plays_left,
 		"played_this_turn": _played_this_turn,
+		# PREPARAZIONE (scelta Focus per giocatore + aumento Produzione): indice del giocatore in
+		# scelta e se si attende l'aumento. Servono al client per aprire la plancia giusta e
+		# ricostruire la barra dell'aumento (prima viveva solo sull'host -> "sempre su USA").
+		"prep_idx": _prep_idx,
+		"prep_increase": _prep_awaiting_increase,
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
@@ -4622,6 +4641,10 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 		_produce_sel = {}
 	_plays_left = int(ui.get("plays_left", _plays_left))
 	_played_this_turn = bool(ui.get("played_this_turn", _played_this_turn))
+	# PREPARAZIONE: indice del giocatore in scelta Focus e attesa dell'aumento Produzione, così
+	# il client apre la plancia giusta e vede la barra dell'aumento quando tocca a lui.
+	_prep_idx = int(ui.get("prep_idx", _prep_idx))
+	_prep_awaiting_increase = bool(ui.get("prep_increase", false))
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
@@ -4715,6 +4738,7 @@ func _next_seq() -> int:
 ## Wrapper che traducono l'input della Vista in un COMANDO e lo passano al bus.
 ## (I bottoni/click si collegano a questi, non più direttamente agli handler.)
 func _cmd_choose_focus(f: int) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.choose_focus(active_seat, _next_seq(), f))
 
 
@@ -4762,6 +4786,7 @@ func _cmd_use_ongoing(tag: String) -> void:
 
 
 func _cmd_increase_production(type: String) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.increase_production(active_seat, _next_seq(), type))
 
 
@@ -5041,6 +5066,9 @@ func _apply_increase_production(p: PlayerState, type: String) -> String:
 
 ## Offre (barra in alto) l'aumento Produzione opzionale del Focus; se nessuna opzione è
 ## abbordabile, passa direttamente al giocatore successivo della Preparazione.
+## Offre l'aumento Produzione dopo il Focus: imposta lo STATO (sincronizzato) e lascia che
+## _refresh costruisca la barra per CHI agisce. Prima la barra la costruiva qui (sull'host):
+## in rete compariva sullo schermo dell'host anche per il turno del client ("sempre su USA").
 func _prep_offer_increase() -> void:
 	var p := _active()
 	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
@@ -5048,7 +5076,15 @@ func _prep_offer_increase() -> void:
 		_prep_advance()
 		return
 	_prep_awaiting_increase = true
+	_after_change()   # la barra la (ri)costruisce _refresh per il giocatore di turno
+
+
+## Barra "Aumento Produzione" ricostruita dallo STATO sincronizzato: la disegna _refresh per
+## il giocatore di turno (in rete: il client), così la scelta non resta intrappolata sull'host.
+func _show_increase_bar() -> void:
 	_clear_choice_bar()
+	var p := _active()
+	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
 	var head := Label.new()
 	head.text = "Aumento Produzione (opzionale) - %s:" % p.power.to_upper()
 	head.add_theme_font_size_override("font_size", _base_fs() + 1)
@@ -5112,10 +5148,10 @@ func _prep_step() -> void:
 		_begin_action_phase()
 		return
 	active_seat = gs.turn_order[_prep_idx]
+	_prep_awaiting_increase = false
 	drawer_open = true
 	drawer_power = _active().power
-	_after_change()
-	_prep_bar()
+	_after_change()   # la barra (Focus o Aumento) la (ri)costruisce _refresh per chi agisce
 
 
 ## Barra in alto della PREPARATION: solo l'istruzione (NIENTE bottoni - la scelta del
