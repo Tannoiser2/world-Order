@@ -4006,6 +4006,10 @@ func apply_command(cmd: Dictionary) -> bool:
 	# RETE: da CLIENT non si applica in locale: si INVIA il comando all'host (autorità),
 	# che lo applichera' e ribroadcastera' lo stato. Da host/hot-seat si prosegue normalmente.
 	if net != null and net.is_client():
+		# Puoi inviare comandi solo per il TUO seggio: se non e' il tuo turno (o il comando
+		# riguarda un altro seggio) non lo si invia (l'host lo scarterebbe comunque).
+		if int(cmd["seat"]) != net.my_seat:
+			return false
 		net.send_command(cmd)
 		return true
 	# GATING: il comando deve venire dal seggio che PUÒ agire ora (vedi _acting_seat):
@@ -4128,10 +4132,15 @@ func apply_remote_snapshot(state: Dictionary) -> void:
 	_refresh()
 
 
-## HOST: comando ricevuto da un CLIENT. Lo si applica con la stessa via dell'input locale
-## (apply_command farà poi il ribroadcast a tutti). Il `seat` del messaggio è già dentro cmd.
-func _on_net_command(_seat: int, cmd: Dictionary) -> void:
-	apply_command(cmd)
+## HOST: comando ricevuto da un CLIENT. `seat` e' il seggio del MITTENTE, autenticato dal
+## trasporto (NetSession lo ricava dalla connessione, non dal payload). Forziamo il seggio
+## del comando a quello del mittente: un client puo' agire SOLO come se' stesso. Cosi' un
+## input inviato fuori dal proprio turno viene scartato dal gating di apply_command invece
+## di essere attribuito al giocatore di turno (causa del desync "uno avanti, l'altro bloccato").
+func _on_net_command(seat: int, cmd: Dictionary) -> void:
+	var c := cmd.duplicate(true)
+	c["seat"] = seat
+	apply_command(c)
 
 
 ## HOST: invia a OGNI client il suo stato redatto + lo stato di interazione corrente.
@@ -5138,6 +5147,11 @@ func _show_summary(lines: Array, cb: Callable, art := "") -> void:
 func _after_change() -> void:
 	_layout_overlays()
 	_refresh()
+	# RETE: l'host ribroadcasta lo stato dopo OGNI cambiamento — inclusi gli avanzamenti di
+	# fase/turno che NON passano da un comando (inizio fase Azione, Research, Aftermath, nuovo
+	# round, passi pilotati dai popup). Senza questo il client resta indietro. Sul client e'
+	# un no-op (vedi guardia in _net_sync).
+	_net_sync()
 
 
 ## Disegna le carte della mano nel contenitore della scheda "Mano".
