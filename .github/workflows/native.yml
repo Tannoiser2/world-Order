@@ -104,10 +104,18 @@ jobs:
       - name: Export Android APK (debug-signed)
         run: |
           # APK in modalita' DEBUG: firmata con la debug keystore generata sopra (per uso
-          # personale/LAN va benissimo e non serve una release keystore). Un export
-          # "release" richiederebbe invece una release keystore dedicata.
+          # personale/LAN va benissimo e non serve una release keystore).
           mkdir -p build/android
-          godot --headless --path game --export-debug "Android" "$GITHUB_WORKSPACE/build/android/world-order.apk"
+          OUT="$GITHUB_WORKSPACE/build/android/world-order.apk"
+          echo "=== template Android disponibili ==="
+          ls -la "$HOME/.local/share/godot/export_templates/4.3.stable/" | grep -i android || echo "NESSUN TEMPLATE ANDROID"
+          echo "=== editor settings (android/java) ==="
+          grep -iE "android|java" "$HOME/.config/godot/editor_settings-4.3.tres" || true
+          echo "=== keystore ==="
+          keytool -list -keystore "$GITHUB_WORKSPACE/debug.keystore" -storepass android 2>&1 | head -3 || true
+          echo "=== export (verbose) ==="
+          godot --headless --verbose --path game --export-debug "Android" "$OUT" 2>&1 | tee /tmp/exp.log | tail -120 || true
+          test -f "$OUT" || { echo "!!! APK non creato"; exit 1; }
           ls -la build/android
 
       - name: Upload Android artifact
