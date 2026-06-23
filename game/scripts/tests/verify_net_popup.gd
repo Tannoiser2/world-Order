@@ -61,6 +61,13 @@ func _init() -> void:
 		"OK" if p3 else "FAIL", str(host._popup_active()), str(client._popup_active())])
 	if not p3: fails += 1
 
+	# 4) La BARRA di scelta si SVUOTA sul client dopo la scelta (il bug: restava appesa,
+	#    "finita l'azione è rimasta la barra di stato così").
+	var p4: bool = client.choice_flow.get_child_count() == 0
+	print("[%s] barra di scelta svuotata sul client dopo la scelta (controlli=%d)" % [
+		"OK" if p4 else "FAIL", client.choice_flow.get_child_count()])
+	if not p4: fails += 1
+
 	host.queue_free()
 	client.queue_free()
 	await process_frame

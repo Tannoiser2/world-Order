@@ -2991,22 +2991,31 @@ func _refresh() -> void:
 	# Barre di scelta a contenuto DETERMINISTICO (dipendono solo dallo stato): Commercio
 	# e Produce si (ri)costruiscono qui in alto. L'Aftermath e le sotto-scelte gestiscono
 	# la propria barra a parte (per non sovrascrivere una sotto-scelta in corso).
-	if _popup_active():
+	# Barre di scelta ricostruite dallo STATO. In rete interagisce solo chi AGISCE (i_acting):
+	# l'altra finestra non deve vedere/usare la barra altrui. Sul CLIENT, se nessuna scelta è
+	# attiva, la barra va SVUOTATA (è guidata solo dallo stato): altrimenti resta appesa una
+	# barra vecchia, es. un popup appena chiuso -> il bug "barra di stato rimasta così".
+	var i_acting := (net == null) or (_view_seat() == _acting_seat())
+	if i_acting and _popup_active():
 		# Scelta a popup (es. "quante Armate", "quanto money"): ricostruita dallo stato, così
 		# anche il CLIENT la vede e la sceglie (l'host esegue la callback).
 		_render_popup_bar()
-	elif not _exhaust_ctx.is_empty():
+	elif i_acting and not _exhaust_ctx.is_empty():
 		# Sconto Improve Relations: barra ricostruita dallo stato (il client vede Conferma/Salta).
 		_show_exhaust_choice_bar()
-	elif _trade_mode:
+	elif i_acting and awaiting == "move" and not _move_ctx.is_empty():
+		_refresh_move_bar()
+	elif i_acting and _trade_mode:
 		_show_trade_bar(p)
-	elif _produce_mode:
+	elif i_acting and _produce_mode:
 		_show_produce_bar(p)
-	elif _aftermath_choice_p != null and not _aftermath_subchoice:
+	elif i_acting and _aftermath_choice_p != null and not _aftermath_subchoice:
 		# AFTERMATH: ricostruisce la barra delle scelte dallo stato (come Commercio/Produce),
 		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
 		# Aftermath (prima la barra la creava solo l'host: a fine round il client si bloccava).
 		_aftermath_bar(_aftermath_choice_p)
+	elif net != null and net.is_client():
+		_clear_choice_bar()
 	# RESEARCH: ricostruisce il pannello Market dallo stato sincronizzato (punti + Market),
 	# così il CLIENT vede il proprio passo Research e può comprare/cambiare/Continuare.
 	if _ui_phase == "Research" and market_content != null:
