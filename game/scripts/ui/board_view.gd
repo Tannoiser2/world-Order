@@ -279,6 +279,25 @@ func _active() -> PlayerState:
 	return gs.players[active_seat]
 
 
+## Seggio di cui QUESTA istanza mostra le informazioni PRIVATE (la mano). In rete è SEMPRE
+## il giocatore LOCALE: non si deve mai vedere la mano degli altri, nemmeno quando tocca a
+## loro. In hot-seat (un solo schermo, ci si passa il dispositivo) è il giocatore di turno.
+func _view_seat() -> int:
+	if net != null and net.my_seat >= 0:
+		return net.my_seat
+	return active_seat
+
+
+func _view_player() -> PlayerState:
+	var s := _view_seat()
+	return gs.players[s] if s >= 0 and s < gs.players.size() else _active()
+
+
+## True se tocca al giocatore LOCALE (può interagire con la propria mano / chiudere il turno).
+func _is_my_turn() -> bool:
+	return _view_seat() == active_seat
+
+
 ## Stile globale dei Button "normali" (non flat, senza override): sfondo, bordo e
 ## padding così OGNI scelta cliccabile si vede chiaramente come un pulsante.
 ## I bottoni flat (carte, zone Focus...) e quelli con stylebox propria restano invariati.
@@ -2953,6 +2972,10 @@ func _refresh() -> void:
 func _refresh_hud(p: PlayerState) -> void:
 	for c in hud_box.get_children():
 		c.queue_free()
+	# IDENTITÀ (solo in rete): bandiera + "TU: <potenza>" nel colore della potenza, così è
+	# sempre chiaro COME quale giocatore stai giocando (distinto da "> a chi tocca").
+	if net != null:
+		hud_box.add_child(_identity_badge(_view_player()))
 	var my_turn := (round_turn_count / gs.players.size()) + 1
 	# Barra snella: round + fase + indicatore di TURNO (a chi tocca, nel suo colore) +
 	# denaro + Fine turno. VP sui segnalini del tabellone; Prosperità sulla plancia.
@@ -2973,9 +2996,43 @@ func _refresh_hud(p: PlayerState) -> void:
 	# fisso in BASSO a destra (vedi end_turn_btn in _layout_ui). Qui ne aggiorno lo stato.
 	if end_turn_btn:
 		# 'Fine turno' bloccato finché non hai GIOCATO (o passato) una carta nel turno.
-		# Eccezione: mano vuota (non puoi più agire) -> puoi comunque finire.
+		# Eccezione: mano vuota (non puoi più agire) -> puoi comunque finire. In rete è
+		# abilitato SOLO quando tocca a te (non puoi chiudere il turno di un altro).
 		var must_play: bool = not _played_this_turn and not p.hand.is_empty() and _plays_left > 0
-		end_turn_btn.disabled = game_over or not playing_card.is_empty() or _ui_phase != "Azione" or must_play
+		end_turn_btn.disabled = game_over or not playing_card.is_empty() or _ui_phase != "Azione" or must_play or not _is_my_turn()
+
+
+## Distintivo "TU: <potenza>" (bandiera + colore) per chiarire l'identità in rete.
+func _identity_badge(pl: PlayerState) -> Control:
+	var col: Color = POWER_COLORS.get(pl.power, Color(0.85, 0.85, 0.85))
+	var pan := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col.r, col.g, col.b, 0.28)
+	sb.border_color = col
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(4)
+	pan.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	pan.add_child(row)
+	var flag := "res://assets/flags/%s.png" % pl.power
+	if ResourceLoader.exists(flag):
+		var tr := TextureRect.new()
+		tr.texture = load(flag)
+		tr.custom_minimum_size = Vector2(30, 20)
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(tr)
+	var lab := Label.new()
+	lab.text = "TU: %s" % pl.power.to_upper()
+	lab.add_theme_font_size_override("font_size", _base_fs() + 2)
+	lab.add_theme_color_override("font_color", col)
+	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	lab.add_theme_constant_override("outline_size", 3)
+	lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(lab)
+	return pan
 
 
 ## Maniglie: una per potenza, colorate; > = a chi tocca, ▼ = cassetto aperto.
@@ -4204,6 +4261,10 @@ func _ui_snapshot() -> Dictionary:
 		"move_ctx": _move_ctx.duplicate(true) if not _move_ctx.is_empty() else {},
 		"produce_mode": _produce_mode,
 		"trade_mode": _trade_mode,
+		# Conteggi del turno del giocatore ATTIVO: servono al client per abilitare/disabilitare
+		# correttamente la propria mano e il tasto «Fine turno».
+		"plays_left": _plays_left,
+		"played_this_turn": _played_this_turn,
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
@@ -4241,6 +4302,8 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_move_ctx = mc.duplicate(true) if not mc.is_empty() else {}
 	_produce_mode = bool(ui.get("produce_mode", false))
 	_trade_mode = bool(ui.get("trade_mode", false))
+	_plays_left = int(ui.get("plays_left", _plays_left))
+	_played_this_turn = bool(ui.get("played_this_turn", _played_this_turn))
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
@@ -5245,9 +5308,9 @@ func _render_hand() -> void:
 		return
 	for c in hand_box.get_children():
 		c.queue_free()
-	var p := _active()
+	var p := _view_player()
 	var ch := _hand_card_height()
-	var busy: bool = not playing_card.is_empty() or _plays_left <= 0
+	var busy: bool = not playing_card.is_empty() or not _is_my_turn() or _plays_left <= 0
 	var has_sel: bool = not _selected_hand_card.is_empty()
 	# Carte della mano: 1° tap evidenzia (bordo verde + le altre si oscurano), ri-tap gioca.
 	for card in p.hand:
