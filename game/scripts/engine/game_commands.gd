@@ -19,8 +19,9 @@ const KNOWN := [
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
 	# Azioni a PAYLOAD pieno (la selezione si compone in locale, poi si invia il risultato)
 	"produce", "trade", "move_army", "move_finish",
-	# Annullo di Commercio/Produce (deve passare dall'host, altrimenti i due schermi divergono)
-	"trade_cancel", "produce_cancel",
+	# Annullo di Commercio/Produce e della giocata in corso (Move/scelte): deve passare
+	# dall'host, altrimenti il client esce ma l'host resta dentro -> tutto bloccato.
+	"trade_cancel", "produce_cancel", "cancel_card",
 	# Get a Growth Card (Azione) e acquisto al Market (Research)
 	"buy_growth", "buy_market",
 	# Research (fase per-giocatore): oltre a buy_market, esaurire un alleato, rimescolare il
@@ -113,6 +114,10 @@ static func produce_cancel(seat: int, seq: int) -> Dictionary:
 	return make("produce_cancel", seat, seq, {})
 
 
+static func cancel_card(seat: int, seq: int) -> Dictionary:
+	return make("cancel_card", seat, seq, {})
+
+
 static func buy_growth(seat: int, seq: int, card_id: String) -> Dictionary:
 	return make("buy_growth", seat, seq, {"card_id": card_id})
 
@@ -187,7 +192,7 @@ static func valid_shape(cmd: Variant) -> bool:
 		"move_army":
 			return typeof(args.get("src")) == TYPE_STRING and String(args["src"]) != "" \
 				and typeof(args.get("dest")) == TYPE_STRING and String(args["dest"]) != ""
-		"move_finish", "trade_cancel", "produce_cancel":
+		"move_finish", "trade_cancel", "produce_cancel", "cancel_card":
 			return true
 		"buy_growth", "buy_market":
 			return typeof(args.get("card_id")) == TYPE_STRING and String(args["card_id"]) != ""
