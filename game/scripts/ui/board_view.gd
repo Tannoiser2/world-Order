@@ -107,6 +107,7 @@ const MARKET_SLOTS := 5
 # Stato dell'Aftermath interattivo (scelte per giocatore prima di THREAT/Scoring).
 var _aftermath_idx := 0                  # giocatore corrente nella fase scelte
 var _aftermath_choice_p: PlayerState = null  # giocatore in scelta Aftermath (sulla mappa/plancia)
+var _aftermath_subchoice := false        # sotto-scelta token in corso (money/Difesa): non ricostruire la barra
 var _aftermath_lines: Array[String] = [] # righe del riepilogo di fine round
 var _aftermath_ai_art := ""             # art della carta Auto-Influence (per il riepilogo)
 var _threat_defense: Dictionary = {}    # {region: {power: +Difesa}} da Engage token scartati
@@ -2937,6 +2938,11 @@ func _refresh() -> void:
 		_show_trade_bar(p)
 	elif _produce_mode:
 		_show_produce_bar(p)
+	elif _aftermath_choice_p != null and not _aftermath_subchoice:
+		# AFTERMATH: ricostruisce la barra delle scelte dallo stato (come Commercio/Produce),
+		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
+		# Aftermath (prima la barra la creava solo l'host: a fine round il client si bloccava).
+		_aftermath_bar(_aftermath_choice_p)
 	_layout_ui()
 
 
@@ -4170,6 +4176,9 @@ func _ui_snapshot() -> Dictionary:
 		"move_ctx": _move_ctx.duplicate(true) if not _move_ctx.is_empty() else {},
 		"produce_mode": _produce_mode,
 		"trade_mode": _trade_mode,
+		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
+		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
+		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
 	}
 
 
@@ -4187,6 +4196,10 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_move_ctx = mc.duplicate(true) if not mc.is_empty() else {}
 	_produce_mode = bool(ui.get("produce_mode", false))
 	_trade_mode = bool(ui.get("trade_mode", false))
+	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
+	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
+	var aseat := int(ui.get("aftermath_seat", -1))
+	_aftermath_choice_p = gs.players[aseat] if aseat >= 0 and aseat < gs.players.size() else null
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4882,6 +4895,7 @@ func _show_aftermath_choices(p: PlayerState) -> void:
 
 ## Barra in alto dell'Aftermath: intestazione, eventuale "Aumenta Prosperità" e "Continua".
 func _aftermath_bar(p: PlayerState) -> void:
+	_aftermath_subchoice = false   # barra principale: nessuna sotto-scelta token in corso
 	_clear_choice_bar()
 	var head := Label.new()
 	head.text = "Aftermath - %s  -  round %d" % [p.power.to_upper(), gs.round]
@@ -4927,6 +4941,7 @@ func _aftermath_continue() -> void:
 func _on_aftermath_token(p: PlayerState, region: String) -> void:
 	if _aftermath_choice_p != p or region not in p.engage_tokens:
 		return
+	_aftermath_subchoice = true    # sotto-scelta in corso: _refresh non ricostruisce la barra
 	_clear_choice_bar()
 	var n := _allied_count_in_region(p, region)
 	var lab := Label.new()
