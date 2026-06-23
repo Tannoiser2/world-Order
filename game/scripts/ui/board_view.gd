@@ -74,6 +74,7 @@ var _pending_preview: Dictionary = {}   # {tex, text} in attesa del ritardo
 var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
 var tab_bg: Panel                   # sfondo solido della barra linguette
+var _net_debug: Label = null        # riquadro diagnostico (solo in rete): stato di sync vivo
 var drawer_open := false
 var drawer_power := ""              # potenza la cui plancia è mostrata nel cassetto
 var ui_theme: Theme                 # font/scala globale proporzionale alla viewport
@@ -263,6 +264,18 @@ func _ready() -> void:
 		net.snapshot_received.connect(apply_remote_snapshot)
 		if net.is_host():
 			net.command_received.connect(_on_net_command)
+		# DIAGNOSTICA (solo in rete): un riquadro in basso a sinistra con lo stato di sync
+		# vivo (chi agisce, cosa si attende, barre/carte pendenti). Quando il gioco "si
+		# ferma", UNA foto di questo angolo dice subito quale stato è bloccato.
+		_net_debug = Label.new()
+		_net_debug.name = "NetDebug"
+		_net_debug.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_net_debug.z_index = 400
+		_net_debug.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
+		_net_debug.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+		_net_debug.add_theme_constant_override("outline_size", 4)
+		_net_debug.add_theme_font_size_override("font_size", 13)
+		add_child(_net_debug)
 
 	resized.connect(_on_resized)
 	_layout_ui()
@@ -3020,7 +3033,36 @@ func _refresh() -> void:
 	# così il CLIENT vede il proprio passo Research e può comprare/cambiare/Continuare.
 	if _ui_phase == "Research" and market_content != null:
 		_show_research()
+	_update_net_debug()
 	_layout_ui()
+
+
+## Aggiorna il riquadro diagnostico (solo in rete): mostra lo stato di sync VIVO così, se il
+## gioco si blocca, una sola foto dell'angolo basta a capire QUALE stato è appeso. mine = il
+## mio seggio; act = chi agisce ORA; aw = cosa si attende; le bandierine indicano se è pendente
+## una carta in gioco / popup / sconto / move / commercio / produce; end = tasto Fine turno.
+func _update_net_debug() -> void:
+	if _net_debug == null or net == null:
+		return
+	var endable := "?"
+	if end_turn_btn != null:
+		endable = "OFF" if end_turn_btn.disabled else "ON"
+	var pl: PlayerState = _view_player()
+	var hand_n := (pl.hand.size() if pl != null else -1)
+	_net_debug.text = ("NET %s  mine=%d act=%d aw=%s\n"
+		+ "play=%s pop=%s exh=%s mv=%s tr=%s pr=%s\n"
+		+ "phase=%s plays=%d played=%s hand=%d  endTurn=%s") % [
+		("HOST" if net.is_host() else "CLIENT"), net.my_seat, active_seat,
+		("'" + awaiting + "'") if awaiting != "" else "-",
+		"Y" if not playing_card.is_empty() else "-",
+		"Y" if _popup_active() else "-",
+		"Y" if not _exhaust_ctx.is_empty() else "-",
+		"Y" if not _move_ctx.is_empty() else "-",
+		"Y" if _trade_mode else "-",
+		"Y" if _produce_mode else "-",
+		_ui_phase, _plays_left, "Y" if _played_this_turn else "-", hand_n, endable]
+	# Sul bordo SINISTRO, a metà altezza (sopra la mappa): testo con contorno, sempre leggibile.
+	_net_debug.position = Vector2(6.0, size.y * 0.40)
 
 
 func _refresh_hud(p: PlayerState) -> void:
