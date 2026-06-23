@@ -55,13 +55,46 @@ jobs:
             build/windows/
           if-no-files-found: error
 
-  android:
-    name: Android (APK) [WIP]
+  macos:
+    name: macOS (.app)
     runs-on: ubuntu-latest
-    # NOTA: l'export Android in questa immagine fallisce con un config error opaco di
-    # Godot (in indagine). Non blocca il rilascio Desktop: il job e' tollerante all'errore
-    # finche' non lo risolviamo. Vedi docs/multiplayer-lan.md.
-    continue-on-error: true
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          DEST="$HOME/.local/share/godot/export_templates"
+          mkdir -p "$DEST"
+          cp -rn /root/.local/share/godot/export_templates/* "$DEST"/ 2>/dev/null || true
+          ls -la "$DEST"/4.3.stable/ | grep -i macos || echo "NESSUN TEMPLATE macOS"
+
+      - name: Import project
+        run: godot --headless --path game --import || true
+
+      - name: Export macOS (universal, non firmato)
+        run: |
+          # Build UNIVERSALE (Intel + Apple Silicon). Niente code signing/notarizzazione:
+          # per uso personale va bene, ma al primo avvio macOS la mette in quarantena.
+          # Vedi docs/multiplayer-lan.md per sbloccarla (xattr / click destro -> Apri).
+          mkdir -p build/macos
+          OUT="$GITHUB_WORKSPACE/build/macos/world-order.zip"
+          godot --headless --verbose --path game --export-release "macOS" "$OUT" 2>&1 | tail -80 || true
+          test -f "$OUT" || { echo "!!! .zip macOS non creato"; exit 1; }
+          ls -la build/macos
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-order-macos
+          path: build/macos/world-order.zip
+          if-no-files-found: error
+
+  android:
+    name: Android (APK)
+    runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.3
     steps:
