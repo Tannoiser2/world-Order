@@ -1,0 +1,21 @@
+# Deploy del relay su Fly.io (https://fly.io) — alternativa a Render.
+# Come si usa (dalla cartella relay/):
+#   fly launch --no-deploy --copy-config   # genera/usa questo file e l'app
+#   fly deploy
+# Fly builda il Dockerfile e ti da' un URL HTTPS: il tuo URL gioco e' wss://<app>.fly.dev
+app = "world-order-relay"
+primary_region = "cdg"   # cambia con la region piu' vicina (es. "fra", "ams", "mad")
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

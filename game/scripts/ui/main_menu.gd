@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.93"
+const VERSION := "v0.7.94"
 const CHANGELOG := [
+	"v0.7.94 - ONLINE via Internet (relay): ora si gioca anche DA BROWSER/TELEFONO e FUORI dalla LAN, non solo tra app native sulla stessa rete. Come funziona: un piccolo server 'relay' (cartella relay/, da mettere online una volta - vedi relay/README.md) a cui host e client si collegano tutti in uscita via 'wss://'; ci si trova con un CODICE STANZA. Nella lobby: incolli l'URL del relay (viene ricordato), l'host preme «Ospita (Internet)» e ottiene un codice da condividere, gli altri «Entra (Internet)» con quel codice. Dal browser ora SI PUO' ospitare (il relay e' una connessione in uscita, non un server locale). La LAN diretta resta invariata. L'host resta l'arbitro; il relay inoltra i messaggi senza leggerli. +3 test del relay (protocollo stanze) e un test d'integrazione Godot<->relay end-to-end.",
 	"v0.7.93 - Build per MAC (e ANDROID sbloccata). Aggiunto l'export macOS: artefatto 'world-order-macos' (un .zip con world-order.app), build UNIVERSALE per Mac Intel e Apple Silicon (M1/M2/M3); non e' firmata, quindi al primo avvio si sblocca una volta sola con 'xattr -dr com.apple.quarantine world-order.app' o click destro -> Apri. BONUS: il fix che serviva al Mac (abilitare le texture ETC2 ASTC, richieste dall'arm64) ha risolto anche il misterioso errore dell'APK Android, che ora si compila: era la stessa causa, ma Android la segnalava senza messaggio. Ora la pipeline produce TUTTE le app native: Linux, Windows, macOS e Android. Guida in docs/multiplayer-lan.md.",
 	"v0.7.92 - APP NATIVE per la LAN: aggiunta la pipeline che genera le build native scaricabili da GitHub Actions. Servono perche' il multiplayer LAN funziona SOLO tra app native (dal browser non si puo' ospitare). DESKTOP (Linux + Windows): pronte e scaricabili. ANDROID (APK): ancora in lavorazione (l'export in CI da' un errore opaco di Godot, in indagine; non blocca le build desktop). Come si gioca: tutti sulla stessa rete, uno fa Ospita (LAN) e mostra il suo IP, gli altri si Uniscono con quell'IP, poi l'host preme Avvia. Guida in docs/multiplayer-lan.md.",
 	"v0.7.91 - LOBBY: messaggi ONESTI sul Web. Da BROWSER non si puo' OSPITARE (una pagina web non puo' fare da server: prima dava un fuorviante 'porta occupata? Errore 1') e nemmeno unirsi a una LAN in 'ws://' (la pagina e' HTTPS e il browser blocca il contenuto misto). Quindi la LAN diretta funziona solo tra APP NATIVE (desktop/Android); per giocare da browser/telefono servira' un piccolo relay 'wss://' (versione online, prossimo passo). Aggiunta anche la chiusura immediata del socket quando si lascia la lobby (niente piu' 'porta occupata' ri-ospitando su nativo).",
@@ -214,6 +215,18 @@ var _players_list: VBoxContainer
 var _ip_edit: LineEdit
 var _host_btn: Button
 var _join_btn: Button
+
+# --- Online via Internet (relay wss://) ---
+## URL di default del relay: incollalo qui dopo aver fatto il deploy (vedi relay/README.md),
+## oppure lascialo vuoto e inseriscilo a runtime nel campo della lobby (viene ricordato).
+const RELAY_URL_DEFAULT := ""
+const RELAY_URL_SAVE := "user://relay_url.txt"
+var _relay_url_edit: LineEdit
+var _relay_room_edit: LineEdit
+var _relay_host_btn: Button
+var _relay_join_btn: Button
+var _is_relay := false        # true se la sessione corrente passa dal relay
+var _relay_room := ""         # codice stanza (host: assegnato dal relay; client: digitato)
 
 
 func _ready() -> void:
@@ -440,6 +453,41 @@ func _build_lobby(box: VBoxContainer) -> void:
 	_join_btn.pressed.connect(_on_join)
 	row.add_child(_join_btn)
 
+	# --- Online via Internet (relay wss://): funziona anche da browser e fuori dalla LAN ---
+	var sep := Label.new()
+	sep.text = "— oppure via Internet (relay) —"
+	sep.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sep.add_theme_color_override("font_color", Color(0.7, 0.8, 0.95))
+	_lobby_box.add_child(sep)
+
+	_relay_url_edit = LineEdit.new()
+	_relay_url_edit.placeholder_text = "URL relay (es. wss://tuo-relay.onrender.com)"
+	_relay_url_edit.custom_minimum_size = Vector2(440, 36)
+	_relay_url_edit.text = _load_relay_url()
+	_lobby_box.add_child(_relay_url_edit)
+
+	var rrow := HBoxContainer.new()
+	rrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	rrow.add_theme_constant_override("separation", 8)
+	_lobby_box.add_child(rrow)
+
+	_relay_host_btn = Button.new()
+	_relay_host_btn.text = "Ospita (Internet)"
+	_relay_host_btn.custom_minimum_size = Vector2(150, 36)
+	_relay_host_btn.pressed.connect(_on_relay_host)
+	rrow.add_child(_relay_host_btn)
+
+	_relay_room_edit = LineEdit.new()
+	_relay_room_edit.placeholder_text = "Codice stanza"
+	_relay_room_edit.custom_minimum_size = Vector2(140, 36)
+	rrow.add_child(_relay_room_edit)
+
+	_relay_join_btn = Button.new()
+	_relay_join_btn.text = "Entra (Internet)"
+	_relay_join_btn.custom_minimum_size = Vector2(150, 36)
+	_relay_join_btn.pressed.connect(_on_relay_join)
+	rrow.add_child(_relay_join_btn)
+
 	_lobby_status = Label.new()
 	_lobby_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lobby_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -470,9 +518,7 @@ func _on_host() -> void:
 		return
 	GameConfig.net = _net
 	_net.lobby_changed.connect(_on_lobby_changed)
-	_host_btn.disabled = true
-	_join_btn.disabled = true
-	_ip_edit.editable = false
+	_set_lobby_busy(true)
 	_on_lobby_changed(_net.lobby_players())
 
 
@@ -500,10 +546,86 @@ func _on_join() -> void:
 	_net.lobby_changed.connect(_on_lobby_changed)
 	_net.started.connect(_on_started)
 	_net.connection_failed.connect(func(): _lobby_status.text = "Connessione fallita.")
-	_host_btn.disabled = true
-	_join_btn.disabled = true
-	_ip_edit.editable = false
+	_set_lobby_busy(true)
 	_lobby_status.text = "Connessione a %s… attendi che l'host avvii la partita." % ip
+
+
+## HOST via relay: si collega al relay e ottiene un codice stanza da condividere.
+## A differenza della LAN, dal browser SI PUO' ospitare (il relay e' una connessione in
+## uscita, non un server locale).
+func _on_relay_host() -> void:
+	var url := _relay_url_edit.text.strip_edges()
+	if url == "":
+		_lobby_status.text = "Inserisci l'URL del relay (es. wss://tuo-relay.onrender.com)."
+		return
+	_free_net()
+	_is_relay = true
+	_net = NetSession.new()
+	_net.name = "NetSession"
+	get_tree().root.add_child(_net)
+	var err := _net.host_relay(url)
+	if err != OK:
+		_lobby_status.text = "URL relay non valido. Errore %d" % err
+		_free_net()
+		return
+	_save_relay_url(url)
+	GameConfig.net = _net
+	_net.lobby_changed.connect(_on_lobby_changed)
+	_net.relay_ready.connect(_on_relay_ready)
+	_net.relay_error.connect(_on_relay_err)
+	_net.connection_failed.connect(func(): _lobby_status.text = "Relay irraggiungibile: controlla l'URL.")
+	_set_lobby_busy(true)
+	_lobby_status.text = "Connessione al relay…"
+
+
+## CLIENT via relay: entra nella stanza `codice` passando dal relay.
+func _on_relay_join() -> void:
+	var url := _relay_url_edit.text.strip_edges()
+	var room := _relay_room_edit.text.strip_edges().to_upper()
+	if url == "":
+		_lobby_status.text = "Inserisci l'URL del relay."
+		return
+	if room == "":
+		_lobby_status.text = "Inserisci il codice stanza dato dall'host."
+		return
+	_free_net()
+	_is_relay = true
+	_net = NetSession.new()
+	_net.name = "NetSession"
+	get_tree().root.add_child(_net)
+	var err := _net.join_relay(url, room)
+	if err != OK:
+		_lobby_status.text = "URL relay non valido. Errore %d" % err
+		_free_net()
+		return
+	_save_relay_url(url)
+	GameConfig.net = _net
+	_net.lobby_changed.connect(_on_lobby_changed)
+	_net.started.connect(_on_started)
+	_net.relay_ready.connect(_on_relay_ready)
+	_net.relay_error.connect(_on_relay_err)
+	_net.connection_failed.connect(func(): _lobby_status.text = "Relay irraggiungibile: controlla l'URL.")
+	_set_lobby_busy(true)
+	_lobby_status.text = "Connessione alla stanza %s…" % room
+
+
+## Relay: stanza pronta. Host -> mostra il codice da condividere; client -> attende l'host.
+func _on_relay_ready(room: String) -> void:
+	_relay_room = room
+	if _net != null and _net.is_host():
+		_on_lobby_changed(_net.lobby_players())
+	else:
+		_lobby_status.text = "Connesso alla stanza %s — attendi che l'host avvii la partita." % room
+
+
+## Relay: la stanza ha rifiutato (codice errato, piena, host uscito…).
+func _on_relay_err(code: String, msg: String) -> void:
+	var human := msg
+	if human == "":
+		human = "Errore relay: %s" % code
+	_lobby_status.text = human
+	_set_lobby_busy(false)
+	_is_relay = false
 
 
 ## HOST e CLIENT: aggiorna la lista dei giocatori in lobby.
@@ -516,8 +638,12 @@ func _on_lobby_changed(players: Array) -> void:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_players_list.add_child(l)
 	if _net != null and _net.is_host():
-		_lobby_status.text = "In ascolto su %s:%d — condividi questo IP. Giocatori: %d (servono %d). Poi premi «Avvia partita»." % [
-			_local_ip(), NetSession.PORT_DEFAULT, players.size(), _player_count]
+		if _is_relay:
+			_lobby_status.text = "Stanza ONLINE «%s» — condividi il codice. Giocatori: %d (servono %d). Poi premi «Avvia partita»." % [
+				_relay_room, players.size(), _player_count]
+		else:
+			_lobby_status.text = "In ascolto su %s:%d — condividi questo IP. Giocatori: %d (servono %d). Poi premi «Avvia partita»." % [
+				_local_ip(), NetSession.PORT_DEFAULT, players.size(), _player_count]
 
 
 ## CLIENT: l'host ha avviato la partita -> entra nella scena di gioco.
@@ -534,15 +660,40 @@ func _free_net() -> void:
 		_net.queue_free()
 		_net = null
 	GameConfig.net = null
+	_is_relay = false
+	_relay_room = ""
+
+
+## Abilita/disabilita tutti i controlli della lobby (LAN + relay) mentre si e' connessi.
+func _set_lobby_busy(busy: bool) -> void:
+	if _host_btn != null: _host_btn.disabled = busy
+	if _join_btn != null: _join_btn.disabled = busy
+	if _ip_edit != null: _ip_edit.editable = not busy
+	if _relay_host_btn != null: _relay_host_btn.disabled = busy
+	if _relay_join_btn != null: _relay_join_btn.disabled = busy
+	if _relay_url_edit != null: _relay_url_edit.editable = not busy
+	if _relay_room_edit != null: _relay_room_edit.editable = not busy
+
+
+## Ricorda l'ultimo URL di relay usato (così non va reincollato ogni volta).
+func _load_relay_url() -> String:
+	if FileAccess.file_exists(RELAY_URL_SAVE):
+		var f := FileAccess.open(RELAY_URL_SAVE, FileAccess.READ)
+		if f != null:
+			return f.get_as_text().strip_edges()
+	return RELAY_URL_DEFAULT
+
+
+func _save_relay_url(url: String) -> void:
+	var f := FileAccess.open(RELAY_URL_SAVE, FileAccess.WRITE)
+	if f != null:
+		f.store_string(url)
 
 
 func _reset_lobby_controls() -> void:
-	if _host_btn != null:
-		_host_btn.disabled = false
-	if _join_btn != null:
-		_join_btn.disabled = false
-	if _ip_edit != null:
-		_ip_edit.editable = true
+	_set_lobby_busy(false)
+	_is_relay = false
+	_relay_room = ""
 	if _players_list != null:
 		for c in _players_list.get_children():
 			c.queue_free()

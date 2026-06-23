@@ -1,9 +1,13 @@
-# Multiplayer in LAN (app native)
+# Multiplayer: LAN (app native) e Internet (relay)
 
-Il multiplayer in rete locale funziona **tra app native** (PC e/o Android) sulla
-**stessa rete Wi-Fi/LAN**. **Dal browser non si può** (una pagina web non può fare da
-server, e una pagina HTTPS non può collegarsi a un host `ws://`): per il browser/telefono
-servirà in futuro un relay `wss://`.
+Ci sono **due modi** di giocare in rete:
+
+- **LAN** — tra **app native** (PC/Mac/Android) sulla **stessa rete Wi-Fi/LAN**. Diretto, nessun
+  server esterno. Dal browser **non** si può (una pagina web non fa da server e una pagina HTTPS
+  non si collega a un `ws://`).
+- **Internet (relay `wss://`)** — funziona **anche da browser/telefono** e **fuori dalla LAN**.
+  Host e client si collegano tutti a un piccolo server relay; ci si trova con un **codice stanza**.
+  Richiede di aver messo online il relay una volta (vedi `relay/README.md`).
 
 ## Come ottenere le app
 
@@ -32,22 +36,40 @@ L'app `.app` **non è firmata né notarizzata** (è una build personale via CI),
 
 > Se vuoi una build firmata/notarizzata (apertura senza passaggi extra) serve un account Apple Developer: si può aggiungere più avanti.
 
-## Come giocare
+## Come giocare in LAN
 
 1. Tutti i dispositivi sulla **stessa rete locale**.
-2. Su un dispositivo (PC o telefono): **Online (LAN) → Ospita (LAN)**. Compare il suo **IP**.
-3. Sugli altri: **Online (LAN) → Unisciti**, inserendo quell'**IP**.
+2. Su un dispositivo (PC o telefono): **Online → Ospita (LAN)**. Compare il suo **IP**.
+3. Sugli altri: **Online → Unisciti**, inserendo quell'**IP**.
 4. Quando tutti sono collegati, l'host preme **Avvia partita**.
 
-L'host fa da **arbitro** (possiede lo stato) e invia a ciascuno solo la propria mano; gli
-altri inviano le mosse all'host. La porta usata è la **8910** (TCP/WebSocket): se un firewall
-la blocca, sbloccala sull'host.
+La porta usata è la **8910** (TCP/WebSocket): se un firewall la blocca, sbloccala sull'host.
+
+## Come giocare via Internet (relay)
+
+Prerequisito: il relay deve essere **online** (deploy una tantum, istruzioni in `relay/README.md`).
+Ottieni un URL tipo `wss://tuo-relay.onrender.com`.
+
+1. Nella lobby (**Online**), incolla l'URL nel campo **«URL relay»** (viene ricordato).
+2. L'host preme **«Ospita (Internet)»** → compare un **codice stanza** (es. `Z3AC`). Lo condivide.
+3. Gli altri inseriscono lo **stesso URL** + il **codice** e premono **«Entra (Internet)»**.
+4. Quando ci sono abbastanza giocatori, l'host preme **Avvia partita**.
+
+Funziona anche **da browser** (il sito web): a differenza della LAN, dal browser **si può**
+ospitare, perché il relay è una connessione in uscita e non un server locale.
+
+## Come funziona (entrambe le modalità)
+
+L'host fa da **arbitro** (possiede lo stato) e invia a ciascuno solo la propria mano; gli altri
+inviano le mosse all'host. In LAN i client si collegano direttamente all'host; via relay tutti si
+collegano al relay, che smista i messaggi (senza leggerne il contenuto). Il codice di rete è in
+`game/scripts/net/net_session.gd` (`host_lan`/`join_lan` per la LAN, `host_relay`/`join_relay`
+per il relay).
 
 ## Note
 
-- **Android può ospitare** (è un'app nativa): un telefono fa da host e un altro telefono/PC
-  si unisce.
-- Se "Ospita" dà errore su PC dopo vari tentativi, chiudi e riapri (la porta si libera subito
+- **Android può ospitare** (è un'app nativa): un telefono fa da host e un altro telefono/PC si unisce.
+- Se "Ospita (LAN)" dà errore su PC dopo vari tentativi, chiudi e riapri (la porta si libera subito
   quando lasci la lobby).
-- macOS: non incluso negli export automatici (richiede firma/notarizzazione). Si può
-  esportare a mano dall'editor se serve.
+- Relay su **free tier** (es. Render): dopo un po' di inattività il server si "addormenta"; la prima
+  connessione può metterci ~30s a svegliarlo.

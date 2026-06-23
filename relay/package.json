@@ -1,0 +1,17 @@
+{
+  "name": "world-order-relay",
+  "version": "1.0.0",
+  "description": "Relay wss:// per il multiplayer di World Order (host-authoritative, stanze a codice). Permette di giocare da browser/telefono e via Internet, non solo in LAN.",
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test --test-force-exit"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

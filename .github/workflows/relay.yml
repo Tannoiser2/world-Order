@@ -1,0 +1,26 @@
+name: Relay tests
+
+# Test del relay wss:// (cartella relay/). Gira quando cambia il relay.
+on:
+  push:
+    paths: ["relay/**", ".github/workflows/relay.yml"]
+  pull_request:
+    paths: ["relay/**", ".github/workflows/relay.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: relay (node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: relay/package-lock.json
+      - run: npm ci
+      - run: npm test
