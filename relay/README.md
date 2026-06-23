@@ -39,7 +39,7 @@ sola istanza** (va benissimo per partite tra amici).
 ### Opzione A — Render (consigliata, free)
 
 1. Vai su [render.com](https://render.com) → **New +** → **Blueprint** → collega questo repo.
-2. Render legge [`render.yaml`](./render.yaml), builda la cartella `relay/` e avvia il server.
+2. Render legge [`render.yaml`](../render.yaml) (nella radice del repo), builda la cartella `relay/` e avvia il server.
 3. Ottieni un URL tipo `https://world-order-relay.onrender.com`.
 4. Nel gioco usa la versione **`wss://`**: `wss://world-order-relay.onrender.com`.
 
