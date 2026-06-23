@@ -82,17 +82,15 @@ jobs:
       - name: Import project
         run: godot --headless --path game --import || true
 
-      - name: Installa l'Android build template (gradle)
+      - name: Build-tools 34 (apksigner/zipalign per il Target SDK 34 di Godot 4.3)
         run: |
-          # Con gradle_build/use_gradle_build=true serve il build template in
-          # res://android/build/ (di norma "Install Android Build Template"
-          # dall'editor): lo estraiamo da android_source.zip dei template.
-          TPL="$HOME/.local/share/godot/export_templates/4.3.stable/android_source.zip"
-          mkdir -p game/android/build
-          (cd game/android/build && (unzip -o -q "$TPL" || jar xf "$TPL"))
-          echo "4.3.stable" > game/android/.build_version
-          touch game/android/build/.gdignore
-          echo "build template installato:"; ls game/android/build | head
+          # Godot 4.3 punta al Target SDK 34: per firmare/zipallineare l'APK servono
+          # i build-tools 34 (l'immagine ne ha solo 33.0.2 -> config error vuoto).
+          ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/lib/android-sdk}}"
+          SDKM="$(command -v sdkmanager || echo "$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager")"
+          echo "sdkmanager: $SDKM ; SDK: $ANDROID_SDK"
+          yes | "$SDKM" --sdk_root="$ANDROID_SDK" "platform-tools" "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -8 || true
+          ls "$ANDROID_SDK/build-tools" || true
 
       - name: Editor Settings (path Java/Android SDK per l'export)
         run: |
