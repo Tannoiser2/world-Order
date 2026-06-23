@@ -890,7 +890,7 @@ func _layout_card_slots() -> void:
 		for i in mini(avail.size(), centers.size()):
 			# Niente flyover sulle carte sul tabellone: si leggono zoomando la mappa.
 			var card := _country_card_button(avail[i], Vector2(cw, ch), awaiting == "board_country", false)
-			card.pressed.connect(_on_country_pressed.bind(avail[i], region))
+			card.pressed.connect(_cmd_pick_board_country.bind(avail[i], region))
 			card.position = Vector2(float(centers[i][0]) * board_native.x - cw * 0.5, float(centers[i][1]) * board_native.y - ch * 0.5)
 			card_layer.add_child(card)
 
@@ -1644,11 +1644,11 @@ func _show_exhaust_choice_bar() -> void:
 	choice_flow.add_child(lab)
 	var ok := Button.new(); ok.text = "Conferma sconto"
 	ok.add_theme_font_size_override("font_size", _base_fs() + 1)
-	ok.pressed.connect(_exhaust_confirm)
+	ok.pressed.connect(_cmd_exhaust_confirm)
 	choice_flow.add_child(ok)
 	var skip := Button.new(); skip.text = "Salta (nessuno sconto)"
 	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
-	skip.pressed.connect(_exhaust_skip)
+	skip.pressed.connect(_cmd_exhaust_skip)
 	choice_flow.add_child(skip)
 	choice_bar.visible = true
 	_layout_ui()
@@ -2961,13 +2961,22 @@ func _update_drawer_state() -> void:
 	# collassa più). Mostra la potenza scelta con le linguette, di default il giocatore
 	# di turno; durante Commercio/Produce/sconto/Preparazione torna sul giocatore attivo.
 	drawer_open = true
-	if _aftermath_choice_p != null:
-		drawer_power = _aftermath_choice_p.power
-		return
-	if _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() \
-			or (_ui_phase == "Preparazione" and _prep_idx < gs.players.size()) \
-			or awaiting == "allied_country" or awaiting in AWAITING_MAP:
-		drawer_power = _active().power
+	# In RETE forziamo la plancia sul giocatore che agisce SOLO se quel giocatore sei TU:
+	# altrimenti puoi guardare la board che vuoi senza essere trascinato dalle scelte altrui.
+	var i_act := (net == null) or (_view_seat() == _acting_seat())
+	if i_act:
+		if _aftermath_choice_p != null:
+			drawer_power = _aftermath_choice_p.power
+			return
+		if _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() \
+				or (_ui_phase == "Preparazione" and _prep_idx < gs.players.size()) \
+				or awaiting == "allied_country" or awaiting in AWAITING_MAP:
+			drawer_power = _active().power
+			return
+	# Nessuna fase forzante (o non stai agendo): mostra la board scelta; se non ne hai
+	# scelta una valida, di default la TUA (in rete) o quella di turno (hot-seat).
+	if drawer_power == "" or gs.player_by_power(drawer_power) == null:
+		drawer_power = _view_player().power if net != null else _active().power
 
 
 func _refresh() -> void:
@@ -2986,6 +2995,9 @@ func _refresh() -> void:
 		# Scelta a popup (es. "quante Armate", "quanto money"): ricostruita dallo stato, così
 		# anche il CLIENT la vede e la sceglie (l'host esegue la callback).
 		_render_popup_bar()
+	elif not _exhaust_ctx.is_empty():
+		# Sconto Improve Relations: barra ricostruita dallo stato (il client vede Conferma/Salta).
+		_show_exhaust_choice_bar()
 	elif _trade_mode:
 		_show_trade_bar(p)
 	elif _produce_mode:
@@ -4176,6 +4188,27 @@ func apply_command(cmd: Dictionary) -> bool:
 			if cn2.is_empty():
 				return false
 			_on_exhaust_toggle(cn2)
+		"pick_board_country":
+			# Improve Relations: scelta della Country sul tabellone (per ID nella Regione).
+			if awaiting != "board_country":
+				return false
+			var reg := String(a["region"])
+			var ctry := {}
+			for c in ((region_countries.get(reg, {}) as Dictionary).get("available", []) as Array):
+				if String((c as Dictionary).get("id", "")) == String(a["country_id"]):
+					ctry = c
+					break
+			if ctry.is_empty():
+				return false
+			_on_country_pressed(ctry, reg)
+		"exhaust_confirm":
+			if _exhaust_ctx.is_empty():
+				return false
+			_exhaust_confirm()
+		"exhaust_skip":
+			if _exhaust_ctx.is_empty():
+				return false
+			_exhaust_skip()
 		"produce":
 			# Risultato del Produce: applica la selezione (tipo_risorsa -> quantità).
 			if not _produce_mode:
@@ -4343,6 +4376,13 @@ func _ui_snapshot() -> Dictionary:
 		# Scelta a popup in corso (prompt + ETICHETTE, niente value/callback): così il client
 		# la vede e la può scegliere, rimandando l'indice (vedi _cmd_popup_choice).
 		"popup": _popup_snapshot(),
+		# Sconto Improve Relations in corso (Regione + titolo + alleati selezionati, niente
+		# callback): così il client vede la barra e può confermare/saltare/toggleare.
+		"exhaust": {
+			"region": String(_exhaust_ctx.get("region", "")),
+			"title": String(_exhaust_ctx.get("title", "")),
+			"sel": _exhaust_sel.duplicate(true),
+		} if not _exhaust_ctx.is_empty() else {},
 	}
 
 
@@ -4420,6 +4460,15 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 		_popup_items = []
 		for l in (pop.get("labels", []) as Array):
 			_popup_items.append({"label": String(l)})
+	# Sconto Improve Relations: il client ricostruisce Regione/titolo + selezione (la callback
+	# resta sull'host). Quando l'host chiude, lo snapshot non lo porta più -> si pulisce.
+	var exh: Dictionary = ui.get("exhaust", {})
+	if exh.is_empty():
+		_exhaust_ctx = {}
+		_exhaust_sel = {}
+	else:
+		_exhaust_ctx = {"region": String(exh.get("region", "")), "title": String(exh.get("title", ""))}
+		_exhaust_sel = (exh.get("sel", {}) as Dictionary).duplicate(true)
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -4499,6 +4548,19 @@ func _cmd_pick_allied_country(cn: Dictionary) -> void:
 
 func _cmd_exhaust_ally(cn: Dictionary) -> void:
 	apply_command(GameCommands.exhaust_ally(active_seat, _next_seq(), String(cn.get("id", ""))))
+
+
+## Improve Relations: scelta della Country sul tabellone e conferma/salta dello sconto.
+func _cmd_pick_board_country(country: Dictionary, region: String) -> void:
+	apply_command(GameCommands.pick_board_country(active_seat, _next_seq(), region, String(country.get("id", ""))))
+
+
+func _cmd_exhaust_confirm() -> void:
+	apply_command(GameCommands.exhaust_confirm(active_seat, _next_seq()))
+
+
+func _cmd_exhaust_skip() -> void:
+	apply_command(GameCommands.exhaust_skip(active_seat, _next_seq()))
 
 
 ## Produce/Trade: la selezione è composta in locale (resource track), il bottone Conferma
