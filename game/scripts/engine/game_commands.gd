@@ -21,6 +21,9 @@ const KNOWN := [
 	"produce", "trade", "move_army", "move_finish",
 	# Get a Growth Card (Azione) e acquisto al Market (Research)
 	"buy_growth", "buy_market",
+	# Research (fase per-giocatore): oltre a buy_market, esaurire un alleato, rimescolare il
+	# Market e AVANZARE al giocatore successivo (così anche il client le instrada all'host).
+	"research_exhaust_ally", "research_reshuffle", "research_continue",
 	# Aftermath (fase per-giocatore; gating sul giocatore Aftermath, non su active_seat)
 	"aftermath_token", "aftermath_prosperity", "aftermath_continue",
 ]
@@ -108,6 +111,19 @@ static func buy_market(seat: int, seq: int, card_id: String) -> Dictionary:
 	return make("buy_market", seat, seq, {"card_id": card_id})
 
 
+## Research (fase di fine round, per-giocatore). `seat` = giocatore di turno (active_seat).
+static func research_exhaust_ally(seat: int, seq: int, country_id: String) -> Dictionary:
+	return make("research_exhaust_ally", seat, seq, {"country_id": country_id})
+
+
+static func research_reshuffle(seat: int, seq: int) -> Dictionary:
+	return make("research_reshuffle", seat, seq, {})
+
+
+static func research_continue(seat: int, seq: int) -> Dictionary:
+	return make("research_continue", seat, seq, {})
+
+
 ## Aftermath. `kind`: "money" (ROI) o "defense" (THREAT). seat = giocatore Aftermath.
 static func aftermath_token(seat: int, seq: int, region: String, kind: String) -> Dictionary:
 	return make("aftermath_token", seat, seq, {"region": region, "kind": kind})
@@ -165,6 +181,10 @@ static func valid_shape(cmd: Variant) -> bool:
 			return true
 		"buy_growth", "buy_market":
 			return typeof(args.get("card_id")) == TYPE_STRING and String(args["card_id"]) != ""
+		"research_exhaust_ally":
+			return typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
+		"research_reshuffle", "research_continue":
+			return true
 		"aftermath_token":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != "" \
 				and String(args.get("kind", "")) in ["money", "defense"]
