@@ -101,10 +101,13 @@ jobs:
           fi
           echo "----- editor_settings-4.3.tres -----"; cat "$ES"
 
-      - name: Export Android APK
+      - name: Export Android APK (debug-signed)
         run: |
+          # APK in modalita' DEBUG: firmata con la debug keystore generata sopra (per uso
+          # personale/LAN va benissimo e non serve una release keystore). Un export
+          # "release" richiederebbe invece una release keystore dedicata.
           mkdir -p build/android
-          godot --headless --path game --export-release "Android" "$GITHUB_WORKSPACE/build/android/world-order.apk"
+          godot --headless --path game --export-debug "Android" "$GITHUB_WORKSPACE/build/android/world-order.apk"
           ls -la build/android
 
       - name: Upload Android artifact
