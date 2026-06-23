@@ -15,6 +15,8 @@ extends RefCounted
 const KNOWN := [
 	# Azione (turno del giocatore attivo) e Preparazione
 	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
+	# Giocare una carta a faccia in giù: +10 money, oppure come costo di una Carta Strategica
+	"play_money_token", "play_strategic_asset",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
 	# Improve Relations: scelta della Country sul tabellone + conferma/salta dello sconto
@@ -57,6 +59,16 @@ static func play_card(seat: int, seq: int, hand_index: int) -> Dictionary:
 
 static func end_turn(seat: int, seq: int) -> Dictionary:
 	return make("end_turn", seat, seq, {})
+
+
+## Carta di mano (per INDICE) giocata a faccia in giù per +10 money.
+static func play_money_token(seat: int, seq: int, hand_index: int) -> Dictionary:
+	return make("play_money_token", seat, seq, {"hand_index": hand_index})
+
+
+## Carta di mano (per INDICE) usata come costo per attivare uno Strategic Asset (per id).
+static func play_strategic_asset(seat: int, seq: int, hand_index: int, asset_id: String) -> Dictionary:
+	return make("play_strategic_asset", seat, seq, {"hand_index": hand_index, "asset_id": asset_id})
 
 
 static func use_ongoing(seat: int, seq: int, tag: String) -> Dictionary:
@@ -195,6 +207,11 @@ static func valid_shape(cmd: Variant) -> bool:
 			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0
 		"end_turn":
 			return true
+		"play_money_token":
+			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0
+		"play_strategic_asset":
+			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0 \
+				and typeof(args.get("asset_id")) == TYPE_STRING and String(args["asset_id"]) != ""
 		"use_ongoing":
 			return typeof(args.get("tag")) == TYPE_STRING and String(args["tag"]) != ""
 		"increase_production":

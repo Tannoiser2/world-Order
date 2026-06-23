@@ -4160,6 +4160,25 @@ func apply_command(cmd: Dictionary) -> bool:
 			_play_card(p.hand[idx])
 		"end_turn":
 			_end_turn()
+		"play_money_token":
+			var pm := _active()
+			var mi := int(a["hand_index"])
+			if mi < 0 or mi >= pm.hand.size():
+				return false
+			_play_facedown_money(pm.hand[mi])
+		"play_strategic_asset":
+			var ps := _active()
+			var si := int(a["hand_index"])
+			if si < 0 or si >= ps.hand.size():
+				return false
+			var asset := {}
+			for sa in ps.strategic_assets:
+				if String((sa as Dictionary).get("id", (sa as Dictionary).get("display_name", ""))) == String(a["asset_id"]):
+					asset = sa
+					break
+			if asset.is_empty():
+				return false
+			_play_strategic_asset(ps.hand[si], asset)
 		"use_ongoing":
 			_use_ongoing(String(a["tag"]))
 		"increase_production":
@@ -4533,6 +4552,34 @@ func _cmd_play_card(card: Dictionary) -> void:
 	if idx < 0:
 		return
 	apply_command(GameCommands.play_card(active_seat, _next_seq(), idx))
+
+
+## Moneta +10 / Carta Strategica: la carta SELEZIONATA è il costo (faccia in giù). Si invia
+## l'INDICE in mano (e l'id dell'asset) così l'host applica la giocata.
+func _cmd_play_money_token() -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	if _selected_hand_card.is_empty():
+		_status("Prima seleziona una carta dalla mano, poi tocca la Moneta +10 per scartarla e prendere +10 money.")
+		return
+	var idx := _active().hand.find(_selected_hand_card)
+	_selected_hand_card = {}
+	if idx < 0:
+		return
+	apply_command(GameCommands.play_money_token(active_seat, _next_seq(), idx))
+
+
+func _cmd_play_strategic_asset(asset: Dictionary) -> void:
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	if _selected_hand_card.is_empty():
+		_status("Prima seleziona una carta dalla mano, poi tocca una carta Strategica per attivarla (la carta è il costo).")
+		return
+	var idx := _active().hand.find(_selected_hand_card)
+	_selected_hand_card = {}
+	if idx < 0:
+		return
+	apply_command(GameCommands.play_strategic_asset(active_seat, _next_seq(), idx, String(asset.get("id", asset.get("display_name", "")))))
 
 
 func _cmd_use_ongoing(tag: String) -> void:
@@ -5539,7 +5586,7 @@ func _hand_money_token(ch: int, busy: bool, has_sel: bool) -> Control:
 	b.tooltip_text = "Scarta la carta selezionata (faccia in giù) per +10 money"
 	if not has_sel:
 		b.modulate = Color(0.55, 0.55, 0.6)
-	b.pressed.connect(_on_play_money_token)
+	b.pressed.connect(_cmd_play_money_token)
 	var ic := TextureRect.new()
 	ic.texture = load("res://assets/money/coin_10.png")
 	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5569,7 +5616,7 @@ func _hand_strategic_token(asset: Dictionary, ch: int, busy: bool, has_sel: bool
 	card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), _card_text(asset)]
 	if not has_sel:
 		card.modulate = Color(0.6, 0.6, 0.65)
-	card.pressed.connect(_on_play_strategic_token.bind(asset))
+	card.pressed.connect(_cmd_play_strategic_asset.bind(asset))
 	return card
 
 
