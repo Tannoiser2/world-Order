@@ -1,0 +1,96 @@
+name: Build native apps (LAN multiplayer)
+
+# Esporta le build NATIVE (desktop + Android). Servono per il multiplayer in LAN:
+# dal browser non si puo' ospitare (vedi lobby), tra app native sulla stessa rete si'.
+# Si avvia a mano (Actions -> "Run workflow") o pubblicando un tag v*.
+# Gli artefatti (binari) si scaricano dalla pagina del run.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  desktop:
+    name: Desktop (Linux + Windows)
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          DEST="$HOME/.local/share/godot/export_templates"
+          mkdir -p "$DEST"
+          cp -rn /root/.local/share/godot/export_templates/* "$DEST"/ 2>/dev/null || true
+          ls -la "$DEST"
+
+      - name: Import project
+        run: godot --headless --path game --import || true
+
+      - name: Export Linux
+        run: |
+          mkdir -p build/linux
+          godot --headless --path game --export-release "Linux" "$GITHUB_WORKSPACE/build/linux/world-order.x86_64"
+          chmod +x build/linux/world-order.x86_64 || true
+          ls -la build/linux
+
+      - name: Export Windows
+        run: |
+          mkdir -p build/windows
+          godot --headless --path game --export-release "Windows" "$GITHUB_WORKSPACE/build/windows/world-order.exe"
+          ls -la build/windows
+
+      - name: Upload desktop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-order-desktop
+          path: |
+            build/linux/
+            build/windows/
+          if-no-files-found: error
+
+  android:
+    name: Android (APK)
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          DEST="$HOME/.local/share/godot/export_templates"
+          mkdir -p "$DEST"
+          cp -rn /root/.local/share/godot/export_templates/* "$DEST"/ 2>/dev/null || true
+
+      - name: Debug keystore (firma dell'APK)
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey \
+            -keypass android -keystore "$GITHUB_WORKSPACE/debug.keystore" -storepass android \
+            -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$GITHUB_WORKSPACE/debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Import project
+        run: godot --headless --path game --import || true
+
+      - name: Export Android APK
+        run: |
+          mkdir -p build/android
+          godot --headless --path game --export-release "Android" "$GITHUB_WORKSPACE/build/android/world-order.apk"
+          ls -la build/android
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-order-android
+          path: build/android/world-order.apk
+          if-no-files-found: error
