@@ -1,5 +1,8 @@
 # Godot 4 — cartella generata di import/cache
 .godot/
 
+# Android build template installato in CI (gradle): generato, non versionato.
+android/
+
 # Nota: export_presets.cfg (preset "Web") e' versionato apposta per la CI Pages;
 # non contiene percorsi/credenziali locali.

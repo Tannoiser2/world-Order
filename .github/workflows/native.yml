@@ -82,6 +82,18 @@ jobs:
       - name: Import project
         run: godot --headless --path game --import || true
 
+      - name: Installa l'Android build template (gradle)
+        run: |
+          # Con gradle_build/use_gradle_build=true serve il build template in
+          # res://android/build/ (di norma "Install Android Build Template"
+          # dall'editor): lo estraiamo da android_source.zip dei template.
+          TPL="$HOME/.local/share/godot/export_templates/4.3.stable/android_source.zip"
+          mkdir -p game/android/build
+          (cd game/android/build && (unzip -o -q "$TPL" || jar xf "$TPL"))
+          echo "4.3.stable" > game/android/.build_version
+          touch game/android/build/.gdignore
+          echo "build template installato:"; ls game/android/build | head
+
       - name: Editor Settings (path Java/Android SDK per l'export)
         run: |
           # L'export Android richiede i path di Java SDK (e Android SDK) nelle Editor
