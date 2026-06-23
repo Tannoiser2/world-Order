@@ -17,6 +17,9 @@ const KNOWN := [
 	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
+	# Improve Relations: scelta della Country sul tabellone + conferma/salta dello sconto
+	# (esaurire alleati). Le callback non sono serializzabili: le esegue l'host.
+	"pick_board_country", "exhaust_confirm", "exhaust_skip",
 	# Scelta a "popup" (es. quante Armate / quanto money): il client invia l'INDICE scelto,
 	# l'host esegue la callback corrispondente (non serializzabile).
 	"popup_choice",
@@ -87,6 +90,19 @@ static func exhaust_ally(seat: int, seq: int, country_id: String) -> Dictionary:
 ## Scelta a popup: `index` = posizione dell'opzione scelta (l'host ha le opzioni+callback).
 static func popup_choice(seat: int, seq: int, index: int) -> Dictionary:
 	return make("popup_choice", seat, seq, {"index": index})
+
+
+## Improve Relations: scelta della Country (per ID, nella Regione) e conferma/salta sconto.
+static func pick_board_country(seat: int, seq: int, region: String, country_id: String) -> Dictionary:
+	return make("pick_board_country", seat, seq, {"region": region, "country_id": country_id})
+
+
+static func exhaust_confirm(seat: int, seq: int) -> Dictionary:
+	return make("exhaust_confirm", seat, seq, {})
+
+
+static func exhaust_skip(seat: int, seq: int) -> Dictionary:
+	return make("exhaust_skip", seat, seq, {})
 
 
 ## Produce (azione domestica): `sel` mappa tipo_risorsa -> quantità da produrre. La
@@ -192,6 +208,11 @@ static func valid_shape(cmd: Variant) -> bool:
 			return typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
 		"popup_choice":
 			return typeof(args.get("index")) == TYPE_INT and int(args["index"]) >= 0
+		"pick_board_country":
+			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != "" \
+				and typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
+		"exhaust_confirm", "exhaust_skip":
+			return true
 		"produce":
 			return typeof(args.get("sel")) == TYPE_DICTIONARY
 		"trade":
