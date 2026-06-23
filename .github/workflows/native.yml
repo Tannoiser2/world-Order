@@ -93,12 +93,8 @@ jobs:
           if-no-files-found: error
 
   android:
-    name: Android (APK) [WIP]
+    name: Android (APK)
     runs-on: ubuntu-latest
-    # NOTA: l'export Android in questa immagine fallisce con un config error opaco di
-    # Godot (in indagine). Non blocca il rilascio Desktop: il job e' tollerante all'errore
-    # finche' non lo risolviamo. Vedi docs/multiplayer-lan.md.
-    continue-on-error: true
     container:
       image: barichello/godot-ci:4.3
     steps:
