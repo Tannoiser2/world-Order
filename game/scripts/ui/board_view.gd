@@ -50,6 +50,23 @@ var _touches: Dictionary = {}
 var _pinch_dist := 0.0
 var layout: Dictionary
 var status_label: Label
+# REGISTRO (log delle cose fatte): colonna laterale sul bordo destro della mappa, collassabile
+# in orizzontale. Le righe le genera l'host e si sincronizzano (coda) a tutti i giocatori.
+var log_panel: Panel
+var log_content: VBoxContainer
+var log_scroll: ScrollContainer
+var log_toggle: Button
+var log_title: Label
+var _log_collapsed := true
+var _log_lines: Array = []
+# AVVISO (banner) prominente: per esempio quando un'azione non e' eseguibile. Sincronizzato
+# (msg + contatore) cosi' lo vede anche il client che ha tentato l'azione.
+var notify_banner: Panel
+var notify_label: Label
+var _notify_timer: Timer
+var _notify_seq := 0
+var _notify_msg := ""
+var _last_notify_seq := 0
 var board_bg: TextureRect          # plancia di produzione (immagine) della potenza attiva
 var hand_box: HBoxContainer
 var popup_layer: Control
@@ -233,6 +250,8 @@ func _ready() -> void:
 
 	_build_hud()
 	_build_drawer()
+	_build_log_panel()
+	_build_notify_banner()
 	popup_layer = Control.new()
 	popup_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	popup_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1083,7 +1102,7 @@ func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> voi
 			p.exhausted[c.get("id", "")] = true   # gli alleati usati per lo sconto si esauriscono
 		region_countries.get(region, {}).get("available", []).erase(country)
 		_refill_available(region)
-		_status("%s: Improve Relations con %s (-%d Dip%s)." % [
+		_event("%s: Improve Relations con %s (-%d Dip%s)." % [
 			p.power.to_upper(), country.get("display_name", ""), cost,
 			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 		_after_change()
@@ -1107,17 +1126,23 @@ func _on_allied_pressed(country: Dictionary) -> void:
 	var region := String(country.get("region", ""))
 	_pick_slot(region, func(slot):
 		if name == "invest":
-			if Actions.execute_invest(gs, p.power, country, slot) < 0:
+			var ivp := Actions.execute_invest(gs, p.power, country, slot)
+			if ivp < 0:
 				if _action_failed("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))]):
 					return
+			else:
+				_event("%s: Invest in %s (+%d VP)." % [p.power.to_upper(), country.get("display_name", "?"), ivp])
 			_after_change()
 			_advance_play()
 		elif name == "build_base":
 			# Build a Base: muovi da 1 fino al valore del Country (pag. 15), non 1 fisso.
 			_pick_base_armies(country, func(n_armies):
-				if Actions.execute_build_base(gs, p.power, country, n_armies, slot) < 0:
+				var bvp := Actions.execute_build_base(gs, p.power, country, n_armies, slot)
+				if bvp < 0:
 					if _action_failed("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?")):
 						return
+				else:
+					_event("%s: Base in %s, %d Armata/e (+%d VP)." % [p.power.to_upper(), country.get("display_name", "?"), n_armies, bvp])
 				_after_change()
 				_advance_play())
 		else:
@@ -1244,7 +1269,7 @@ func _play_strategic_asset(hand_card: Dictionary, asset: Dictionary) -> void:
 	playing_card = asset
 	play_queue = (asset.get("effect_ops", []) as Array).duplicate(true)
 	active_mods = Modifiers.parse(asset.get("effect_modifiers", []))
-	_status("Strategic Asset: %s%s" % [asset.get("display_name", "?"), _mods_text(active_mods)])
+	_event("%s attiva l'Asset Strategico: %s%s" % [p.power.to_upper(), asset.get("display_name", "?"), _mods_text(active_mods)])
 	_advance_play()
 
 
@@ -1262,7 +1287,7 @@ func _play_card(card: Dictionary) -> void:
 	_play_ops_started = 0
 	active_mods = Modifiers.parse(card.get("effect_modifiers", []))
 	var mtxt := _mods_text(active_mods)
-	_status("Giochi: %s%s" % [card.get("display_name", "carta"), mtxt])
+	_event("%s gioca: %s%s" % [_active().power.to_upper(), card.get("display_name", "carta"), mtxt])
 	_advance_play()
 
 
@@ -1649,7 +1674,7 @@ func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
 		return
 	for c in chosen:
 		p.exhausted[c.get("id", "")] = true   # alleati usati per lo sconto
-	_status("%s: Engage in %s (-%d Dip, +%d VP%s)." % [
+	_event("%s: Engage in %s (-%d Dip, +%d VP%s)." % [
 		p.power.to_upper(), region.replace("_", " "), cost, vp,
 		", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 	_layout_overlays()
@@ -2082,7 +2107,9 @@ func _abort_play(reason: String) -> void:
 	_move_ctx = {}
 	_growth_pick = {}
 	_clear_choice_bar()
-	_status(reason + "  La carta resta in mano (turno non consumato).")
+	var full := reason + "  La carta resta in mano (turno non consumato)."
+	_notify(full)
+	_log(full)
 	_after_change()
 
 
@@ -2190,7 +2217,7 @@ func _render_growth_pick() -> void:
 func _buy_growth_action(card: Dictionary, nl: int) -> void:
 	var p := _active()
 	if Actions.execute_get_growth(p, card, nl):
-		_status("Ottenuta Growth: %s (+%d VP)." % [card.get("display_name", "?"), int(card.get("victory_points", 0))])
+		_event("%s ottiene la Growth: %s (+%d VP)." % [p.power.to_upper(), card.get("display_name", "?"), int(card.get("victory_points", 0))])
 	_growth_pick = {}
 	_close_popup()
 	_after_change()
@@ -2500,11 +2527,11 @@ func _apply_trade() -> void:
 	_trade_active_res = ""
 	_clear_choice_bar()
 	if diplo_eligible:
-		_status("Commercio completato (comprato da un altro giocatore: +1 Diplomazia).")
+		_event("%s: Commercio (comprato da un altro giocatore: +1 Diplomazia)." % _active().power.to_upper())
 	elif sold_armies > 0:
-		_status("Commercio completato (vendute %d Armate)." % sold_armies)
+		_event("%s: Commercio (vendute %d Armate)." % [_active().power.to_upper(), sold_armies])
 	else:
-		_status("Commercio completato.")
+		_event("%s: Commercio completato." % _active().power.to_upper())
 	_refresh()
 	_advance_play()
 
@@ -2709,7 +2736,7 @@ func _apply_produce() -> void:
 	_produce_sel = {}
 	_produce_mode = false
 	_clear_choice_bar()
-	_status("Produzione: %s" % (", ".join(summary) if summary.size() > 0 else "niente"))
+	_event("%s: Produzione %s" % [_active().power.to_upper(), (", ".join(summary) if summary.size() > 0 else "niente")])
 	_refresh()
 	_advance_play()
 
@@ -2977,6 +3004,148 @@ func _build_drawer() -> void:
 	mkscroll.add_child(market_content)
 
 
+## REGISTRO: colonna sul bordo destro della mappa con la storia delle azioni. Collassabile in
+## orizzontale (un tasto la riduce a una linguetta). Posizione/dimensione in _layout_ui.
+func _build_log_panel() -> void:
+	log_panel = Panel.new()
+	log_panel.z_index = 60
+	log_panel.clip_contents = true
+	var lst := StyleBoxFlat.new()
+	lst.bg_color = Color(0.05, 0.06, 0.09, 0.94)
+	lst.set_corner_radius_all(8)
+	lst.set_border_width_all(1); lst.border_color = Color(0.4, 0.5, 0.65, 0.6)
+	log_panel.add_theme_stylebox_override("panel", lst)
+	add_child(log_panel)
+	var col := VBoxContainer.new()
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.add_theme_constant_override("separation", 2)
+	log_panel.add_child(col)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 4)
+	col.add_child(header)
+	log_toggle = Button.new()
+	log_toggle.focus_mode = Control.FOCUS_NONE
+	log_toggle.pressed.connect(_toggle_log)
+	header.add_child(log_toggle)
+	log_title = Label.new()
+	log_title.text = "Registro"
+	log_title.add_theme_color_override("font_color", Color(0.7, 0.8, 0.95))
+	log_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(log_title)
+	log_scroll = ScrollContainer.new()
+	log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	log_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(log_scroll)
+	log_content = VBoxContainer.new()
+	log_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	log_content.add_theme_constant_override("separation", 3)
+	log_scroll.add_child(log_content)
+
+
+## Banner di AVVISO prominente (es. azione non eseguibile): compare in alto al centro e si
+## nasconde da solo dopo qualche secondo. Posizione in _layout_ui.
+func _build_notify_banner() -> void:
+	notify_banner = Panel.new()
+	notify_banner.z_index = 220
+	notify_banner.visible = false
+	notify_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var nst := StyleBoxFlat.new()
+	nst.bg_color = Color(0.55, 0.18, 0.12, 0.97)
+	nst.set_corner_radius_all(10)
+	nst.set_border_width_all(2); nst.border_color = Color(1.0, 0.8, 0.4, 0.95)
+	nst.set_content_margin_all(10)
+	notify_banner.add_theme_stylebox_override("panel", nst)
+	add_child(notify_banner)
+	notify_label = Label.new()
+	notify_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	notify_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	notify_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	notify_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	notify_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notify_label.add_theme_color_override("font_color", Color(1, 1, 1))
+	notify_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	notify_label.add_theme_constant_override("outline_size", 3)
+	notify_banner.add_child(notify_label)
+	_notify_timer = Timer.new()
+	_notify_timer.one_shot = true
+	_notify_timer.wait_time = 4.0
+	_notify_timer.timeout.connect(func(): if notify_banner: notify_banner.visible = false)
+	add_child(_notify_timer)
+
+
+## Aggiunge una riga al Registro (storia delle azioni). La genera l'host; si sincronizza ai
+## client (coda) via snapshot. Tiene le ultime ~200 righe.
+func _log(msg: String) -> void:
+	var m := msg.strip_edges()
+	if m == "":
+		return
+	_log_lines.append(m)
+	if _log_lines.size() > 200:
+		_log_lines = _log_lines.slice(_log_lines.size() - 200)
+	_render_log()
+
+
+## Evento di gioco: lo mostra nella riga di stato E lo registra nel Registro.
+func _event(msg: String) -> void:
+	_status(msg)
+	_log(msg)
+
+
+func _render_log() -> void:
+	if log_content == null:
+		return
+	for c in log_content.get_children():
+		c.queue_free()
+	if _log_collapsed:
+		return
+	# Le piu' recenti in fondo (come una chat); lo scroll in basso e' differito (dopo il layout).
+	var start := maxi(0, _log_lines.size() - 60)
+	for i in range(start, _log_lines.size()):
+		var l := Label.new()
+		l.text = String(_log_lines[i])
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 4))
+		l.add_theme_color_override("font_color", Color(0.82, 0.86, 0.92) if i % 2 == 0 else Color(0.72, 0.78, 0.88))
+		log_content.add_child(l)
+	_scroll_log_bottom.call_deferred()
+
+
+func _scroll_log_bottom() -> void:
+	if is_instance_valid(log_scroll):
+		var sb := log_scroll.get_v_scroll_bar()
+		if sb:
+			log_scroll.scroll_vertical = int(sb.max_value)
+
+
+func _toggle_log() -> void:
+	_log_collapsed = not _log_collapsed
+	_render_log()
+	_layout_ui()
+
+
+## Mostra un AVVISO prominente (banner) e lo sincronizza (msg + contatore) cosi' lo vede anche
+## il client che ha tentato l'azione. In hot-seat compare e basta.
+func _notify(msg: String) -> void:
+	_notify_seq += 1
+	_notify_msg = msg
+	# Lo mostra a CHI agisce. Se l'host risolve per un client, l'host non e' l'attore: non lo
+	# mostra in locale, ma lo sincronizza (seq+msg) e il client attore lo vede dallo snapshot.
+	if _i_acting():
+		_last_notify_seq = _notify_seq
+		_show_notify_banner(msg)
+
+
+func _show_notify_banner(msg: String) -> void:
+	if notify_banner == null:
+		return
+	notify_label.add_theme_font_size_override("font_size", _base_fs() + 2)
+	notify_label.text = msg
+	notify_banner.visible = true
+	_layout_ui()
+	if _notify_timer:
+		_notify_timer.start()
+
+
 ## Scala font/altezze in base alla viewport reale (responsive). La mappa riempie
 ## lo schermo dietro; HUD in alto, schede in basso, cassetto nel mezzo.
 func _layout_ui() -> void:
@@ -3037,13 +3206,35 @@ func _layout_ui() -> void:
 			market_panel.size = Vector2(maxf(1.0, w - board_w), h - content_top - tab_h)
 	# Pannello MANO a tutta larghezza, ancorato in basso (sopra le linguette). Durante la
 	# Research è nascosto (non si giocano carte: c'è la board mercato).
+	var hand_top := h - tab_h
 	if hand_panel:
 		hand_panel.visible = not in_research
 		var hand_open: bool = hand_box != null and is_instance_valid(hand_box)
 		var hand_h := (_hand_card_height() + bar_h + 18.0) if hand_open else bar_h
 		hand_h = clampf(hand_h, bar_h, h - content_top - tab_h)
-		hand_panel.position = Vector2(0, h - tab_h - hand_h)
+		hand_top = h - tab_h - hand_h
+		hand_panel.position = Vector2(0, hand_top)
 		hand_panel.size = Vector2(w, hand_h)
+	# REGISTRO: colonna sul bordo DESTRO della mappa, sopra la barra MANO. Collassata = solo una
+	# linguetta col tasto per espanderla; espansa = colonna con la storia. Nascosta in Research.
+	if log_panel:
+		log_panel.visible = not in_research
+		var log_top := content_top
+		var log_bottom := minf(content_top + content_h, hand_top - 2.0)
+		var log_h := maxf(40.0, log_bottom - log_top)
+		var log_w := clampf((w - board_w) * 0.42, 190.0, 340.0) if not _log_collapsed else (_base_fs() + 18.0)
+		log_panel.position = Vector2(w - log_w, log_top)
+		log_panel.size = Vector2(log_w, log_h)
+		log_toggle.text = "≡" if _log_collapsed else "▶"
+		log_title.visible = not _log_collapsed
+		log_scroll.visible = not _log_collapsed
+		log_toggle.tooltip_text = "Apri il Registro delle azioni" if _log_collapsed else "Chiudi il Registro"
+	# AVVISO: banner in alto al centro (sopra la mappa), quando visibile.
+	if notify_banner and notify_banner.visible:
+		var nb_w := clampf(w * 0.6, 280.0, 560.0)
+		var nb_h := clampf(_base_fs() * 3.0, 44.0, 84.0)
+		notify_banner.position = Vector2((w - nb_w) * 0.5, content_top + 8.0)
+		notify_banner.size = Vector2(nb_w, nb_h)
 	# Finché l'utente non zooma/panna a mano, la mappa si ri-adatta (centrata) alla
 	# viewport corrente ad ogni layout: così riempie sempre lo spazio disponibile.
 	if not _user_adjusted and size.x > 0 and size.y > 0:
@@ -4394,7 +4585,7 @@ func apply_command(cmd: Dictionary) -> bool:
 				return false
 			var t := String(a["type"])
 			if t != "":
-				_status(_apply_increase_production(_active(), t))
+				_event(_apply_increase_production(_active(), t))
 			_clear_choice_bar()
 			_prep_advance()
 		"pick_region":
@@ -4660,6 +4851,10 @@ func _ui_snapshot() -> Dictionary:
 			"art": String(_summary.get("art", "")),
 			"kind": String(_summary.get("kind", "round")),
 		} if not _summary.is_empty() else {},
+		# Registro (coda recente) + avviso prominente, sincronizzati cosi' che tutti vedano la
+		# storia delle azioni e l'attore veda l'avviso "azione non possibile".
+		"log": _log_lines.slice(maxi(0, _log_lines.size() - 60)),
+		"notify": {"msg": _notify_msg, "seq": _notify_seq},
 	}
 
 
@@ -4762,6 +4957,17 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 		"art": String(smr.get("art", "")),
 		"kind": String(smr.get("kind", "round")),
 	} if not smr.is_empty() else {}
+	# Registro: il client specchia la coda sincronizzata dall'host.
+	if ui.has("log"):
+		_log_lines = (ui.get("log", []) as Array).duplicate()
+		_render_log()
+	# Avviso: lo mostra l'ATTORE quando arriva un seq nuovo (l'host risolve per lui).
+	var nf: Dictionary = ui.get("notify", {})
+	var nseq := int(nf.get("seq", 0))
+	if nseq > _last_notify_seq:
+		_last_notify_seq = nseq
+		if _i_acting():
+			_show_notify_banner(String(nf.get("msg", "")))
 
 
 ## Seggio che può agire ORA. In Aftermath è il giocatore in scelta
@@ -5014,6 +5220,7 @@ func _end_turn() -> void:
 		return
 	active_seat = gs.turn_order[round_turn_count % gs.players.size()]
 	_reset_plays()
+	_log("— Tocca a %s —" % _active().power.to_upper())
 	_status(_turn_hint())
 	_after_change()
 
@@ -5047,7 +5254,7 @@ func _do_focus(f: int) -> void:
 	# le azioni del Focus (ready + produce), poi OFFRE l'aumento Produzione opzionale e
 	# infine passa al giocatore successivo.
 	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
-		_status(_apply_focus(_active(), f))
+		_event(_apply_focus(_active(), f))
 		_prep_offer_increase()
 		return
 	var p := _active()
@@ -5058,7 +5265,7 @@ func _do_focus(f: int) -> void:
 		_after_change()
 		return
 	# Fallback (Focus non ancora scelto nel round): applica ready + produce.
-	_status(_apply_focus(p, f))
+	_event(_apply_focus(p, f))
 	_after_change()
 
 
@@ -5264,6 +5471,8 @@ func _begin_action_phase() -> void:
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
 	_reset_plays()
+	_log("══ Round %d · Azione ══" % gs.round)
+	_log("— Tocca a %s —" % _active().power.to_upper())
 	_status("Round %d - Azione. %s" % [gs.round, _turn_hint()])
 	_after_change()
 
@@ -5536,6 +5745,7 @@ func _run_aftermath() -> void:
 	gs.phase = WO.Phase.AFTERMATH
 	_ui_phase = "Aftermath"
 	_aftermath_lines = ["- Aftermath round %d -" % gs.round]
+	_log("══ Aftermath round %d ══" % gs.round)
 	_threat_defense = {}
 	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
 	_aftermath_ai_art = _apply_auto_influence(_aftermath_lines)
@@ -5653,7 +5863,8 @@ func _aftermath_token_money(p: PlayerState, region: String) -> void:
 	p.engage_tokens.erase(region)
 	var n := _allied_count_in_region(p, region)
 	p.money += 5 * n
-	_aftermath_lines.append("%s: scarta Engage in %s -> +%d money" % [p.power.to_upper(), region.replace("_", " "), 5 * n])
+	var _ml := "%s: scarta Engage in %s -> +%d money" % [p.power.to_upper(), region.replace("_", " "), 5 * n]
+	_aftermath_lines.append(_ml); _log(_ml)
 	_layout_engage_tokens()
 	_show_aftermath_choices(p)
 
@@ -5667,7 +5878,8 @@ func _aftermath_token_defense(p: PlayerState, region: String) -> void:
 	if not _threat_defense.has(region):
 		_threat_defense[region] = {}
 	_threat_defense[region][p.power] = int(_threat_defense[region].get(p.power, 0)) + 2 * n
-	_aftermath_lines.append("%s: scarta Engage in %s -> +%d Difesa (THREAT)" % [p.power.to_upper(), region.replace("_", " "), 2 * n])
+	var _dl := "%s: scarta Engage in %s -> +%d Difesa (THREAT)" % [p.power.to_upper(), region.replace("_", " "), 2 * n]
+	_aftermath_lines.append(_dl); _log(_dl)
 	_layout_engage_tokens()
 	_show_aftermath_choices(p)
 
@@ -5676,7 +5888,8 @@ func _aftermath_token_defense(p: PlayerState, region: String) -> void:
 func _aftermath_prosperity(p: PlayerState) -> void:
 	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
 	if GamePhases.increase_prosperity(p, steps):
-		_aftermath_lines.append("%s: Prosperità -> liv. %d" % [p.power.to_upper(), p.prosperity_level])
+		var _pl2 := "%s: Prosperità -> liv. %d" % [p.power.to_upper(), p.prosperity_level]
+		_aftermath_lines.append(_pl2); _log(_pl2)
 	_show_aftermath_choices(p)
 
 
