@@ -134,6 +134,11 @@ var _threat_defense: Dictionary = {}    # {region: {power: +Difesa}} da Engage t
 # Stato del gioco di una carta:
 var playing_card: Dictionary = {}
 var play_queue: Array = []
+# Quanti op della carta in gioco sono stati avviati: serve a sapere se l'azione che fallisce
+# (per risorse insufficienti) e' la PRIMA della carta. Se si', la carta non ha ancora fatto
+# nulla e va RESTITUITA (niente carta/turno sprecati); se no, un op precedente ha gia' avuto
+# effetto e si prosegue saltando quello fallito.
+var _play_ops_started := 0
 var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (parse)
 var awaiting := ""          # "" | "region" | "board_country" | "allied_country" | "move"
 var awaiting_op: Dictionary = {}
@@ -1069,7 +1074,8 @@ func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> voi
 	var values := _values_of(chosen)
 	var cost := Actions.improve_relations_cost(int(country.get("value", 0)), values, disc)
 	if p.resources.get("diplomacy", 0) < cost:
-		_status("Diplomazia insufficiente per Improve Relations con %s (serve %d)." % [country.get("display_name", ""), cost])
+		if _action_failed("Diplomazia insufficiente per Improve Relations con %s (serve %d)." % [country.get("display_name", ""), cost]):
+			return
 		_advance_play()
 		return
 	if Actions.execute_improve_relations(gs, p.power, country, values, disc):
@@ -1081,6 +1087,11 @@ func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> voi
 			p.power.to_upper(), country.get("display_name", ""), cost,
 			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 		_after_change()
+		_advance_play()
+		return
+	# Esecuzione rifiutata (es. questa potenza non puo' allearsi con questo Paese).
+	if _action_failed("Non puoi migliorare le relazioni con %s." % country.get("display_name", "")):
+		return
 	_advance_play()
 
 
@@ -1097,14 +1108,16 @@ func _on_allied_pressed(country: Dictionary) -> void:
 	_pick_slot(region, func(slot):
 		if name == "invest":
 			if Actions.execute_invest(gs, p.power, country, slot) < 0:
-				_status("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))])
+				if _action_failed("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))]):
+					return
 			_after_change()
 			_advance_play()
 		elif name == "build_base":
 			# Build a Base: muovi da 1 fino al valore del Country (pag. 15), non 1 fisso.
 			_pick_base_armies(country, func(n_armies):
 				if Actions.execute_build_base(gs, p.power, country, n_armies, slot) < 0:
-					_status("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?"))
+					if _action_failed("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?")):
+						return
 				_after_change()
 				_advance_play())
 		else:
@@ -1246,6 +1259,7 @@ func _play_card(card: Dictionary) -> void:
 		return
 	playing_card = card
 	play_queue = (card["effect_ops"] as Array).duplicate(true)
+	_play_ops_started = 0
 	active_mods = Modifiers.parse(card.get("effect_modifiers", []))
 	var mtxt := _mods_text(active_mods)
 	_status("Giochi: %s%s" % [card.get("display_name", "carta"), mtxt])
@@ -1270,6 +1284,7 @@ func _advance_play() -> void:
 		_finish_card()
 		return
 	var op: Dictionary = play_queue.pop_front()
+	_play_ops_started += 1
 	var name := String(op.get("op", ""))
 	match name:
 		"add_influence":
@@ -1627,13 +1642,16 @@ func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
 	var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), values, diplo, ed)
 	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, slot, ed)
 	if vp < 0:
-		_status("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost])
-	else:
-		for c in chosen:
-			p.exhausted[c.get("id", "")] = true   # alleati usati per lo sconto
-		_status("%s: Engage in %s (-%d Dip, +%d VP%s)." % [
-			p.power.to_upper(), region.replace("_", " "), cost, vp,
-			", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
+		if _action_failed("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost]):
+			return
+		_layout_overlays()
+		_advance_play()
+		return
+	for c in chosen:
+		p.exhausted[c.get("id", "")] = true   # alleati usati per lo sconto
+	_status("%s: Engage in %s (-%d Dip, +%d VP%s)." % [
+		p.power.to_upper(), region.replace("_", " "), cost, vp,
+		", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
 	_layout_overlays()
 	_advance_play()
 
@@ -2045,6 +2063,41 @@ func _finish_card() -> void:
 	_after_change()
 
 
+## L'azione in corso NON è eseguibile (risorse insufficienti) ed è la PRIMA della carta: la
+## carta non ha ancora fatto nulla, quindi la RESTITUISCE (resta in mano) e NON consuma il
+## turno. Il giocatore può rigiocarla o sceglierne un'altra. Niente carta/turno sprecati.
+func _abort_play(reason: String) -> void:
+	playing_card = {}
+	play_queue = []
+	_play_ops_started = 0
+	awaiting = ""
+	awaiting_op = {}
+	active_mods = {}
+	_playing_asset = false
+	_trade_exported = {}
+	_selected_hand_card = {}
+	_exhaust_ctx = {}
+	_exhaust_sel = {}
+	_influence_pick = {}
+	_move_ctx = {}
+	_growth_pick = {}
+	_clear_choice_bar()
+	_status(reason + "  La carta resta in mano (turno non consumato).")
+	_after_change()
+
+
+## Un'azione della carta è fallita per risorse insufficienti. Se è la PRIMA cosa che la carta
+## fa, restituisce la carta (_abort_play); altrimenti un op precedente ha già avuto effetto, e
+## allora si prosegue saltando l'azione fallita (la carta resta giocata). Ritorna true se ha
+## restituito la carta (il chiamante deve fermarsi), false se si deve proseguire.
+func _action_failed(reason: String) -> bool:
+	if _play_ops_started <= 1 and not _playing_asset:
+		_abort_play(reason)
+		return true
+	_status(reason)
+	return false
+
+
 # --- Popup di selezione ---
 
 func _pick_country(prompt: String, countries: Array, cb: Callable) -> void:
@@ -2068,8 +2121,13 @@ func _pick_country(prompt: String, countries: Array, cb: Callable) -> void:
 func _pick_growth() -> void:
 	var p := _active()
 	var nl := _next_growth_level(p)
-	if _available_growth(p).is_empty():
-		_status("Get a Growth Card: nessuna Growth di livello %d disponibile." % nl)
+	# Apri il selettore SOLO se c'è almeno una Growth ACQUISTABILE (prodotti sufficienti): se non
+	# puoi permetterti nessuna, non ti costringo a "Salta" sprecando la carta - se è la prima
+	# azione della carta te la restituisco; altrimenti (op successivo) salto soltanto.
+	var affordable: Array = _available_growth(p).filter(func(c): return p.has_resources((c as Dictionary).get("cost", {})))
+	if affordable.is_empty():
+		if _action_failed("Get a Growth Card: nessuna Growth di livello %d acquistabile (prodotti insufficienti)." % nl):
+			return
 		_advance_play()
 		return
 	_growth_pick = {"level": nl}
