@@ -4831,6 +4831,10 @@ func _ui_snapshot() -> Dictionary:
 		# questo ogni istanza userebbe il PROPRIO mescolamento -> carte diverse host/client.
 		"region_available": _region_available_snapshot(),
 		"auto_inf_shown": _auto_inf_shown.duplicate(true),
+		# Carte COMMERCIO girate (per venditore) nel round: vivono nella Vista, non in gs. Senza
+		# sincronizzarle, comprando i prodotti di un giocatore la sua carta si girava SOLO
+		# sull'host -> gli altri continuavano a vederla disponibile.
+		"commerce_flipped": _commerce_flipped.duplicate(true),
 		# Scelta a popup in corso (prompt + ETICHETTE, niente value/callback): così il client
 		# la vede e la può scegliere, rimandando l'indice (vedi _cmd_popup_choice).
 		"popup": _popup_snapshot(),
@@ -4926,6 +4930,10 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 			(region_countries[rid] as Dictionary)["available"] = (ra[rid] as Array).duplicate(true)
 	if ui.has("auto_inf_shown"):
 		_auto_inf_shown = (ui.get("auto_inf_shown", []) as Array).duplicate(true)
+	# Carte Commercio girate (per venditore): il client specchia lo stato dell'host, così le
+	# carte prodotto di un giocatore risultano girate anche da chi NON ha fatto l'acquisto.
+	if ui.has("commerce_flipped"):
+		_commerce_flipped = (ui.get("commerce_flipped", {}) as Dictionary).duplicate(true)
 	# Scelta a popup: il client ricostruisce prompt + etichette (senza value/callback, che
 	# restano sull'host). Quando l'host la chiude, lo snapshot non la porta più -> si pulisce.
 	var pop: Dictionary = ui.get("popup", {})
