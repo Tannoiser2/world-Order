@@ -34,7 +34,15 @@ static func new_game(powers: Array) -> GameState:
 		var rid: String = region["region"]
 		var track := InfluenceTrack.new(region["permanent_slots"], region["temporary_slots"])
 		for si in region.get("starting_influence", []):
-			track.add(String(si["owner"]), String(si.get("slot", "permanent")))
+			var owner := String(si["owner"])
+			var slot := String(si.get("slot", "permanent"))
+			# I cubetti NEUTRALI "local" sono influenza iniziale, NON l'influenza permanente di
+			# una potenza: vanno in TEMPORANEA, così non completano da soli la riga permanente
+			# (che fa scattare i PV di maggioranza). Senza questo, le Regioni che partono con un
+			# "local" in permanente (MENA, Asia del Sud) risultavano "attive" gia' al setup.
+			if owner == "local":
+				slot = "temporary"
+			track.add(owner, slot)
 		gs.regions[rid] = {
 			"track": track,
 			"armies": {},
