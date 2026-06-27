@@ -1,0 +1,62 @@
+{
+  "kind": "automa_players",
+  "source": "World Order: Diplomacy & Dominance. USA estratta dall'illustrazione del regolamento (p.4); EU/Russia/China sono PLACEHOLDER (verified=false) in attesa delle foto delle Player card.",
+  "note": "market_priority: ordine di preferenza per tipo carta al Market (a parita' di costo). action_cube_priority: ordine in cui i Production cube vanno nelle Action space a inizio round. prosperity: soglie money->VP della Prosperity track. Le potenze con verified=false usano valori provvisori (copiati dalla USA) e NON sono fedeli: aggiornare appena disponibili le carte.",
+  "powers": {
+    "usa": {
+      "verified": true,
+      "starting_money": 50,
+      "market_priority": ["military", "economic", "diplomatic", "domestic"],
+      "action_cube_priority": ["build_base", "engage", "invest"],
+      "prosperity": [
+        { "cost": 10, "vp": 2 },
+        { "cost": 15, "vp": 3 },
+        { "cost": 25, "vp": 4 },
+        { "cost": 35, "vp": 5 },
+        { "cost": 45, "vp": 8 }
+      ]
+    },
+    "eu": {
+      "verified": false,
+      "starting_money": 50,
+      "market_priority": ["military", "economic", "diplomatic", "domestic"],
+      "action_cube_priority": ["build_base", "engage", "invest"],
+      "prosperity": [
+        { "cost": 10, "vp": 2 },
+        { "cost": 15, "vp": 3 },
+        { "cost": 25, "vp": 4 },
+        { "cost": 35, "vp": 5 },
+        { "cost": 45, "vp": 8 }
+      ],
+      "_todo": "Valori dalla Player card EU (foto)."
+    },
+    "russia": {
+      "verified": false,
+      "starting_money": 50,
+      "market_priority": ["military", "economic", "diplomatic", "domestic"],
+      "action_cube_priority": ["build_base", "engage", "invest"],
+      "prosperity": [
+        { "cost": 10, "vp": 2 },
+        { "cost": 15, "vp": 3 },
+        { "cost": 25, "vp": 4 },
+        { "cost": 35, "vp": 5 },
+        { "cost": 45, "vp": 8 }
+      ],
+      "_todo": "Valori dalla Player card Russia (foto)."
+    },
+    "china": {
+      "verified": false,
+      "starting_money": 50,
+      "market_priority": ["military", "economic", "diplomatic", "domestic"],
+      "action_cube_priority": ["build_base", "engage", "invest"],
+      "prosperity": [
+        { "cost": 10, "vp": 2 },
+        { "cost": 15, "vp": 3 },
+        { "cost": 25, "vp": 4 },
+        { "cost": 35, "vp": 5 },
+        { "cost": 45, "vp": 8 }
+      ],
+      "_todo": "Valori dalla Player card China (foto)."
+    }
+  }
+}

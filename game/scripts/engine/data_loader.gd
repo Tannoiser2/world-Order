@@ -66,3 +66,15 @@ static func load_trade_deals() -> Dictionary:
 static func load_auto_influence() -> Array:
 	var doc: Variant = _read(BASE + "auto_influence.json")
 	return doc.get("cards", []) if doc else []
+
+
+## Automa board universale (mappa tipo carta -> azione, focus money). Solo mode.
+static func load_automa_board() -> Dictionary:
+	var doc: Variant = _read(BASE + "automa_board.json")
+	return doc if doc else {}
+
+
+## Player card degli Automa per potenza (money iniziale, priorita', prosperity). Solo mode.
+static func load_automa_players() -> Dictionary:
+	var doc: Variant = _read(BASE + "automa_players.json")
+	return doc.get("powers", {}) if doc else {}
