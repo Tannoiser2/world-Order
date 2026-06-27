@@ -175,5 +175,65 @@ func _init() -> void:
 	print("[%s] solo mode opzionale: off=%s on=%s" % ["OK" if s18 else "FAIL", str(off_ok), str(on_ok)])
 	if not s18: fails += 1
 
+	# ---- Stadio 3: Research/Market e Aftermath (Adding Influence) ----
+
+	# 19) Punti Research: bonus + 1 ogni 3 alleati + 2 se Domestic Focus.
+	var s19: bool = Automa.research_points(8, 7, true) == 12 and Automa.research_points(5, 2, false) == 5
+	print("[%s] research_points: (8,7,dom)=%d (5,2,-)=%d" % ["OK" if s19 else "FAIL",
+		Automa.research_points(8, 7, true), Automa.research_points(5, 2, false)])
+	if not s19: fails += 1
+
+	# 20) Scelta carta dal Market: piu' costosa accessibile; tie -> market_priority; tie -> recente.
+	var prio := ["military", "economic", "diplomatic", "domestic"]
+	var market := [
+		{"id": "m_recent_eco", "cost": 8, "type": "economic"},   # index 0 = piu' recente
+		{"id": "m_mil", "cost": 8, "type": "military"},          # stesso costo, tipo prioritario
+		{"id": "m_cheap", "cost": 3, "type": "domestic"},
+		{"id": "m_expensive", "cost": 20, "type": "diplomatic"}, # non accessibile con 10
+	]
+	# Con 10 money: accessibili 8/8/3; max 8; tie eco vs mil -> military (priorita' piu' alta).
+	var mk1: Dictionary = Automa.pick_market_card(market, 10, prio)
+	# Con 5 money: solo la domestic da 3.
+	var mk2: Dictionary = Automa.pick_market_card(market, 5, prio)
+	# Con 2 money: nessuna -> {}.
+	var mk3: Dictionary = Automa.pick_market_card(market, 2, prio)
+	var s20: bool = mk1.get("id", "") == "m_mil" and mk2.get("id", "") == "m_cheap" and mk3.is_empty()
+	print("[%s] pick_market_card: prio=%s low=%s none=%s" % ["OK" if s20 else "FAIL",
+		mk1.get("id", "-"), mk2.get("id", "-"), str(mk3.is_empty())])
+	if not s20: fails += 1
+
+	# 21) Scelta dello slot Influenza: un solo tipo -> quello; entrambi -> Decision card.
+	var s21: bool = Automa.influence_slot_choice(true, false, true) == "permanent" \
+		and Automa.influence_slot_choice(false, true, true) == "temporary" \
+		and Automa.influence_slot_choice(true, true, true) == "permanent" \
+		and Automa.influence_slot_choice(true, true, false) == "temporary" \
+		and Automa.influence_slot_choice(false, false, true) == ""
+	print("[%s] influence_slot_choice (perm/temp/decision)" % ["OK" if s21 else "FAIL"])
+	if not s21: fails += 1
+
+	# 22) "Non spingere fuori una propria temporanea": riconosce il caso (fila piena, FIFO = sua).
+	var trk := InfluenceTrack.new([1, 1], [4, 3, 2, 1])
+	trk.temp = ["usa", "china", "china", "china"]   # piena, il primo a uscire e' usa
+	var au := Automa.from_setup("usa")
+	var push_yes: bool = au.temp_pushes_own(trk)
+	var trk2 := InfluenceTrack.new([1, 1], [4, 3, 2, 1])
+	trk2.temp = ["china", "usa", null, null]         # c'e' spazio -> nessuno spinto fuori
+	var push_no: bool = au.temp_pushes_own(trk2)
+	var s22: bool = push_yes and not push_no
+	print("[%s] temp_pushes_own: piena-FIFO-sua=%s con-spazio=%s" % ["OK" if s22 else "FAIL",
+		str(push_yes), str(push_no)])
+	if not s22: fails += 1
+
+	# 23) Adding Influence: Normal ridisegna se spinge la propria temp; Hard forza permanente.
+	au.difficulty_hard = false
+	var n_choice: String = au.add_influence_decision(false, true, false, true)   # solo temp, spinge -> redraw
+	au.difficulty_hard = true
+	var h_choice: String = au.add_influence_decision(false, true, false, true)   # solo temp, spinge -> permanent_forced
+	var both_ok: String = au.add_influence_decision(true, true, true, false)     # entrambi, decision perm -> permanent
+	var s23: bool = n_choice == "redraw" and h_choice == "permanent_forced" and both_ok == "permanent"
+	print("[%s] add_influence_decision: normal=%s hard=%s both=%s" % ["OK" if s23 else "FAIL",
+		n_choice, h_choice, both_ok])
+	if not s23: fails += 1
+
 	print("Verifica motore Automa (core deterministico): %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(1 if fails > 0 else 0)

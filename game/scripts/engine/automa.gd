@@ -192,6 +192,81 @@ func trade_gain_from_allies() -> int:
 	return Automa.trade_gain(ex)
 
 
+# --- Stadio 3: Research / Market e Aftermath (Adding Influence) ---
+
+## Punti Research (money) per prendere una carta dal Market: il money dalle 2 carte rivelate
+## (sezione Bonus, `bonus_money`) + 1 ogni 3 Country alleate + 2 se l'Automa ha Domestic Focus.
+static func research_points(bonus_money: int, allied_count: int, domestic_focus: bool) -> int:
+	return bonus_money + int(allied_count / 3) + (2 if domestic_focus else 0)
+
+
+## Carta scelta dal Market dall'Automa: la piu' COSTOSA che puo' permettersi; a parita' di
+## costo usa la `market_priority` per tipo; a parita' ancora la piu' RECENTE (per convenzione
+## l'array `market` e' ordinato con index 0 = aggiunta piu' di recente / piu' vicina al mazzo
+## Ability). Ogni carta: { ..., "cost": int, "type": "diplomatic|economic|military|domestic" }.
+## Ritorna {} se nessuna carta e' accessibile.
+static func pick_market_card(market: Array, money: int, market_priority: Array) -> Dictionary:
+	var pool := []
+	for c in market:
+		if int((c as Dictionary).get("cost", 1 << 30)) <= money:
+			pool.append(c)
+	if pool.is_empty():
+		return {}
+	var maxc := 0
+	for c in pool:
+		maxc = maxi(maxc, int((c as Dictionary).get("cost", 0)))
+	pool = pool.filter(func(c): return int((c as Dictionary).get("cost", 0)) == maxc)
+	if pool.size() == 1:
+		return pool[0]
+	var best_prio := 1 << 30
+	for c in pool:
+		var pr: int = market_priority.find(String((c as Dictionary).get("type", "")))
+		if pr == -1:
+			pr = 1 << 29
+		best_prio = mini(best_prio, pr)
+	pool = pool.filter(func(c):
+		var pr: int = market_priority.find(String((c as Dictionary).get("type", "")))
+		if pr == -1:
+			pr = 1 << 29
+		return pr == best_prio)
+	# pool conserva l'ordine di `market`: il primo e' il piu' recente.
+	return pool[0]
+
+
+## Slot dove l'Automa aggiunge Influenza: se e' disponibile UN SOLO tipo, quello; se ENTRAMBI,
+## decide la Decision card (`decision_perm` = true -> permanente, false -> temporaneo).
+## Ritorna "permanent" | "temporary" | "" (nessuno disponibile).
+static func influence_slot_choice(perm_available: bool, temp_available: bool, decision_perm: bool) -> String:
+	if perm_available and not temp_available:
+		return "permanent"
+	if temp_available and not perm_available:
+		return "temporary"
+	if perm_available and temp_available:
+		return "permanent" if decision_perm else "temporary"
+	return ""
+
+
+## Vero se aggiungere Influenza TEMPORANEA spingerebbe fuori un cubo dell'Automa stesso:
+## accade quando la fila temporanea e' piena e il cubo piu' a sinistra (primo a uscire, FIFO)
+## e' dell'Automa.
+func temp_pushes_own(track: InfluenceTrack) -> bool:
+	for o in track.temp:
+		if o == null:
+			return false   # c'e' ancora spazio: nessuno viene spinto fuori
+	return track.temp.size() > 0 and String(track.temp[0]) == power
+
+
+## Decisione completa di Adding Influence (Aftermath) tenendo conto della regola "non spingere
+## fuori una propria Influenza temporanea". Ritorna:
+##   "permanent" | "temporary" | "permanent_forced" (Hard: permanente anche senza slot) |
+##   "redraw" (Normal: scegli un'altra Regione) | "" (niente slot disponibile)
+func add_influence_decision(perm_available: bool, temp_available: bool, decision_perm: bool, would_push_own: bool) -> String:
+	var choice := Automa.influence_slot_choice(perm_available, temp_available, decision_perm)
+	if choice == "temporary" and would_push_own:
+		return "permanent_forced" if difficulty_hard else "redraw"
+	return choice
+
+
 # --- Get a Growth Card ---
 
 ## VP guadagnati prendendo una Growth card: i VP della carta + VP pari al suo Livello.
