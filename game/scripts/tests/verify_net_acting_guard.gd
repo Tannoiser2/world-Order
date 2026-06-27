@@ -33,6 +33,9 @@ func _init() -> void:
 	await process_frame
 	GameConfig.net = null
 
+	# Round 1 ora passa dalla PREPARATION (scelta Focus): forziamo la fase Azione per
+	# giocare una carta che posa Influenza sulla mappa.
+	host._begin_action_phase()
 	# Turno della Cina (client, seggio 1). Carta che posa Influenza sulla mappa.
 	host.active_seat = 1
 	host._plays_left = 1
