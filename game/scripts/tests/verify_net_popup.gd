@@ -32,9 +32,6 @@ func _init() -> void:
 	await process_frame
 	GameConfig.net = null
 
-	# Round 1 ora passa dalla PREPARATION (scelta Focus): forziamo la fase Azione (la barra di
-	# scelta deve restare vuota dopo la scelta a popup).
-	host._begin_action_phase()
 	# Turno della Cina (client): durante la risoluzione l'host mostra una scelta a popup.
 	host.active_seat = 1
 	var got := {"v": -1}

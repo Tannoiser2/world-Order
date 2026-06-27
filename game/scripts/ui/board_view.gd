@@ -5425,9 +5425,14 @@ func _begin_preparation() -> void:
 	# Rivela le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori): restano
 	# VISIBILI sulla mappa per tutto il round; l'effetto si applica in Aftermath.
 	_draw_auto_influence()
-	# Preparazione GUIDATA anche al Round 1: ogni giocatore SCEGLIE il Focus e ne applica gli
-	# effetti (ready delle Country card esaurite, Produzione del Focus, aumento Produzione
-	# opzionale). Prima il Round 1 saltava tutto (Focus Domestic forzato) -> la fase mancava.
+	# Round 1: NIENTE Preparazione (da regolamento) - si parte subito con la fase Azione e
+	# tutti col Focus Domestic. La Preparazione GUIDATA (scelta del Focus + ready + Produzione
+	# del Focus + aumento Produzione) parte dal Round 2.
+	if gs.round <= 1:
+		for pp in gs.players:
+			pp.focus = WO.Focus.DOMESTIC
+		_begin_action_phase()
+		return
 	gs.phase = WO.Phase.PREPARATION
 	_ui_phase = "Preparazione"
 	_prep_idx = 0
