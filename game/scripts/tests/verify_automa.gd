@@ -84,5 +84,96 @@ func _init() -> void:
 		"OK" if s10 else "FAIL", pv, c.prosperity_level, c.money, c.vp])
 	if not s10: fails += 1
 
+	# ---- Stadio 2: scelte delle azioni ----
+
+	# 11) Auto-Influence: Regione e Armata per questo Automa (la sua riga).
+	var card := {"rows": {"usa": {"region": "americas", "army": true}, "china": {"region": "europe", "army": false}}}
+	var t := Automa.from_setup("usa")
+	var s11: bool = t.auto_influence_region(card) == "americas" and t.auto_influence_army(card) == true
+	print("[%s] auto_influence_region/army: %s / %s" % ["OK" if s11 else "FAIL",
+		t.auto_influence_region(card), str(t.auto_influence_army(card))])
+	if not s11: fails += 1
+
+	# 12) Conteggio alleati per Regione (totali e quelli che consentono una Base).
+	t.allied_countries = [
+		{"id": "e1", "region": "europe", "has_base_symbol": true, "base_allowed_powers": ["usa"], "exports": ["food"]},
+		{"id": "e2", "region": "europe", "has_base_symbol": false, "base_allowed_powers": [], "exports": ["energy", "food"]},
+		{"id": "a1", "region": "africa", "has_base_symbol": true, "base_allowed_powers": ["eu"], "exports": []},
+	]
+	var s12: bool = t.allies_in_region("europe") == 2 and t.base_allies_in_region("europe") == 1 \
+		and t.base_allies_in_region("africa") == 0   # base_allowed eu, non usa
+	print("[%s] allies europe=%d base-allies europe=%d africa=%d" % ["OK" if s12 else "FAIL",
+		t.allies_in_region("europe"), t.base_allies_in_region("europe"), t.base_allies_in_region("africa")])
+	if not s12: fails += 1
+
+	# 13) Invest: max FDI = 1 + alleati; can_invest finché sotto il massimo, e con alleati.
+	var s13a: bool = t.invest_fdi_max("europe") == 3 and t.can_invest("europe")  # 0 < 3
+	t.fdi = {"europe": 3}
+	var s13b: bool = not t.can_invest("europe")          # 3 < 3 falso
+	var s13c: bool = not t.can_invest("south_asia")      # 0 alleati
+	var s13: bool = s13a and s13b and s13c
+	print("[%s] invest: max=3, pieno e senza-alleati bloccano (a=%s b=%s c=%s)" % [
+		"OK" if s13 else "FAIL", str(s13a), str(s13b), str(s13c)])
+	if not s13: fails += 1
+
+	# 14) Build a Base: max = 1 + alleati-con-Base; serve almeno un alleato con Base.
+	var s14a: bool = t.base_max("europe") == 2 and t.can_build_base("europe")  # 1 base-ally
+	t.bases = {"europe": 2}
+	var s14b: bool = not t.can_build_base("europe")   # 2 < 2 falso
+	var s14c: bool = not t.can_build_base("africa")   # 0 base-ally (eu, non usa)
+	var s14: bool = s14a and s14b and s14c
+	print("[%s] build base: max=2, pieno e senza-base-ally bloccano (a=%s b=%s c=%s)" % [
+		"OK" if s14 else "FAIL", str(s14a), str(s14b), str(s14c)])
+	if not s14: fails += 1
+
+	# 15) Engage cost: 5/diplomazia, -5 per alleato in Regione, -5 se Diplomatic Focus, min 0.
+	t.focus = WO.Focus.DOMESTIC
+	var c_dom: int = t.engage_cost("europe", 4)     # 20 - 2*5 = 10
+	t.focus = WO.Focus.DIPLOMATIC
+	var c_dip: int = t.engage_cost("europe", 4)     # 20 - 10 - 5 = 5
+	var c_min: int = t.engage_cost("europe", 1)     # 5 - 10 - 5 -> 0
+	var s15: bool = c_dom == 10 and c_dip == 5 and c_min == 0
+	print("[%s] engage_cost: domestic=%d diplomatic=%d min=%d" % ["OK" if s15 else "FAIL", c_dom, c_dip, c_min])
+	if not s15: fails += 1
+
+	# 16) Improve Relations - scelta della Country (criteri + accessibilità).
+	var u := Automa.from_setup("usa")   # 50 money
+	var avail := [
+		{"id": "a", "value": 1, "has_base_symbol": false, "base_allowed_powers": []},
+		{"id": "b", "value": 3, "has_base_symbol": true, "base_allowed_powers": ["usa"]},
+		{"id": "c", "value": 2, "has_base_symbol": true, "base_allowed_powers": ["usa"]},
+	]
+	# Starting Country "c" -> criterio 1 vince.
+	var pick1: Dictionary = u.improve_relations_pick(avail, ["c"])
+	# Nessuna starting: criterio 2 (Base) restringe a b,c; criterio 3 (valore) -> b (value 3).
+	var pick2: Dictionary = u.improve_relations_pick(avail, [])
+	# Accessibilità: con 10 money, b (costo 15) escluso; tra a(5) e c(10), c ha Base -> c.
+	u.money = 10
+	var pick3: Dictionary = u.improve_relations_pick(avail, [])
+	# Nessuna accessibile: con 4 money, ritorna {} (-> il chiamante fa Trade).
+	u.money = 4
+	var pick4: Dictionary = u.improve_relations_pick(avail, [])
+	var s16: bool = pick1.get("id", "") == "c" and pick2.get("id", "") == "b" \
+		and pick3.get("id", "") == "c" and pick4.is_empty()
+	print("[%s] improve_relations_pick: start=%s base/val=%s afford=%s none=%s" % [
+		"OK" if s16 else "FAIL", pick1.get("id", "-"), pick2.get("id", "-"), pick3.get("id", "-"), str(pick4.is_empty())])
+	if not s16: fails += 1
+
+	# 17) Trade dalle Country alleate: 5 per simbolo Export (qui 1 + 2 + 0 = 3 -> 15).
+	var s17: bool = t.trade_gain_from_allies() == 15
+	print("[%s] trade_gain_from_allies=%d" % ["OK" if s17 else "FAIL", t.trade_gain_from_allies()])
+	if not s17: fails += 1
+
+	# 18) Opzione attivabile: GameConfig.is_automa riflette automa_powers (vuoto = nessun bot).
+	var saved: Array = GameConfig.automa_powers
+	GameConfig.automa_powers = []
+	var off_ok: bool = not GameConfig.is_automa("china")
+	GameConfig.automa_powers = ["china", "russia"]
+	var on_ok: bool = GameConfig.is_automa("china") and not GameConfig.is_automa("usa")
+	GameConfig.automa_powers = saved
+	var s18: bool = off_ok and on_ok
+	print("[%s] solo mode opzionale: off=%s on=%s" % ["OK" if s18 else "FAIL", str(off_ok), str(on_ok)])
+	if not s18: fails += 1
+
 	print("Verifica motore Automa (core deterministico): %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))
 	quit(1 if fails > 0 else 0)

@@ -85,11 +85,111 @@ func apply_cube_move(decision: Dictionary) -> void:
 	action_cubes[ct] = int(action_cubes.get(ct, 0)) + n
 
 
+# --- Fase Azione: scelte delle singole azioni (Stadio 2) ---
+# Funzioni pure/deterministiche per decidere Regione/Country di ciascuna azione, secondo i
+# criteri del regolamento. Lavorano sui dati delle carte Country (campi: value, exports,
+# has_base_symbol, base_allowed_powers, region) e sullo stato dell'Automa (allied_countries,
+# fdi, bases). L'integrazione col GameState/UI e la pesca delle Auto-Influence card arrivano
+# nei passi successivi.
+
+## Regione indicata dalla carta Auto-Influence per QUESTO Automa (la sua riga).
+func auto_influence_region(card: Dictionary) -> String:
+	return String(((card.get("rows", {}) as Dictionary).get(power, {}) as Dictionary).get("region", ""))
+
+## Vero se la carta Auto-Influence indica un'Armata per questo Automa.
+func auto_influence_army(card: Dictionary) -> bool:
+	return bool(((card.get("rows", {}) as Dictionary).get(power, {}) as Dictionary).get("army", false))
+
+## Numero di Country alleate dell'Automa in una Regione.
+func allies_in_region(region: String) -> int:
+	var n := 0
+	for c in allied_countries:
+		if String((c as Dictionary).get("region", "")) == region:
+			n += 1
+	return n
+
+## Country alleate in una Regione che consentono all'Automa di costruire una Base.
+func base_allies_in_region(region: String) -> int:
+	var n := 0
+	for c in allied_countries:
+		var cc := c as Dictionary
+		if String(cc.get("region", "")) == region and bool(cc.get("has_base_symbol", false)) \
+				and power in cc.get("base_allowed_powers", []):
+			n += 1
+	return n
+
+## Max FDI in una Regione = 1 + Country alleate di quella Regione. (Invest)
+func invest_fdi_max(region: String) -> int:
+	return 1 + allies_in_region(region)
+
+## Vero se l'Automa puo' ancora INVESTIRE in `region` (ha alleati e non e' al massimo FDI).
+func can_invest(region: String) -> bool:
+	return allies_in_region(region) > 0 and int(fdi.get(region, 0)) < invest_fdi_max(region)
+
+## Max Basi in una Regione = 1 + Country alleate che consentono la Base. (Build a Base)
+func base_max(region: String) -> int:
+	return 1 + base_allies_in_region(region)
+
+## Vero se l'Automa puo' ancora costruire una BASE in `region`.
+func can_build_base(region: String) -> bool:
+	return base_allies_in_region(region) > 0 and int(bases.get(region, 0)) < base_max(region)
+
+## Costo (money) per ENGAGE in una Regione: 5 per ogni Diplomazia richiesta
+## (`diplomacy_required`), -5 per ogni Country alleata della Regione, -5 se Diplomatic Focus.
+## Minimo 0.
+func engage_cost(region: String, diplomacy_required: int) -> int:
+	var cost := diplomacy_required * 5
+	cost -= allies_in_region(region) * 5
+	if focus == WO.Focus.DIPLOMATIC:
+		cost -= 5
+	return maxi(0, cost)
+
+## Sceglie la Country da alleare (Improve Relations) tra le `available` di una Regione,
+## secondo i criteri del regolamento, considerando SOLO quelle che puo' permettersi
+## (costo = value * 5 money). `starting_ids`: id delle Starting Country dell'Automa.
+## Ritorna {} se non puo' permettersi nessuna (il chiamante eseguira' un Trade).
+## Criteri (in ordine, restringendo): 1) Starting Country; 2) dove puo' costruire una Base;
+## 3) valore piu' alto; 4) la carta piu' a SINISTRA (prima in lista).
+func improve_relations_pick(available: Array, starting_ids: Array) -> Dictionary:
+	var pool := []
+	for c in available:
+		if money >= int((c as Dictionary).get("value", 0)) * 5:
+			pool.append(c)
+	if pool.is_empty():
+		return {}
+	var f1 := pool.filter(func(c): return String((c as Dictionary).get("id", "")) in starting_ids)
+	if not f1.is_empty():
+		pool = f1
+	if pool.size() == 1:
+		return pool[0]
+	var f2 := pool.filter(func(c):
+		var cc := c as Dictionary
+		return bool(cc.get("has_base_symbol", false)) and power in cc.get("base_allowed_powers", []))
+	if not f2.is_empty():
+		pool = f2
+	if pool.size() == 1:
+		return pool[0]
+	var best := 0
+	for c in pool:
+		best = maxi(best, int((c as Dictionary).get("value", 0)))
+	pool = pool.filter(func(c): return int((c as Dictionary).get("value", 0)) == best)
+	if pool.size() == 1:
+		return pool[0]
+	return pool[0]
+
+
 # --- Trade ---
 
 ## Money guadagnato da un Trade: 5 per ogni simbolo Export delle Country alleate.
 static func trade_gain(export_symbols: int) -> int:
 	return maxi(0, export_symbols) * 5
+
+## Money da un Trade calcolato dalle Country alleate dell'Automa (somma dei simboli Export).
+func trade_gain_from_allies() -> int:
+	var ex := 0
+	for c in allied_countries:
+		ex += ((c as Dictionary).get("exports", []) as Array).size()
+	return Automa.trade_gain(ex)
 
 
 # --- Get a Growth Card ---

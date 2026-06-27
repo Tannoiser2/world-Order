@@ -13,6 +13,18 @@ static var net: NetSession = null
 ## tra Russia/China. Default coerente; la scelta esplicita verra' aggiunta dopo.
 static var powers: Array = ["usa", "china", "russia", "eu"]
 
+## SOLO MODE / AUTOMA (OPZIONALE - attivabile o meno). Elenco delle potenze
+## controllate dagli Automa (bot). VUOTO = nessun bot (comportamento normale:
+## hot-seat/online invariati). Le potenze qui elencate sono un sottoinsieme di
+## `powers`. Difficolta': "normal" | "hard".
+static var automa_powers: Array = []
+static var automa_difficulty: String = "normal"
+
+
+## Vero se la potenza indicata e' controllata da un Automa (bot).
+static func is_automa(power: String) -> bool:
+	return power in automa_powers
+
 
 ## Ritorna le potenze per il numero di giocatori scelto (default sensati,
 ## coerenti col vincolo del 2 giocatori: seggio 0 USA/UE, seggio 1 Russia/Cina).
