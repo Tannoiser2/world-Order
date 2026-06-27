@@ -48,7 +48,7 @@
       }
     }
   },
-  "slot_notes": "permanent_slots/temporary_slots = valori VP guadagnati piazzando Influenza (da sinistra). I cubi iniziali (setup) sono indicati in starting_influence. 2 Regioni iniziano con un cubo nero 'locale' (MENA e South Asia).",
+  "slot_notes": "permanent_slots/temporary_slots = valori VP guadagnati piazzando Influenza (da sinistra). I cubi iniziali (setup) sono indicati in starting_influence. 2 Regioni iniziano con un cubo nero 'locale' (MENA e South Asia). permanent_slots conta SIA le caselle iniziali colorate SIA le caselle 'fill' permanenti vere (vedi board_layout influence_slots.permanent + permanent_fill): cosi' i cubi iniziali non riempiono da soli la riga e i PV di maggioranza scattano solo quando i giocatori completano davvero la riga permanente.",
   "zone_note": "zone_of_interest = potenze la cui bandiera compare nella Regione (per THREAT/Defense). VERIFICATO 2026-06-22 sul tabellone stampato (assets/board/board.jpg, 2200x1964) per tutte e 7 le Regioni: slot permanenti/temporanei, majority_bonus, engage_cost, bandiere e cubi iniziali corrispondono. Europe[usa,eu,russia], CentralAsia[russia,china], Americas[usa], MENA[usa,eu,russia], Africa[usa], SouthAsia[china], EastAsiaPacific[usa,china].",
   "regions": [
     {
@@ -159,6 +159,9 @@
       "permanent_slots": [
         1,
         1,
+        1,
+        1,
+        1,
         1
       ],
       "temporary_slots": [
@@ -229,6 +232,8 @@
       "display_name": "South Asia",
       "engage_cost": 4,
       "permanent_slots": [
+        1,
+        1,
         1,
         1
       ],

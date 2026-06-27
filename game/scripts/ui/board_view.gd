@@ -531,8 +531,10 @@ func _draw_cube(pos: Array, owner: Variant, s: float) -> void:
 	cube.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
 	cube.size = Vector2(s, s)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
-	sb.border_color = Color(0, 0, 0, 0.9)
+	# I cubi NEUTRALI "local" sono NERI (forze locali); le potenze usano il loro colore.
+	sb.bg_color = Color(0.1, 0.1, 0.1) if String(owner) == "local" \
+		else POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
+	sb.border_color = Color(0.85, 0.85, 0.85, 0.9) if String(owner) == "local" else Color(0, 0, 0, 0.9)
 	sb.set_border_width_all(maxi(1, int(s * 0.14)))
 	sb.set_corner_radius_all(int(s * 0.18))
 	cube.add_theme_stylebox_override("panel", sb)
