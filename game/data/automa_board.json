@@ -1,0 +1,14 @@
+{
+  "kind": "automa_board",
+  "source": "World Order: Diplomacy & Dominance - Rulebook v1.0, p.4 (illustrazione Automa Board). Universale (uguale per tutti gli Automa).",
+  "note": "focus_money = round * moltiplicatore. action_rows: per tipo carta, azione nello spazio SINISTRO e DESTRO. domestic non e' una riga azione: Get a Growth Card se possibile, altrimenti +30 money.",
+  "focus_money": { "domestic": 10, "diplomatic": 5, "military": 3 },
+  "action_rows": {
+    "diplomatic": { "left": "engage", "right": "improve_relations" },
+    "economic":   { "left": "invest", "right": "trade" },
+    "military":   { "left": "build_base", "right": "move" }
+  },
+  "domestic": { "action": "get_growth_or_money", "fallback_money": 30 },
+  "trade_fallback": { "from": "trade", "to": "invest" },
+  "action_spaces": ["engage", "improve_relations", "invest", "trade", "build_base", "move"]
+}
