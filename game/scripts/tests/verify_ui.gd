@@ -228,6 +228,12 @@ func _init() -> void:
 		# Move: dispiega 2 Armate dalla Riserva in 2 Regioni (sorgente = Riserva,
 		# poi destinazione). "Move up to 2": paga 5 money/Armata.
 		var pm: PlayerState = board._active()
+		# Il Move standard consente la destinazione solo in zona di interesse o dove si ha una
+		# Base (regolamento): diamo al giocatore di turno una Base in Europa e Africa, cosi' le
+		# destinazioni di questi sotto-test sono valide a prescindere dalla potenza di turno.
+		pm.allied_countries.append({"id": "ui_base_eu", "display_name": "Base EU", "region": "europe", "value": 1})
+		pm.allied_countries.append({"id": "ui_base_af", "display_name": "Base AF", "region": "africa", "value": 1})
+		pm.bases.append("ui_base_eu"); pm.bases.append("ui_base_af")
 		pm.armies_available = 3
 		pm.money = 30
 		var eu0: int = board.gs.regions["europe"]["armies"].get(pm.power, 0)

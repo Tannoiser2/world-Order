@@ -447,16 +447,19 @@ func _layout_overlays() -> void:
 	_layout_auto_influence_cards()
 
 
-## Mostra le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori) in alto a
-## SINISTRA sulla mappa (vicino al titolo), così si vede cosa fanno le potenze non giocanti.
+## Mostra le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori) SOTTO i
+## segnalini dell'ordine di turno, così si vede cosa fanno le potenze non giocanti senza
+## coprire il titolo "WORLD ORDER" (prima stavano in alto, sopra la scritta del gioco).
 func _layout_auto_influence_cards() -> void:
 	if _auto_inf_shown.is_empty():
 		return
 	var cw := board_native.x * 0.062
 	var ch := cw / 0.71
 	var gap := board_native.x * 0.006
-	var x0 := board_native.x * 0.205   # a destra del titolo "WORLD ORDER"
-	var y0 := board_native.y * 0.042
+	# Allineate alla colonna dell'ordine di turno (TURN_ORDER_SLOTS, x~0.089..0.239, y~0.243):
+	# le carte vanno appena SOTTO i segnalini-bandiera.
+	var x0 := board_native.x * 0.072
+	var y0 := board_native.y * 0.300
 	for i in _auto_inf_shown.size():
 		var card: Dictionary = _auto_inf_shown[i]
 		var art := String(card.get("art", ""))
@@ -1833,6 +1836,11 @@ func _move_valid_dest(region: String) -> bool:
 	var allowed: Array = c.get("allowed", [])
 	if not allowed.is_empty() and not (region in allowed):
 		return false
+	# Move standard a pagamento: la destinazione dev'essere nella propria zona di interesse
+	# (bandiera della potenza) o in una Regione dove si ha una Base (regolamento pag. 14). Le
+	# varianti "free" (Strategic Asset) hanno regole proprie e non sono soggette a questo limite.
+	if not bool(c.get("free", false)) and not Actions.move_dest_valid(gs, _active(), region):
+		return false
 	return region != c.get("source", null)
 
 
@@ -1899,6 +1907,14 @@ func _apply_move_step(src: String, dest: String) -> bool:
 		_refresh_move_ui()
 		return true
 	if int(c.get("moved", 0)) >= int(c.get("max", 1)):
+		return false
+	# Destinazione valida per il Move standard a pagamento: zona di interesse (bandiera) o Base
+	# (regolamento pag. 14). Controllo di autorità (l'host non si fida del client). Le varianti
+	# "free" (Strategic Asset) non sono soggette a questo limite.
+	if not bool(c["free"]) and not Actions.move_dest_valid(gs, p, dest):
+		_status("Destinazione non valida: puoi spostare le Armate solo nelle Regioni della tua sfera d'influenza (bandiera) o dove hai una Base.")
+		c["source"] = null
+		_refresh_move_ui()
 		return false
 	# Validità della sorgente (Riserva con carri, oppure una Regione con tue Armate).
 	if src == "_reserve":
