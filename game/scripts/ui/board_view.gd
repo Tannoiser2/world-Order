@@ -531,8 +531,10 @@ func _draw_cube(pos: Array, owner: Variant, s: float) -> void:
 	cube.position = Vector2(float(pos[0]) * board_native.x - s * 0.5, float(pos[1]) * board_native.y - s * 0.5)
 	cube.size = Vector2(s, s)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
-	sb.border_color = Color(0, 0, 0, 0.9)
+	# I cubi NEUTRALI "local" sono NERI (forze locali); le potenze usano il loro colore.
+	sb.bg_color = Color(0.1, 0.1, 0.1) if String(owner) == "local" \
+		else POWER_COLORS.get(String(owner), Color(0.8, 0.8, 0.8))
+	sb.border_color = Color(0.85, 0.85, 0.85, 0.9) if String(owner) == "local" else Color(0, 0, 0, 0.9)
 	sb.set_border_width_all(maxi(1, int(s * 0.14)))
 	sb.set_corner_radius_all(int(s * 0.18))
 	cube.add_theme_stylebox_override("panel", sb)
@@ -5423,12 +5425,9 @@ func _begin_preparation() -> void:
 	# Rivela le 2 carte Auto-Influence del round (potenze neutrali, <4 giocatori): restano
 	# VISIBILI sulla mappa per tutto il round; l'effetto si applica in Aftermath.
 	_draw_auto_influence()
-	# Round 1: NIENTE preparazione guidata - tutti partono con Focus Domestic.
-	if gs.round <= 1:
-		for pp in gs.players:
-			pp.focus = WO.Focus.DOMESTIC
-		_begin_action_phase()
-		return
+	# Preparazione GUIDATA anche al Round 1: ogni giocatore SCEGLIE il Focus e ne applica gli
+	# effetti (ready delle Country card esaurite, Produzione del Focus, aumento Produzione
+	# opzionale). Prima il Round 1 saltava tutto (Focus Domestic forzato) -> la fase mancava.
 	gs.phase = WO.Phase.PREPARATION
 	_ui_phase = "Preparazione"
 	_prep_idx = 0

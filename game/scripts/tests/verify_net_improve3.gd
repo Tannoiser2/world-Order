@@ -39,6 +39,9 @@ func _init() -> void:
 	await process_frame
 	GameConfig.net = null
 
+	# Round 1 ora passa dalla PREPARATION (scelta Focus): forziamo la fase Azione per
+	# testare la risoluzione di una carta (la barra di scelta deve restare vuota a fine turno).
+	host._begin_action_phase()
 	host.active_seat = 1
 	host._plays_left = 1
 	host._played_this_turn = false
