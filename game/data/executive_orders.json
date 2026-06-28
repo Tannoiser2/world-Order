@@ -15,5 +15,17 @@
     "Get a Growth card.",
     "Produce 3 Resource types."
   ],
-  "effect_text": "Once per game, instead of playing a card from your hand, place a card face down in front of you and perform one of the following actions: Improve Relations with a Country on the board; Engage in a Region; Trade; Invest in an allied Country; Gain 1 Army, then Move up to 2 Armies; Build a Base in an allied Country; Get a Growth card; Produce 3 Resource types. GAME END: If unused, gain 3 VP."
+  "effect_text": "Once per game, instead of playing a card from your hand, place a card face down in front of you and perform one of the following actions: Improve Relations with a Country on the board; Engage in a Region; Trade; Invest in an allied Country; Gain 1 Army, then Move up to 2 Armies; Build a Base in an allied Country; Get a Growth card; Produce 3 Resource types. GAME END: If unused, gain 3 VP.",
+  "effect_ops": [
+    { "op": "choice", "options": [
+      [ { "op": "improve_relations" } ],
+      [ { "op": "engage" } ],
+      [ { "op": "trade" } ],
+      [ { "op": "invest" } ],
+      [ { "op": "gain_armies", "amount": 1 }, { "op": "move", "max": 2 } ],
+      [ { "op": "build_base" } ],
+      [ { "op": "get_growth" } ],
+      [ { "op": "produce", "count": 3 } ]
+    ] }
+  ]
 }

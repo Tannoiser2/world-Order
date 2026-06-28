@@ -17,6 +17,8 @@ const KNOWN := [
 	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
 	# Giocare una carta a faccia in giù: +10 money, oppure come costo di una Carta Strategica
 	"play_money_token", "play_strategic_asset",
+	# Executive Order (modulo): una volta per partita, invece di una carta, esegue un'azione
+	"use_executive_order",
 	# Sotto-scelte durante la risoluzione di una carta/azione
 	"pick_region", "pick_influence_cell", "pick_allied_country", "exhaust_ally",
 	# Improve Relations: scelta della Country sul tabellone + conferma/salta dello sconto
@@ -64,6 +66,11 @@ static func play_card(seat: int, seq: int, hand_index: int) -> Dictionary:
 
 static func end_turn(seat: int, seq: int) -> Dictionary:
 	return make("end_turn", seat, seq, {})
+
+
+## Executive Order: una volta per partita, invece di giocare una carta, esegue una delle azioni.
+static func use_executive_order(seat: int, seq: int) -> Dictionary:
+	return make("use_executive_order", seat, seq, {})
 
 
 ## Carta di mano (per INDICE) giocata a faccia in giù per +10 money.
@@ -224,6 +231,8 @@ static func valid_shape(cmd: Variant) -> bool:
 		"play_card":
 			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0
 		"end_turn":
+			return true
+		"use_executive_order":
 			return true
 		"play_money_token":
 			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0
