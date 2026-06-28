@@ -132,6 +132,8 @@ var _growth_pick: Dictionary = {}       # {} = inattivo; {level:int} = scelta Gr
 var _growth_pick_shown := false         # overlay già costruito in questa vista (evita ricostruzioni)
 var _trade_exported: Dictionary = {}    # risorse esportate nell'ultimo Trade (per i bonus condizionali)
 var _playing_asset := false             # true se stiamo risolvendo un Strategic Asset (non una carta di mano)
+var _playing_eo := false                # true se stiamo risolvendo l'Executive Order (non una carta di mano)
+var _eo_ops: Array = []                 # effect_ops dell'Executive Order (scelta a 8 opzioni), dai dati
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
 var _prep_idx := 0                       # giocatore corrente nella PREPARATION guidata (scelta Focus)
 var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
@@ -210,6 +212,7 @@ func _ready() -> void:
 	trade_deals = DataLoader.load_trade_deals()
 	focus_bonuses = DataLoader.load_player_boards().get("focus_bonuses", {})
 	_power_focus = DataLoader.load_player_boards().get("power_focus", {})
+	_eo_ops = DataLoader.load_executive_order().get("effect_ops", [])
 	_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
 	_auto_inf_deck.shuffle()
 	_refill_market()
@@ -1299,6 +1302,34 @@ func _play_card(card: Dictionary) -> void:
 	_advance_play()
 
 
+## Usa l'Executive Order (modulo): UNA volta per partita, al posto di una carta, esegue una
+## delle 8 azioni (scelta). Consuma una giocata; se non usata vale +3 VP a fine partita.
+func _play_executive_order() -> void:
+	if not playing_card.is_empty():
+		return
+	if _plays_left <= 0:
+		_status("Hai già giocato in questo turno. Premi 'Fine turno'.")
+		return
+	var p := _active()
+	if p.executive_order_used:
+		_status("Hai già usato la tua Executive Order in questa partita.")
+		return
+	if _eo_ops.is_empty():
+		return
+	p.executive_order_used = true
+	_playing_eo = true
+	playing_card = {"display_name": "Executive Order", "effect_ops": _eo_ops}
+	play_queue = (_eo_ops as Array).duplicate(true)
+	_play_ops_started = 0
+	active_mods = {}
+	_event("%s usa l'Executive Order" % p.power.to_upper())
+	_advance_play()
+
+
+func _cmd_use_executive_order() -> void:
+	apply_command(GameCommands.use_executive_order(active_seat, _next_seq()))
+
+
 ## Breve descrizione degli sconti attivi della carta (per la status bar).
 func _mods_text(mods: Dictionary) -> String:
 	var bits := []
@@ -2095,11 +2126,12 @@ func _hide_move_bar() -> void:
 
 func _finish_card() -> void:
 	var p := _active()
-	if not _playing_asset:
-		# Carta normale: va negli scarti. Un Strategic Asset NON entra nel mazzo.
+	if not _playing_asset and not _playing_eo:
+		# Carta normale: va negli scarti. Strategic Asset ed Executive Order NON entrano nel mazzo.
 		p.hand.erase(playing_card)
 		p.played.append(playing_card)
 	_playing_asset = false
+	_playing_eo = false
 	playing_card = {}
 	_selected_hand_card = {}
 	active_mods = {}
@@ -2115,6 +2147,11 @@ func _finish_card() -> void:
 ## carta non ha ancora fatto nulla, quindi la RESTITUISCE (resta in mano) e NON consuma il
 ## turno. Il giocatore può rigiocarla o sceglierne un'altra. Niente carta/turno sprecati.
 func _abort_play(reason: String) -> void:
+	# Se era l'Executive Order e non ha ancora fatto nulla, la si "restituisce": non risulta usata
+	# e il turno non viene consumato (come per le carte non eseguibili).
+	if _playing_eo:
+		_active().executive_order_used = false
+		_playing_eo = false
 	playing_card = {}
 	play_queue = []
 	_play_ops_started = 0
@@ -4487,6 +4524,14 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	bar.text = "%s  La tua mano (%d)%s" % ["[+]" if hand_collapsed else "[-]", p.hand.size(), plays_txt]
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
+	# Executive Order (modulo): una volta per partita, al posto di una carta. Bottone visibile
+	# finché non l'hai usata e hai ancora una giocata disponibile nel turno.
+	if playing_card.is_empty() and _plays_left > 0 and not p.executive_order_used:
+		var eo := Button.new()
+		eo.text = "Usa Executive Order (1 volta/partita)"
+		eo.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
+		eo.pressed.connect(_cmd_use_executive_order)
+		hand_pinned.add_child(eo)
 	if hand_collapsed:
 		hand_box = null
 		return
@@ -4608,6 +4653,8 @@ func apply_command(cmd: Dictionary) -> bool:
 			_play_card(p.hand[idx])
 		"end_turn":
 			_end_turn()
+		"use_executive_order":
+			_play_executive_order()
 		"play_money_token":
 			var pm := _active()
 			var mi := int(a["hand_index"])

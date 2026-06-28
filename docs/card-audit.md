@@ -73,15 +73,18 @@ Il sistema è **host-authoritative** e ogni scelta interattiva passa per il **co
 che **concatena** una seconda azione interattiva (Produce) — popup → scelta → Produce con
 limite di tipi sincronizzato → comando produce → risoluzione su entrambe le finestre.
 
-## Eccezione nota (gap)
+## Executive Orders (implementato in v0.7.127)
 
-- **Executive Orders** (`executive_orders.json`) — **modulo opzionale NON implementato**. Sono 4
-  carte (una per potenza) che, una volta per partita, invece di giocare una carta lasciano
-  eseguire una delle azioni elencate (testo in `actions`), con +3 VP se non usate. Non hanno
-  `effect_ops` né un flusso UI per giocarle. Da implementare se si vuole abilitare il modulo.
+Il modulo **Executive Orders** e' ora implementato. Le 4 carte (una per potenza) sono modellate
+come una **scelta a 8 opzioni** (`executive_orders.json` -> `effect_ops`): Improve Relations /
+Engage / Trade / Invest / (Gain 1 Army + Move 2) / Build a Base / Get a Growth / Produce 3 tipi.
+Una volta per partita, al posto di una carta, il giocatore usa l'Executive Order (bottone "Usa
+Executive Order") e sceglie un'azione; consuma una giocata. Se non usata vale +3 VP a fine partita
+(gia' nello scoring). E' multiplayer-safe: nuovo comando `use_executive_order` + la scelta passa
+per `popup_choice`. Test: `verify_executive_order`, `verify_net_executive_order`.
 
 ## Conclusione
 
-Tutte le 135 carte di gioco (incluse multi-azione e a scelta multipla) sono **implementate** e
-**funzionano in multiplayer** grazie all'architettura host-authoritative + command bus. L'unico
-elemento non implementato è il **modulo opzionale Executive Orders**.
+Tutte le 135 carte di gioco (incluse multi-azione e a scelta multipla) **e il modulo Executive
+Orders** sono **implementate** e **funzionano in multiplayer** grazie all'architettura
+host-authoritative + command bus.

@@ -68,6 +68,12 @@ static func load_auto_influence() -> Array:
 	return doc.get("cards", []) if doc else []
 
 
+## Executive Order (modulo opzionale): carta unica con le azioni (effect_ops = scelta a 8 opzioni).
+static func load_executive_order() -> Dictionary:
+	var doc: Variant = _read(BASE + "executive_orders.json")
+	return doc if doc else {}
+
+
 ## Automa board universale (mappa tipo carta -> azione, focus money). Solo mode.
 static func load_automa_board() -> Dictionary:
 	var doc: Variant = _read(BASE + "automa_board.json")
