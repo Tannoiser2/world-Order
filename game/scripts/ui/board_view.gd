@@ -139,6 +139,9 @@ var _prep_idx := 0                       # giocatore corrente nella PREPARATION 
 var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
 var _prep_increases_done := 0            # quanti aumenti Produzione gia' fatti in questo passo Focus
 var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in questo passo (Cina: 2 distinti)
+var _automa_busy := false                # guardia anti-rientro del driver bot (Automa)
+var _automa_pending := false             # un passo bot e' "armato" (lo esegue _process dopo un breve ritardo)
+var _automa_delay := 0.0                 # tempo accumulato prima del prossimo passo bot
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -5345,6 +5348,7 @@ func _end_turn() -> void:
 	_log("— Tocca a %s —" % _active().power.to_upper())
 	_status(_turn_hint())
 	_after_change()
+	_automa_tick()
 
 
 ## Prompt chiaro di inizio turno: a chi tocca e cosa può fare (indicatore guidato).
@@ -5612,6 +5616,82 @@ func _prep_step() -> void:
 	drawer_open = true
 	drawer_power = _active().power
 	_after_change()   # la barra (Focus o Aumento) la (ri)costruisce _refresh per chi agisce
+	_automa_tick()
+
+
+# --- Driver BOT (Automa) — solo mode, partite LOCALI, attivabile con GameConfig.automa_powers
+# (vuoto = nessun bot -> zero impatto sul gioco normale). I bot prendono i loro turni in
+# automatico senza bloccare la partita. Logica completa delle azioni: prossimo stadio. ---
+
+## "Arma" un passo del bot: lo esegue _process dopo un breve ritardo (un passo per volta, cosi'
+## non si blocca tutto in un frame e si VEDONO i turni dei bot). Solo locale e con bot attivi.
+func _automa_tick() -> void:
+	if net == null and not GameConfig.automa_powers.is_empty():
+		_automa_pending = true
+		_automa_delay = 0.0
+
+
+## Esegue UN passo del bot al massimo per frame, con un piccolo ritardo (un turno alla volta).
+func _process(delta: float) -> void:
+	if not _automa_pending or net != null or game_over or _automa_busy:
+		return
+	if GameConfig.automa_powers.is_empty():
+		_automa_pending = false
+		return
+	_automa_delay += delta
+	if _automa_delay >= 0.35:
+		_automa_pending = false
+		_automa_run()
+
+## Esegue UN passo del bot di turno secondo la fase. Solo locale; salta se non e' un Automa.
+func _automa_run() -> void:
+	if _automa_busy or net != null or game_over:
+		return
+	if not playing_card.is_empty() or popup_layer.get_child_count() > 0:
+		return
+	_automa_busy = true
+	match _ui_phase:
+		"Preparazione":
+			if _prep_idx < gs.players.size() and GameConfig.is_automa(_active().power):
+				_automa_prep()
+		"Azione":
+			if GameConfig.is_automa(_active().power):
+				_automa_action()
+		"Research":
+			if _research_idx < gs.turn_order.size() \
+					and GameConfig.is_automa(gs.players[gs.turn_order[_research_idx]].power):
+				_research_idx += 1
+				_research_next()
+		"Aftermath":
+			if _aftermath_choice_p != null and GameConfig.is_automa(_aftermath_choice_p.power):
+				_aftermath_continue()
+	_automa_busy = false
+
+## Preparazione del bot: sceglie un Focus (la Decision card -> qui RNG) e incassa il money del
+## Focus (round x moltiplicatore). L'Automa non produce risorse e non esaurisce le Country.
+func _automa_prep() -> void:
+	var p := _active()
+	var f := randi() % 3
+	p.focus = f
+	_focus_round[p.power] = gs.round
+	var gain := Automa.focus_money(f, gs.round)
+	p.money += gain
+	_log("Bot %s: Focus %s (+%d money)" % [p.power.to_upper(), FOCUS_NAME[f], gain])
+	_prep_advance()
+
+## Azione del bot (stadio 4a, minimale ma valida): esegue un Trade — guadagna 5 money per ogni
+## simbolo Export delle sue Country alleate — e termina il turno. La scelta dell'azione vera
+## (Improve/Engage/Invest/Move/Build via Automa board) arriva nello stadio successivo.
+func _automa_action() -> void:
+	var p := _active()
+	var ex := 0
+	for c in p.allied_countries:
+		ex += ((c as Dictionary).get("exports", []) as Array).size()
+	var gain := Automa.trade_gain(ex)
+	p.money += gain
+	_log("Bot %s: Trade (+%d money)" % [p.power.to_upper(), gain])
+	_played_this_turn = true
+	_end_turn()
 
 
 ## Barra in alto della PREPARATION: solo l'istruzione (NIENTE bottoni - la scelta del
@@ -5649,6 +5729,7 @@ func _begin_action_phase() -> void:
 	_log("— Tocca a %s —" % _active().power.to_upper())
 	_status("Round %d - Azione. %s" % [gs.round, _turn_hint()])
 	_after_change()
+	_automa_tick()
 
 
 # --- Fase Research / Market (fine round, prima dell'Aftermath) ---
@@ -5704,6 +5785,7 @@ func _research_next() -> void:
 	_research_points = GamePhases.research_step(p, p.hand, p.focus == WO.Focus.DOMESTIC)
 	_after_change()
 	_show_research()
+	_automa_tick()
 
 
 ## Prossima Growth card acquistabile dal giocatore (livello = possedute + 1).
@@ -5953,6 +6035,7 @@ func _show_aftermath_choices(p: PlayerState) -> void:
 	drawer_open = false
 	_after_change()          # ridisegna mappa (token Engage cliccabili)
 	_aftermath_bar(p)
+	_automa_tick()
 
 
 ## Barra in alto dell'Aftermath: intestazione, eventuale "Aumenta Prosperità" e "Continua".

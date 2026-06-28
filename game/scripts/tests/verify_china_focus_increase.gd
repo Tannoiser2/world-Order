@@ -14,7 +14,7 @@ func _setup_prep(b: Variant, seat: int) -> void:
 	b._ui_phase = "Preparazione"
 	b.gs.phase = WO.Phase.PREPARATION
 	b._prep_idx = 0
-	b.gs.turn_order = [seat, 1 - seat]
+	b.gs.turn_order.assign([seat, 1 - seat])
 	b.active_seat = seat
 	b.gs.players[seat].focus = WO.Focus.DOMESTIC
 	b._prep_awaiting_increase = true
