@@ -137,6 +137,8 @@ var _eo_ops: Array = []                 # effect_ops dell'Executive Order (scelt
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
 var _prep_idx := 0                       # giocatore corrente nella PREPARATION guidata (scelta Focus)
 var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
+var _prep_increases_done := 0            # quanti aumenti Produzione gia' fatti in questo passo Focus
+var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in questo passo (Cina: 2 distinti)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -4681,10 +4683,19 @@ func apply_command(cmd: Dictionary) -> bool:
 			if _ui_phase != "Preparazione":
 				return false
 			var t := String(a["type"])
+			var pinc := _active()
 			if t != "":
-				_event(_apply_increase_production(_active(), t))
+				var msg := _apply_increase_production(pinc, t)
+				if msg != "":
+					_event(msg)
+					_prep_increases_done += 1
+					_prep_increased_types.append(t)
 			_clear_choice_bar()
-			_prep_advance()
+			# Cina (Domestic): dopo il 1° aumento puo' aumentarne una 2ª (costo restante).
+			if t != "" and _prep_increases_done < _max_focus_increases(pinc.power, pinc.focus):
+				_prep_offer_increase()   # ri-offre (o avanza se non resta nulla di abbordabile)
+			else:
+				_prep_advance()
 		"pick_region":
 			_on_region_pressed(String(a["region"]))
 		"pick_influence_cell":
@@ -4917,6 +4928,8 @@ func _ui_snapshot() -> Dictionary:
 		# ricostruire la barra dell'aumento (prima viveva solo sull'host -> "sempre su USA").
 		"prep_idx": _prep_idx,
 		"prep_increase": _prep_awaiting_increase,
+		"prep_increases_done": _prep_increases_done,
+		"prep_increased_types": _prep_increased_types.duplicate(),
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
@@ -5010,6 +5023,8 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	# il client apre la plancia giusta e vede la barra dell'aumento quando tocca a lui.
 	_prep_idx = int(ui.get("prep_idx", _prep_idx))
 	_prep_awaiting_increase = bool(ui.get("prep_increase", false))
+	_prep_increases_done = int(ui.get("prep_increases_done", 0))
+	_prep_increased_types = (ui.get("prep_increased_types", []) as Array).duplicate()
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
@@ -5429,13 +5444,37 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 func _increase_prod_options(p: PlayerState) -> Array:
 	var key: String = ["domestic", "diplomatic", "military"][p.focus]
 	var fb: Dictionary = focus_bonuses.get(key, {})
-	var cost := _focus_increase_cost(p.power)   # per-potenza (USA 8, UE 7, Russia/Cina 6)
+	# Costo del PROSSIMO aumento (per-potenza; per la Cina il 2° aumento Domestic costa di piu').
+	var cost := _focus_increase_cost_n(p.power, p.focus, _prep_increases_done)
 	var types: Array = [String(fb["increase_production"])] if fb.has("increase_production") \
 		else ["energy", "raw_materials", "food"]
 	var out := []
 	for t in types:
+		if String(t) in _prep_increased_types:
+			continue   # gia' aumentata in questo passo (la Cina aumenta 2 Produzioni DISTINTE)
 		out.append({"type": String(t), "cost": cost})
 	return out
+
+
+## Numero massimo di aumenti Produzione del Focus per la potenza: 2 per la Cina in Domestic
+## (1 / 2 Produzioni per 6 / 15 money), 1 per tutte le altre.
+func _max_focus_increases(power: String, focus: int) -> int:
+	var pf: Dictionary = _power_focus.get(power, {})
+	if focus == WO.Focus.DOMESTIC and pf.has("domestic_increase_two_cost"):
+		return 2
+	return 1
+
+
+## Costo del prossimo aumento Produzione visti quanti gia' fatti (`done`). Cina Domestic:
+## 1° = increase_cost (6), 2° = domestic_increase_two_cost - increase_cost (15-6 = 9). Le altre
+## potenze hanno un solo aumento al costo per-potenza.
+func _focus_increase_cost_n(power: String, focus: int, done: int) -> int:
+	var base := _focus_increase_cost(power)
+	if done >= 1:
+		var pf: Dictionary = _power_focus.get(power, {})
+		if focus == WO.Focus.DOMESTIC and pf.has("domestic_increase_two_cost"):
+			return maxi(0, int(pf["domestic_increase_two_cost"]) - base)
+	return base
 
 
 ## Carte Nazione preparate (ready) dal Focus `key` per la potenza `power` (dalla player board;
@@ -5499,7 +5538,11 @@ func _show_increase_bar() -> void:
 	var p := _active()
 	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
 	var head := Label.new()
+	var maxinc := _max_focus_increases(p.power, p.focus)
 	head.text = "Aumento Produzione (opzionale) - %s:" % p.power.to_upper()
+	if maxinc > 1:
+		head.text = "Aumento Produzione (opzionale) - %s [%d/%d, puoi aumentarne 2]:" % [
+			p.power.to_upper(), _prep_increases_done + 1, maxinc]
 	head.add_theme_font_size_override("font_size", _base_fs() + 1)
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -5564,6 +5607,8 @@ func _prep_step() -> void:
 		return
 	active_seat = gs.turn_order[_prep_idx]
 	_prep_awaiting_increase = false
+	_prep_increases_done = 0
+	_prep_increased_types = []
 	drawer_open = true
 	drawer_power = _active().power
 	_after_change()   # la barra (Focus o Aumento) la (ri)costruisce _refresh per chi agisce
