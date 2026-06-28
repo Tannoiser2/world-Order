@@ -117,6 +117,7 @@ var _exhaust_sel: Dictionary = {}       # id nazione -> true: alleati scelti per
 var _exhaust_ctx: Dictionary = {}       # scelta sconto attiva: {region, title, cb} (click sulle carte)
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _produce_mode := false              # Produce attivo: si imposta sulla resource track della plancia
+var _produce_max_types := 0             # max TIPI di risorsa producibili (count della carta; 0 = illimitato)
 # Scelta a "popup" (barra in alto) durante la risoluzione di una carta. La callback NON è
 # serializzabile: la tiene SOLO l'host; il client vede prompt+etichette (sincronizzati) e
 # rimanda l'INDICE scelto col comando popup_choice, che l'host esegue chiamando la callback.
@@ -1360,7 +1361,9 @@ func _advance_play() -> void:
 				for r in op["types"]: Actions.execute_produce(_active(), String(r))
 				_advance_play()
 			else:
-				_open_produce_ui()                              # Produce multi-traccia con quantità
+				# `count` = numero di TIPI di risorsa producibili (es. Growth Strategy = 3,
+				# R&D Champion = 2, Optimization Program = 1). 0 = illimitato.
+				_open_produce_ui(int(op.get("count", 0)))       # Produce multi-traccia con quantità
 		"choice", "choose_n":
 			_pick_choice(op.get("options", []), func(sub):
 				# antepone i sotto-op scelti alla coda
@@ -2615,12 +2618,23 @@ func _producible_types(p: PlayerState) -> Array:
 
 ## Produce sulla PLANCIA (niente popup): tocchi le caselle valide sulla resource track
 ## per impostare quanto produrre (entro la tua Produzione); le Armate con ± nella barra.
-func _open_produce_ui() -> void:
+func _open_produce_ui(max_types: int = 0) -> void:
 	_produce_sel = {}
+	_produce_max_types = max_types
 	_produce_mode = true
 	drawer_open = true
 	drawer_power = _active().power
 	_refresh()
+
+
+## Vero se non si può aggiungere `rt` come NUOVO tipo da produrre perché si è già al limite
+## di tipi della carta (count). Un tipo già selezionato si può sempre regolare.
+func _produce_type_limit_reached(rt: String) -> bool:
+	if _produce_max_types <= 0:
+		return false
+	if _produce_sel.has(rt):
+		return false
+	return _produce_sel.size() >= _produce_max_types
 
 
 func _produce_rerender() -> void:
@@ -2633,6 +2647,9 @@ func _produce_set(rt: String, q: int) -> void:
 	var nq := clampi(q, 0, cap)
 	if nq <= 0:
 		_produce_sel.erase(rt)
+	elif _produce_type_limit_reached(rt):
+		_status("Puoi produrre al massimo %d tipi di risorsa con questa carta." % _produce_max_types)
+		return
 	else:
 		_produce_sel[rt] = nq
 	_produce_rerender()
@@ -2645,6 +2662,9 @@ func _produce_armies_adjust(delta: int) -> void:
 	var nq := clampi(int(_produce_sel.get("armies", 0)) + delta, 0, cap)
 	if nq <= 0:
 		_produce_sel.erase("armies")
+	elif _produce_type_limit_reached("armies"):
+		_status("Puoi produrre al massimo %d tipi di risorsa con questa carta." % _produce_max_types)
+		return
 	else:
 		_produce_sel["armies"] = nq
 	_produce_rerender()
@@ -2692,6 +2712,8 @@ func _show_produce_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var info := Label.new()
 	info.text = "PRODUCE - tocca le caselle sulla track della plancia (entro la tua Produzione)"
+	if _produce_max_types > 0:
+		info.text += " - fino a %d tipi (scelti %d/%d)" % [_produce_max_types, _produce_sel.size(), _produce_max_types]
 	info.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
@@ -2731,6 +2753,14 @@ func _produce_cancel() -> void:
 ## bottone Conferma in locale, o il comando `produce` quando arriva dalla rete).
 func _apply_produce() -> void:
 	var p := _active()
+	# Sicurezza (autorità host): non superare il numero di TIPI consentito dalla carta (count).
+	if _produce_max_types > 0 and _produce_sel.size() > _produce_max_types:
+		var keep := {}
+		for rt in _produce_sel:
+			if keep.size() >= _produce_max_types:
+				break
+			keep[rt] = _produce_sel[rt]
+		_produce_sel = keep
 	var summary := []
 	# Primarie prima (così le secondarie possono consumarle).
 	for rt in Actions.PRIMARY:
@@ -4829,6 +4859,7 @@ func _ui_snapshot() -> Dictionary:
 		# Stato del Move (per pilotare il client durante lo spostamento Armate).
 		"move_ctx": _move_ctx.duplicate(true) if not _move_ctx.is_empty() else {},
 		"produce_mode": _produce_mode,
+		"produce_max_types": _produce_max_types,
 		"trade_mode": _trade_mode,
 		# Conteggi del turno del giocatore ATTIVO: servono al client per abilitare/disabilitare
 		# correttamente la propria mano e il tasto «Fine turno».
@@ -4917,6 +4948,7 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	var was_trade := _trade_mode
 	var was_produce := _produce_mode
 	_produce_mode = bool(ui.get("produce_mode", false))
+	_produce_max_types = int(ui.get("produce_max_types", 0))
 	_trade_mode = bool(ui.get("trade_mode", false))
 	if _trade_mode and not was_trade:
 		_trade_sel = {"export": {}, "import": {}}
