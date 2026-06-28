@@ -31,6 +31,13 @@
       "ongoing": "+1 THREAT wherever you have Armies, and +1 Defense in each Region in your zone of interest."
     }
   },
+  "power_focus": {
+    "_note": "Per-potenza (dalle player board): ready = carte Nazione preparate per Focus; increase_cost = money per aumentare 1 Produzione del Focus. China (Domestic) puo' aumentare 2 Produzioni per domestic_increase_two_cost.",
+    "usa":    { "ready": { "domestic": 1, "diplomatic": 4, "military": 2 }, "increase_cost": 8 },
+    "eu":     { "ready": { "domestic": 2, "diplomatic": 5, "military": 3 }, "increase_cost": 7 },
+    "russia": { "ready": { "domestic": 1, "diplomatic": 4, "military": 2 }, "increase_cost": 6 },
+    "china":  { "ready": { "domestic": 1, "diplomatic": 4, "military": 2 }, "increase_cost": 6, "domestic_increase_two_cost": 15 }
+  },
   "prosperity_track": {
     "note": "Comune a tutte le potenze. Spendi Consumer Goods per avanzare di 1 spazio/round e guadagna VP + monete. Valori esatti da riverificare; confermati dall'estremita': costo 5 CG -> 9 VP + 30 money; costo 6 CG -> 12 VP.",
     "verify": true,
