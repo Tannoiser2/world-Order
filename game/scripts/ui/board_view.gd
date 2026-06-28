@@ -105,6 +105,7 @@ var market_display: Array = []          # carte Market scoperte (acquistabili)
 var growth_pool: Array = []             # tutte le Growth card (per livello)
 var trade_deals: Dictionary = {}        # limiti Export/Import e import_from per potenza
 var focus_bonuses: Dictionary = {}      # ready/produce/ongoing per ogni Focus (domestic/diplomatic/military)
+var _power_focus: Dictionary = {}       # per-potenza: ready count e costo aumento Produzione (dalle player board)
 var _auto_inf_deck: Array = []          # mazzo Auto-Influence (potenze neutrali, <4 giocatori)
 var _auto_inf_shown: Array = []         # le 2 carte Auto-Influence del round (mostrate sulla mappa)
 var _trade_sel: Dictionary = {}         # selezione in corso: {export:{R:q}, import:{R:q}}
@@ -207,6 +208,7 @@ func _ready() -> void:
 	growth_pool = DataLoader.load_growth()
 	trade_deals = DataLoader.load_trade_deals()
 	focus_bonuses = DataLoader.load_player_boards().get("focus_bonuses", {})
+	_power_focus = DataLoader.load_player_boards().get("power_focus", {})
 	_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
 	_auto_inf_deck.shuffle()
 	_refill_market()
@@ -5304,8 +5306,9 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 	p.focus = f
 	var key: String = ["domestic", "diplomatic", "military"][f]
 	var fb: Dictionary = focus_bonuses.get(key, {})
-	# 1) Ready: quante Country card prepara questo Focus (+ abilità ongoing).
-	var to_ready := int(fb.get("ready_country_cards", 1)) + _ongoing_count(p, "ready_extra_on_focus")
+	# 1) Ready: quante Country card prepara questo Focus (per-potenza dalla player board: l'UE
+	#    ne prepara una in più per Focus) (+ abilità ongoing).
+	var to_ready := _focus_ready_count(p.power, key) + _ongoing_count(p, "ready_extra_on_focus")
 	var readied := 0
 	for cid in p.exhausted:
 		if to_ready <= 0:
@@ -5347,13 +5350,32 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 func _increase_prod_options(p: PlayerState) -> Array:
 	var key: String = ["domestic", "diplomatic", "military"][p.focus]
 	var fb: Dictionary = focus_bonuses.get(key, {})
-	var cost := int(fb.get("increase_production_cost", 8))
+	var cost := _focus_increase_cost(p.power)   # per-potenza (USA 8, UE 7, Russia/Cina 6)
 	var types: Array = [String(fb["increase_production"])] if fb.has("increase_production") \
 		else ["energy", "raw_materials", "food"]
 	var out := []
 	for t in types:
 		out.append({"type": String(t), "cost": cost})
 	return out
+
+
+## Carte Nazione preparate (ready) dal Focus `key` per la potenza `power` (dalla player board;
+## fallback al valore comune). L'UE prepara 2/5/3 (Domestic/Diplomatic/Military), le altre 1/4/2.
+func _focus_ready_count(power: String, key: String) -> int:
+	var pf: Dictionary = _power_focus.get(power, {})
+	var ready: Dictionary = pf.get("ready", {})
+	if ready.has(key):
+		return int(ready[key])
+	return int((focus_bonuses.get(key, {}) as Dictionary).get("ready_country_cards", 1))
+
+
+## Costo (money) per aumentare di 1 una Produzione del Focus, per la potenza `power` (dalla
+## player board: USA 8, UE 7, Russia/Cina 6; fallback 8).
+func _focus_increase_cost(power: String) -> int:
+	if _power_focus.get(power, {}).has("increase_cost"):
+		return int(_power_focus[power]["increase_cost"])
+	var key: String = ["domestic", "diplomatic", "military"][_active().focus]
+	return int((focus_bonuses.get(key, {}) as Dictionary).get("increase_production_cost", 8))
 
 
 ## Applica l'aumento di una Produzione: paga il costo, sposta il cubo di 1; se la
