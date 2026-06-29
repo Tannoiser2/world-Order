@@ -5354,6 +5354,8 @@ func _end_turn() -> void:
 ## Prompt chiaro di inizio turno: a chi tocca e cosa può fare (indicatore guidato).
 func _turn_hint() -> String:
 	var p := _active()
+	if GameConfig.is_automa(p.power):
+		return "Bot %s sta giocando…" % p.power.to_upper()
 	if _plays_left <= 0 or _played_this_turn:
 		return "%s: premi 'Fine turno'." % p.power.to_upper()
 	return "Tocca a %s: gioca una carta dalla mano (poi si sblocca 'Fine turno')." % p.power.to_upper()

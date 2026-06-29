@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.128"
+const VERSION := "v0.7.129"
 const CHANGELOG := [
+	"v0.7.129 - NUOVO: modalita' SOLO (vs Bot). Nel menu, scegli 'Solo (Bot)': per ogni seggio decidi Umano o Bot (Automa) e imposti la difficolta' (Normale/Difficile). Avvii e i bot prendono i loro turni in automatico, senza bloccare la partita. I bot ora sono FEDELI alle carte ufficiali dell'espansione Diplomacy & Dominance: money iniziale, priorita' Mercato/cubetti azione e traccia Prosperita' propri per USA/UE/Russia/Cina (prima erano segnaposto copiati dagli USA). NB: in questa build le AZIONI dei bot sono ancora minimali (in Preparazione scelgono il Focus e incassano il money del Focus, in Azione fanno un Trade e passano) — la logica completa delle azioni (Improve/Engage/Invest/Build/Move via Automa board) arriva nel prossimo aggiornamento. Hot Seat e Online invariati (nessun bot).",
 	"v0.7.128 - Choose Focus: la CINA in Focus DOMESTIC puo' ora aumentare DUE Produzioni (distinte) per 15 money, non solo una per 6 (come sulla sua player board). In pratica: aumenti la prima Produzione (6 money) e poi ti viene riofferto un secondo aumento (9 money, su un'altra Produzione) oppure 'Salta'; totale 15. Le altre potenze restano a un solo aumento. Funziona anche in multiplayer (stato sincronizzato). +1 test (verify_china_focus_increase).",
 	"v0.7.127 - NUOVO: modulo EXECUTIVE ORDER. Una volta per partita, invece di giocare una carta, premi 'Usa Executive Order' (sotto la tua mano) e scegli UNA tra 8 azioni: Improve Relations, Engage, Trade, Invest, Guadagna 1 Armata + Muovi fino a 2, Build a Base, Get a Growth, Produci 3 tipi. Consuma la giocata del turno. Se NON la usi, a fine partita vale +3 VP (gia' nello scoring). Funziona anche in multiplayer (nuovo comando sincronizzato; la scelta passa per il popup gia' sincronizzato). +2 test (verify_executive_order, verify_net_executive_order).",
 	"v0.7.126 - FIX regole (Produce) + chiarimento. L'azione Produce (es. la scelta 'Produci' della carta Growth Strategy, o R&D Champion / Optimization Program) ora rispetta il LIMITE DI TIPI scritto sulla carta: Growth Strategy = 3 tipi di risorsa, R&D Champion = 2, Optimization Program = 1. Prima l'interfaccia ignorava il limite e lasciava produrre TUTTI i tipi. Ora la barra mostra 'fino a N tipi (scelti M/N)' e oltre il limite il tipo in piu' viene rifiutato. Come funziona Produce: tocchi le caselle sulla resource track della tua plancia per produrre fino alla tua Produzione (le primarie danno la quantita' piena, le secondarie consumano i requisiti; le Armate vanno in riserva, -1 Materia ciascuna; l'eccesso oltre 10 diventa money tranne la Diplomazia che si perde). NB sul Commercio: si POSSONO vendere le Armate (carri) dalla riserva, 20 money ciascuna (mai dal tabellone), e la Diplomazia NON e' commerciabile - era gia' corretto (regolamento pag. 13). +1 test (verify_produce_count).",
@@ -237,8 +238,14 @@ var _count_buttons: Array[Button] = []
 var _mode := "hotseat"
 var _mode_buttons: Array[Button] = []
 var _seat_powers: Array = []          # potenza scelta per seggio
+var _seat_bot: Array = []             # true se il seggio e' un Bot (Automa) — solo in modalita' "solo"
 var _seats_box: VBoxContainer
 var _warn: Label
+
+# --- Solo (Bot) ---
+var _difficulty := "normal"           # "normal" | "hard"
+var _diff_box: HBoxContainer
+var _diff_buttons: Array[Button] = []
 
 # --- Lobby LAN (modalità Online) ---
 var _net: NetSession = null
@@ -326,6 +333,13 @@ func _ready() -> void:
 	hot.pressed.connect(_on_mode.bind("hotseat"))
 	modes.add_child(hot)
 	_mode_buttons.append(hot)
+	var solo := Button.new()
+	solo.text = "Solo (Bot)"
+	solo.toggle_mode = true
+	solo.custom_minimum_size = Vector2(140, 40)
+	solo.pressed.connect(_on_mode.bind("solo"))
+	modes.add_child(solo)
+	_mode_buttons.append(solo)
 	var online := Button.new()
 	online.text = "Online (LAN)"
 	online.toggle_mode = true
@@ -333,6 +347,24 @@ func _ready() -> void:
 	online.pressed.connect(_on_mode.bind("online"))
 	modes.add_child(online)
 	_mode_buttons.append(online)
+
+	# Selettore difficolta' dei Bot (visibile solo in modalita' Solo).
+	_diff_box = HBoxContainer.new()
+	_diff_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_diff_box.add_theme_constant_override("separation", 10)
+	_diff_box.visible = false
+	box.add_child(_diff_box)
+	var diff_lbl := Label.new()
+	diff_lbl.text = "Bot:"
+	_diff_box.add_child(diff_lbl)
+	for d in [["normal", "Normale"], ["hard", "Difficile"]]:
+		var b := Button.new()
+		b.text = d[1]
+		b.toggle_mode = true
+		b.custom_minimum_size = Vector2(110, 36)
+		b.pressed.connect(_on_difficulty.bind(d[0]))
+		_diff_box.add_child(b)
+		_diff_buttons.append(b)
 
 	_build_lobby(box)
 
@@ -369,6 +401,10 @@ func _set_count(n: int) -> void:
 	_player_count = n
 	# default sensati e validi (rispettano il vincolo del 2 giocatori).
 	_seat_powers = GameConfig.powers_for_count_n(n).duplicate()
+	# Default Solo: il seggio 1 e' umano, gli altri sono Bot.
+	_seat_bot = []
+	for seat in n:
+		_seat_bot.append(seat != 0)
 	_rebuild_seats()
 
 
@@ -401,6 +437,17 @@ func _rebuild_seats() -> void:
 			b.disabled = (power in _seat_powers and _seat_powers[seat] != power)
 			b.pressed.connect(_on_pick_power.bind(seat, power))
 			row.add_child(b)
+		# In Solo: un interruttore Umano/Bot per ogni seggio.
+		if _mode == "solo":
+			var bot := Button.new()
+			bot.toggle_mode = true
+			bot.button_pressed = _seat_bot[seat]
+			bot.text = "Bot" if _seat_bot[seat] else "Umano"
+			bot.custom_minimum_size = Vector2(72, 36)
+			bot.add_theme_color_override("font_color",
+				Color(0.7, 0.85, 1.0) if _seat_bot[seat] else Color(0.6, 1.0, 0.6))
+			bot.pressed.connect(_on_toggle_bot.bind(seat))
+			row.add_child(bot)
 		_seats_box.add_child(row)
 	_validate()
 
@@ -408,6 +455,25 @@ func _rebuild_seats() -> void:
 func _on_pick_power(seat: int, power: String) -> void:
 	_seat_powers[seat] = power
 	_rebuild_seats()
+
+
+func _on_toggle_bot(seat: int) -> void:
+	_seat_bot[seat] = not _seat_bot[seat]
+	_rebuild_seats()
+
+
+## Potenze controllate da Bot in modalita' Solo (sottoinsieme di _seat_powers).
+func _solo_bot_powers() -> Array:
+	var bots := []
+	for seat in _player_count:
+		if seat < _seat_bot.size() and _seat_bot[seat]:
+			bots.append(_seat_powers[seat])
+	return bots
+
+
+func _on_difficulty(d: String) -> void:
+	_difficulty = d
+	_update_selection(_diff_buttons, ["normal", "hard"].find(d))
 
 
 func _validate() -> bool:
@@ -425,12 +491,17 @@ func _validate() -> bool:
 
 func _on_mode(m: String) -> void:
 	_mode = m
-	_update_selection(_mode_buttons, ["hotseat", "online"].find(m))
+	_update_selection(_mode_buttons, ["hotseat", "solo", "online"].find(m))
 	_lobby_box.visible = (m == "online")
+	_diff_box.visible = (m == "solo")
 	if m != "online":
-		# Tornando in Hot Seat si chiude la sessione di rete eventualmente aperta.
+		# Tornando in Hot Seat / Solo si chiude la sessione di rete eventualmente aperta.
 		_free_net()
 		_reset_lobby_controls()
+	if _diff_buttons.size() == 2:
+		_update_selection(_diff_buttons, 0 if _difficulty == "normal" else 1)
+	# Rigenera i seggi: in Solo compaiono gli interruttori Umano/Bot.
+	_rebuild_seats()
 
 
 func _on_play() -> void:
@@ -439,6 +510,14 @@ func _on_play() -> void:
 	GameConfig.player_count = _player_count
 	GameConfig.mode = _mode
 	GameConfig.powers = _seat_powers.duplicate()
+	# Bot (Automa): attivi solo in modalita' Solo; negli altri casi nessun bot.
+	if _mode == "solo":
+		GameConfig.automa_powers = _solo_bot_powers()
+		GameConfig.automa_difficulty = _difficulty
+		GameConfig.net = null
+		get_tree().change_scene_to_file("res://scenes/board.tscn")
+		return
+	GameConfig.automa_powers = []
 	if _mode == "online":
 		# In rete avvia SOLO l'host; i client entrano al segnale `started`.
 		if _net == null or not _net.is_host():
