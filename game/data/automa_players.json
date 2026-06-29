@@ -1,12 +1,12 @@
 {
   "kind": "automa_players",
-  "source": "World Order: Diplomacy & Dominance. USA estratta dall'illustrazione del regolamento (p.4); EU/Russia/China sono PLACEHOLDER (verified=false) in attesa delle foto delle Player card.",
-  "note": "market_priority: ordine di preferenza per tipo carta al Market (a parita' di costo). action_cube_priority: ordine in cui i Production cube vanno nelle Action space a inizio round. prosperity: soglie money->VP della Prosperity track. Le potenze con verified=false usano valori provvisori (copiati dalla USA) e NON sono fedeli: aggiornare appena disponibili le carte.",
+  "source": "World Order: Diplomacy & Dominance — valori trascritti dalle carte Automa Player ufficiali dell'espansione (Bot.pdf). Tutte e quattro le potenze sono verificate.",
+  "note": "market_priority: ordine di preferenza per TIPO di carta al Market (a parita' di costo; 1° = piu' preferito). I tipi sono quelli delle carte: military|economic|diplomatic|domestic. action_cube_priority: ordine in cui i Production cube vanno nelle Action space a inizio round. prosperity: soglie money->VP della Prosperity track.",
   "powers": {
     "usa": {
       "verified": true,
       "starting_money": 50,
-      "market_priority": ["military", "economic", "diplomatic", "domestic"],
+      "market_priority": ["military", "diplomatic", "domestic", "economic"],
       "action_cube_priority": ["build_base", "engage", "invest"],
       "prosperity": [
         { "cost": 10, "vp": 2 },
@@ -17,46 +17,43 @@
       ]
     },
     "eu": {
-      "verified": false,
-      "starting_money": 50,
-      "market_priority": ["military", "economic", "diplomatic", "domestic"],
-      "action_cube_priority": ["build_base", "engage", "invest"],
+      "verified": true,
+      "starting_money": 45,
+      "market_priority": ["diplomatic", "economic", "domestic", "military"],
+      "action_cube_priority": ["engage", "invest", "build_base"],
       "prosperity": [
         { "cost": 10, "vp": 2 },
         { "cost": 15, "vp": 3 },
         { "cost": 25, "vp": 4 },
-        { "cost": 35, "vp": 5 },
-        { "cost": 45, "vp": 8 }
-      ],
-      "_todo": "Valori dalla Player card EU (foto)."
+        { "cost": 35, "vp": 6 },
+        { "cost": 45, "vp": 9 }
+      ]
     },
     "russia": {
-      "verified": false,
-      "starting_money": 50,
+      "verified": true,
+      "starting_money": 30,
       "market_priority": ["military", "economic", "diplomatic", "domestic"],
-      "action_cube_priority": ["build_base", "engage", "invest"],
+      "action_cube_priority": ["build_base", "invest", "engage"],
       "prosperity": [
-        { "cost": 10, "vp": 2 },
         { "cost": 15, "vp": 3 },
-        { "cost": 25, "vp": 4 },
-        { "cost": 35, "vp": 5 },
-        { "cost": 45, "vp": 8 }
-      ],
-      "_todo": "Valori dalla Player card Russia (foto)."
+        { "cost": 20, "vp": 4 },
+        { "cost": 30, "vp": 5 },
+        { "cost": 40, "vp": 7 },
+        { "cost": 50, "vp": 10 }
+      ]
     },
     "china": {
-      "verified": false,
-      "starting_money": 50,
-      "market_priority": ["military", "economic", "diplomatic", "domestic"],
-      "action_cube_priority": ["build_base", "engage", "invest"],
+      "verified": true,
+      "starting_money": 35,
+      "market_priority": ["economic", "military", "diplomatic", "domestic"],
+      "action_cube_priority": ["invest", "build_base", "engage"],
       "prosperity": [
-        { "cost": 10, "vp": 2 },
         { "cost": 15, "vp": 3 },
-        { "cost": 25, "vp": 4 },
-        { "cost": 35, "vp": 5 },
-        { "cost": 45, "vp": 8 }
-      ],
-      "_todo": "Valori dalla Player card China (foto)."
+        { "cost": 20, "vp": 4 },
+        { "cost": 30, "vp": 5 },
+        { "cost": 40, "vp": 8 },
+        { "cost": 50, "vp": 11 }
+      ]
     }
   }
 }
