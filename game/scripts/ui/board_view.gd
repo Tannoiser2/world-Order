@@ -142,6 +142,7 @@ var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in 
 var _automa_busy := false                # guardia anti-rientro del driver bot (Automa)
 var _automa_pending := false             # un passo bot e' "armato" (lo esegue _process dopo un breve ritardo)
 var _automa_delay := 0.0                 # tempo accumulato prima del prossimo passo bot
+var _automa: Dictionary = {}             # power -> Automa: stato extra dei bot (cubi/FDI/Basi/deck)
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -221,6 +222,7 @@ func _ready() -> void:
 	_auto_inf_deck = DataLoader.load_auto_influence().duplicate()
 	_auto_inf_deck.shuffle()
 	_refill_market()
+	_setup_automa()
 
 	# La radice non cattura il mouse: gli eventi sulle zone vuote della mappa
 	# arrivano a _unhandled_input (così il trascinamento col mouse panna la mappa).
@@ -5649,9 +5651,19 @@ func _process(delta: float) -> void:
 func _automa_run() -> void:
 	if _automa_busy or net != null or game_over:
 		return
-	if not playing_card.is_empty() or popup_layer.get_child_count() > 0:
-		return
 	_automa_busy = true
+	# Riepilogo di fine round (le "conseguenze"): e' un ACK condiviso. Lo avanza il driver SOLO
+	# se TUTTI i seggi sono bot (partita-demo): con un umano al tavolo, e' lui a premere
+	# "Continua" quando ha letto il recap. (Gestito PRIMA del controllo su popup_layer perche'
+	# il riepilogo e' reso come overlay; sul riepilogo di fine PARTITA non si fa nulla.)
+	if not _summary.is_empty():
+		_automa_busy = false
+		if String(_summary.get("kind", "")) == "round" and _all_automa():
+			_cmd_summary_continue()
+		return
+	if not playing_card.is_empty() or popup_layer.get_child_count() > 0:
+		_automa_busy = false
+		return
 	match _ui_phase:
 		"Preparazione":
 			if _prep_idx < gs.players.size() and GameConfig.is_automa(_active().power):
@@ -5669,31 +5681,99 @@ func _automa_run() -> void:
 				_aftermath_continue()
 	_automa_busy = false
 
+## Vero se TUTTI i seggi della partita sono controllati da bot (nessun umano al tavolo).
+func _all_automa() -> bool:
+	for p in gs.players:
+		if not GameConfig.is_automa(p.power):
+			return false
+	return true
+
+## Crea lo stato Automa per i seggi controllati dai bot (solo in locale). Imposta il money
+## iniziale dalla Player card Automa e Armate "gratuite" (riserva ampia), e prepara il mazzo
+## dei TIPI carta dalle 12 Ability iniziali della potenza.
+func _setup_automa() -> void:
+	_automa.clear()
+	if net != null or GameConfig.automa_powers.is_empty():
+		return
+	var ab := DataLoader.load_starting_abilities()
+	for power in GameConfig.automa_powers:
+		var p = gs.player_by_power(power)
+		if p == null:
+			continue
+		var types := []
+		for c in ab.get(power, []):
+			types.append(String((c as Dictionary).get("type", "")))
+		var a := Automa.from_setup(power, GameConfig.automa_difficulty, types)
+		p.money = a.money            # money della Player card Automa (sovrascrive lo standard)
+		p.armies_available = 99      # Armate gratuite/illimitate per l'Automa
+		_automa[power] = a
+
 ## Preparazione del bot: sceglie un Focus (la Decision card -> qui RNG) e incassa il money del
 ## Focus (round x moltiplicatore). L'Automa non produce risorse e non esaurisce le Country.
 func _automa_prep() -> void:
 	var p := _active()
 	var f := randi() % 3
 	p.focus = f
+	if _automa.has(p.power):
+		_automa[p.power].focus = f
 	_focus_round[p.power] = gs.round
 	var gain := Automa.focus_money(f, gs.round)
 	p.money += gain
 	_log("Bot %s: Focus %s (+%d money)" % [p.power.to_upper(), FOCUS_NAME[f], gain])
 	_prep_advance()
 
-## Azione del bot (stadio 4a, minimale ma valida): esegue un Trade — guadagna 5 money per ogni
-## simbolo Export delle sue Country alleate — e termina il turno. La scelta dell'azione vera
-## (Improve/Engage/Invest/Move/Build via Automa board) arriva nello stadio successivo.
+## Azione del bot (stadio 4b): pesca il TIPO della prossima carta, consulta l'Automa board e
+## ESEGUE l'azione corrispondente (Improve/Engage/Invest/Build/Move/Trade/Domestic) sul
+## GameState condiviso. Poi termina il turno.
 func _automa_action() -> void:
 	var p := _active()
-	var ex := 0
-	for c in p.allied_countries:
-		ex += ((c as Dictionary).get("exports", []) as Array).size()
-	var gain := Automa.trade_gain(ex)
-	p.money += gain
-	_log("Bot %s: Trade (+%d money)" % [p.power.to_upper(), gain])
+	var a = _automa.get(p.power, null)
+	if a == null:
+		# Nessuno stato Automa (non dovrebbe capitare): ripiego su un Trade e passa.
+		var ex := 0
+		for c in p.allied_countries:
+			ex += ((c as Dictionary).get("exports", []) as Array).size()
+		p.money += Automa.trade_gain(ex)
+		_played_this_turn = true
+		_end_turn()
+		return
+	var ct: String = a.pop_card_type()
+	var res: Dictionary = a.take_action(gs, ct, _automa_region_hints(p.power), all_countries)
+	_log("Bot %s: %s" % [p.power.to_upper(), _automa_action_label(res, ct)])
 	_played_this_turn = true
 	_end_turn()
+
+## Regioni suggerite per le azioni con Auto-Influence: pesca qualche carta dal mazzo
+## Auto-Influence (copia mescolata) e raccoglie le Regioni indicate per questa potenza.
+func _automa_region_hints(power: String) -> Array:
+	var deck := _auto_inf_deck.duplicate()
+	deck.shuffle()
+	var hints := []
+	for c in deck:
+		var rows: Dictionary = (c as Dictionary).get("rows", {})
+		var r := String((rows.get(power, {}) as Dictionary).get("region", ""))
+		if r != "" and r not in hints:
+			hints.append(r)
+		if hints.size() >= 4:
+			break
+	return hints
+
+## Testo leggibile dell'azione svolta dal bot (per il registro).
+func _automa_action_label(res: Dictionary, card_type: String) -> String:
+	var act := String(res.get("action", ""))
+	var region := String(res.get("region", ""))
+	var rname: String = region.capitalize() if region != "" else ""
+	var names := {
+		"engage": "Engage", "improve_relations": "Improve Relations", "invest": "Invest",
+		"build_base": "Build a Base", "move": "Move", "trade": "Trade", "domestic": "Domestic",
+	}
+	var label := String(names.get(act, act))
+	if region != "":
+		label += " in %s" % rname
+	var note := String(res.get("note", ""))
+	if note != "":
+		label += " (%s)" % note
+	return "[%s] %s" % [card_type, label]
 
 
 ## Barra in alto della PREPARATION: solo l'istruzione (NIENTE bottoni - la scelta del
@@ -6188,6 +6268,7 @@ func _aftermath_resolve() -> void:
 	# dall'host (_next_round). Senza questo il client non vedeva le conseguenze del round.
 	_summary = {"lines": _aftermath_lines.duplicate(), "art": _aftermath_ai_art, "kind": "round"}
 	_after_change()
+	_automa_tick()   # in Solo: il bot avanza il riepilogo di fine round da solo
 
 
 ## Reveal Country Cards (Preparation): in ogni Regione ruota una carta - la più

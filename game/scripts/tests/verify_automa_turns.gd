@@ -36,16 +36,18 @@ func _init() -> void:
 	print("[%s] bot Preparazione: Focus + money (%d -> %d), avanzato" % ["OK" if a_ok else "FAIL", m0, b.gs.players[ci].money])
 	if not a_ok: fails += 1
 
-	# B) Azione del bot: Trade (5 money/Export) e passaggio del turno.
+	# B) Azione del bot: esegue UN'azione vera (via Automa board) e passa il turno. Il tipo carta
+	#    e' casuale, quindi non si assume QUALE azione: si verifica che il turno avanzi (seat
+	#    successivo, conteggio +1) e che lo stato Automa del seggio esista.
 	b._ui_phase = "Azione"; b.gs.phase = WO.Phase.ACTION
 	b.gs.turn_order.assign([ci, 1 - ci]); b.round_turn_count = 0; b.active_seat = ci
-	b.gs.players[ci].allied_countries = [{"exports": ["food", "energy"]}, {"exports": ["food"]}]   # 3 export -> 15
+	b.gs.players[ci].money = 200
+	b.gs.players[ci].allied_countries = [{"id": "x", "region": "europe", "exports": ["food", "energy"]}]
 	b._played_this_turn = false
-	var bm0: int = b.gs.players[ci].money
 	b._automa_run()
-	var b_ok: bool = b.gs.players[ci].money == bm0 + 15 and b.active_seat == (1 - ci) and b.round_turn_count == 1
-	print("[%s] bot Azione: Trade +15 e turno passato (money %d->%d, seat=%d)" % [
-		"OK" if b_ok else "FAIL", bm0, b.gs.players[ci].money, b.active_seat])
+	var b_ok: bool = b.active_seat == (1 - ci) and b.round_turn_count == 1 and b._automa.has("china")
+	print("[%s] bot Azione: azione eseguita e turno passato (seat=%d, conteggio=%d)" % [
+		"OK" if b_ok else "FAIL", b.active_seat, b.round_turn_count])
 	if not b_ok: fails += 1
 
 	# C) Gating: con automa_powers vuoto il driver NON fa nulla (nessun bot).
@@ -56,6 +58,16 @@ func _init() -> void:
 	var c_ok: bool = b.gs.players[ci].money == cm0 and b.round_turn_count == 5
 	print("[%s] gating off: nessun bot, nessun avanzamento" % ["OK" if c_ok else "FAIL"])
 	if not c_ok: fails += 1
+
+	# C2) Partita MISTA: con un umano al tavolo (solo China bot) _all_automa()=false -> il driver
+	#     NON avanza da solo il riepilogo di fine round (lo fa l'umano). All-bot -> true.
+	GameConfig.automa_powers = ["china"]
+	var mix_ok: bool = not b._all_automa()
+	GameConfig.automa_powers = ["china", "usa"]
+	var allbot_ok: bool = b._all_automa()
+	print("[%s] _all_automa: misto=%s all-bot=%s" % ["OK" if (mix_ok and allbot_ok) else "FAIL", str(not mix_ok), str(allbot_ok)])
+	if not (mix_ok and allbot_ok): fails += 1
+	GameConfig.automa_powers = []
 	b.queue_free()
 	await process_frame
 
@@ -76,6 +88,24 @@ func _init() -> void:
 	print("[%s] catena bot: Azione conclusa in %d passi (-> '%s'), nessun loop" % [
 		"OK" if d_ok else "FAIL", steps, b2._ui_phase])
 	if not d_ok: fails += 1
+
+	# E) Partita COMPLETA all-bot: pompa fino a fine partita (game_over), attraversando tutti i
+	#    round, gli Scoring (3 e 6), Research, Aftermath e i riepiloghi, senza bloccarsi. Si cede
+	#    il frame a ogni passo (come nel gioco reale, un passo per frame): cosi' i queue_free
+	#    deferiti — es. la chiusura dell'overlay del riepilogo — vengono effettivamente applicati.
+	var steps2 := 0
+	while not b2.game_over and steps2 < 800:
+		b2._automa_run()
+		await process_frame
+		steps2 += 1
+	var e_ok: bool = b2.game_over and steps2 < 800
+	print("[%s] partita completa all-bot: game_over=%s al Round %d in %d passi" % [
+		"OK" if e_ok else "FAIL", str(b2.game_over), b2.gs.round, steps2])
+	if not e_ok:
+		print("   DIAG blocco: ui_phase=%s popup=%d summary_kind=%s prep_idx=%d research_idx=%d active=%d aft=%s playing=%s" % [
+			b2._ui_phase, b2.popup_layer.get_child_count(), str(b2._summary.get("kind", "-")),
+			b2._prep_idx, b2._research_idx, b2.active_seat, str(b2._aftermath_choice_p != null), str(not b2.playing_card.is_empty())])
+	if not e_ok: fails += 1
 	b2.queue_free()
 	await process_frame
 

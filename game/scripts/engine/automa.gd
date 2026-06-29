@@ -19,12 +19,16 @@ var allied_countries: Array = []       # carte Country alleate (come nel gioco)
 var fdi: Dictionary = {}               # region -> numero FDI token
 var bases: Dictionary = {}             # region -> numero Basi militari
 var action_cubes: Dictionary = {}      # spazio azione (Automa board) -> numero cubi
-var deck: Array = []                   # mazzo Ability (12): si usa il TIPO, non l'effetto
+var deck: Array = []                   # pila dei TIPI carta da pescare (si usa il TIPO, non l'effetto)
+var card_types: Array = []             # i 12 tipi del mazzo Ability (per rimischiare quando finisce)
 var difficulty_hard: bool = false
 
 
 ## Crea un Automa per `power` dai dati della Player card. difficulty: "normal"|"hard".
-static func from_setup(power: String, difficulty: String = "normal") -> Automa:
+## I cubi azione partono come da setup (regolamento): 1 in Improve Relations, 1 in Invest,
+## 1 in Build a Base. `card_types`: i tipi delle 12 carte Ability (per pescare il tipo a ogni
+## turno); se vuoto, `pop_card_type` usa i 4 tipi in modo uniforme.
+static func from_setup(power: String, difficulty: String = "normal", card_types: Array = []) -> Automa:
 	var a := Automa.new()
 	a.power = power
 	var pdata: Dictionary = DataLoader.load_automa_players().get(power, {})
@@ -32,7 +36,21 @@ static func from_setup(power: String, difficulty: String = "normal") -> Automa:
 	a.focus = WO.Focus.DOMESTIC
 	a.vp = 10
 	a.difficulty_hard = (difficulty == "hard")
+	a.action_cubes = {"improve_relations": 1, "invest": 1, "build_base": 1}
+	a.card_types = card_types.duplicate()
+	a.deck = card_types.duplicate()
+	a.deck.shuffle()
 	return a
+
+
+## Pesca (consuma) il TIPO della prossima carta Ability del mazzo dell'Automa. Quando il mazzo
+## e' vuoto lo rimischia dai 12 tipi originali (o, se ignoti, dai 4 tipi uniformi).
+func pop_card_type() -> String:
+	if deck.is_empty():
+		deck = card_types.duplicate() if not card_types.is_empty() \
+			else ["diplomatic", "economic", "military", "domestic"]
+		deck.shuffle()
+	return String(deck.pop_back())
 
 
 # --- Preparazione: Focus & money ---
@@ -302,3 +320,213 @@ func increase_prosperity() -> int:
 	var gained := int(step.get("vp", 0))
 	vp += gained
 	return gained
+
+
+# --- Stadio 4b: ESECUZIONE di un turno d'Azione sul GameState condiviso ---
+# L'Automa applica le sue azioni DIRETTAMENTE su `gs` (influenza nelle Regioni, Armate sulla
+# mappa) e sul PlayerState del suo seggio (money/VP/Country alleate), mentre tiene su di se'
+# lo stato extra (cubi azione, FDI/Basi per Regione). Il money e' la fonte di verita' sul
+# PlayerState (`p.money`): qui lo si sincronizza in `self.money` per gli helper, e ogni spesa
+# aggiorna ENTRAMBI. Semplificazioni dichiarate (vedi docs/automa-rules.md):
+#   - Move/Build: scelta della Regione preferendo la zona di interesse, poi una valida (NON il
+#     calcolo completo THREAT/Difesa del regolamento).
+#   - Improve Relations non aggiunge Influenza (come per i giocatori umani in questo motore).
+#   - Get a Growth dell'Automa: per ora +30 money (la conversione costo->money delle Growth e
+#     i VP arriveranno con lo step Research/Aftermath dell'Automa).
+#   - Trade: solo il guadagno da Export (la Decision card per il commercio reciproco e' a parte).
+
+## Esegue UN turno d'Azione. `card_type` = tipo della carta pescata (diplomatic/economic/
+## military/domestic); `region_hints` = Regioni suggerite dalle Auto-Influence card (in ordine
+## di pesca, per la ripesca); `country_pool` = tutte le carte Country (per Improve Relations).
+## Applica gli effetti e ritorna { action, region, vp, spent, note } per il log.
+func take_action(gs, card_type: String, region_hints: Array, country_pool: Array) -> Dictionary:
+	var p = gs.player_by_power(power)
+	if p == null:
+		return {"action": "", "note": "no player"}
+	money = int(p.money)
+	allied_countries = p.allied_countries
+	var dec := board_action_for_type(card_type)
+	match String(dec.get("action", "")):
+		"improve_relations":
+			return _act_improve(gs, p, region_hints, country_pool, dec)
+		"engage":
+			return _act_engage(gs, p, region_hints, dec)
+		"invest":
+			return _act_invest(gs, p, region_hints, dec)
+		"trade":
+			return _act_trade(gs, p, dec)
+		"build_base":
+			return _act_build(gs, p, dec)
+		"move":
+			return _act_move(gs, p, dec)
+		"get_growth_or_money":
+			return _act_domestic(gs, p)
+	return {"action": "", "note": "tipo carta sconosciuto: %s" % card_type}
+
+
+## Spende `amount` money su PlayerState e Automa (mantenendoli allineati).
+func _spend(p, amount: int) -> void:
+	p.money = int(p.money) - amount
+	money = int(p.money)
+
+
+## Aggiunge `gain` money su PlayerState e Automa.
+func _earn(p, gain: int) -> void:
+	p.money = int(p.money) + gain
+	money = int(p.money)
+
+
+## Regioni da provare per le azioni con Auto-Influence: prima i suggerimenti (validi), poi le
+## restanti Regioni del tabellone (ordine stabile), senza duplicati.
+func _ordered_regions(gs, region_hints: Array) -> Array:
+	var out := []
+	for r in region_hints:
+		if gs.regions.has(r) and r not in out:
+			out.append(r)
+	for r in gs.regions.keys():
+		if r not in out:
+			out.append(r)
+	return out
+
+
+## Sceglie una Regione tra quelle che soddisfano `ok` (Callable(region)->bool), preferendo la
+## zona di interesse dell'Automa; "" se nessuna. (Semplificazione dei criteri THREAT.)
+func _pick_region(gs, ok: Callable) -> String:
+	var valid := []
+	for r in gs.regions.keys():
+		if ok.call(r):
+			valid.append(r)
+	if valid.is_empty():
+		return ""
+	for r in valid:
+		if power in gs.regions[r].get("zone", []):
+			return r
+	return String(valid[0])
+
+
+## Aggiunge 1 cubo Influenza dell'Automa nella Regione (slot scelto da InfluenceTrack: permanente
+## se libero, altrimenti temporaneo). Accredita i VP immediati al PlayerState. Ritorna i VP.
+func _add_influence(gs, p, region: String) -> int:
+	if not gs.regions.has(region):
+		return 0
+	var v: int = gs.regions[region]["track"].add(power, "")
+	p.victory_points += v
+	return v
+
+
+# --- Singole azioni ---
+
+func _act_improve(gs, p, region_hints: Array, country_pool: Array, dec: Dictionary) -> Dictionary:
+	for r in _ordered_regions(gs, region_hints):
+		var cands := _improvable_in(r, country_pool)
+		var pick := improve_relations_pick(cands, [])
+		if not pick.is_empty():
+			var cost := int(pick.get("value", 0)) * 5
+			_spend(p, cost)
+			var c: Dictionary = (pick as Dictionary).duplicate()
+			p.allied_countries.append(c)
+			p.exhausted[c.get("id", "")] = false
+			apply_cube_move(dec)
+			return {"action": "improve_relations", "region": r, "vp": 0, "spent": cost,
+				"note": String(c.get("display_name", c.get("id", "")))}
+	return _fallback_trade(p, "nessuna Country disponibile")
+
+
+## Country della Regione che l'Automa puo' allearsi: non gia' alleate, non vietate, e con
+## money sufficiente (value*5). Se ha meno di 15 money, considera solo quelle accessibili
+## (gia' garantito dal filtro money).
+func _improvable_in(region: String, country_pool: Array) -> Array:
+	var allied_ids := {}
+	for c in allied_countries:
+		allied_ids[String((c as Dictionary).get("id", ""))] = true
+	var out := []
+	for c in country_pool:
+		var cc := c as Dictionary
+		if String(cc.get("region", "")) != region:
+			continue
+		if allied_ids.has(String(cc.get("id", ""))):
+			continue
+		if power in cc.get("no_relations_powers", []):
+			continue
+		out.append(cc)
+	return out
+
+
+func _act_engage(gs, p, region_hints: Array, dec: Dictionary) -> Dictionary:
+	for r in _ordered_regions(gs, region_hints):
+		if allies_in_region(r) <= 0:
+			continue
+		var cost := engage_cost(r, int(gs.regions[r].get("engage_cost", 0)))
+		if money >= cost:
+			_spend(p, cost)
+			var vp := _add_influence(gs, p, r)
+			apply_cube_move(dec)
+			return {"action": "engage", "region": r, "vp": vp, "spent": cost, "note": ""}
+	return _fallback_trade(p, "nessuna Regione per Engage")
+
+
+func _act_invest(gs, p, region_hints: Array, dec: Dictionary) -> Dictionary:
+	for r in _ordered_regions(gs, region_hints):
+		if can_invest(r) and money >= 15:
+			_spend(p, 15)
+			fdi[r] = int(fdi.get(r, 0)) + 1
+			var vp := _add_influence(gs, p, r)
+			apply_cube_move(dec)
+			return {"action": "invest", "region": r, "vp": vp, "spent": 15, "note": ""}
+	# Fallback: se ha money ma e' al massimo FDI ovunque -> Improve Relations; se manca il
+	# money -> Trade (regolamento).
+	if money < 15:
+		return _fallback_trade(p, "money insufficiente per Invest")
+	return _act_improve(gs, p, region_hints, DataLoader.load_countries(), dec)
+
+
+func _act_trade(gs, p, _dec: Dictionary) -> Dictionary:
+	var gain := trade_gain_from_allies()
+	_earn(p, gain)
+	return {"action": "trade", "region": "", "vp": 0, "spent": -gain, "note": "+%d money" % gain}
+
+
+func _fallback_trade(p, why: String) -> Dictionary:
+	# Trade come ripiego: sposta i cubi da Trade a Invest (regolamento) e guadagna dall'Export.
+	var n := int(action_cubes.get("trade", 0))
+	if n > 0:
+		apply_cube_move({"cube_from": "trade", "cube_to": "invest", "cube_count": n})
+	var gain := trade_gain_from_allies()
+	_earn(p, gain)
+	return {"action": "trade", "region": "", "vp": 0, "spent": -gain, "note": "ripiego (%s), +%d money" % [why, gain]}
+
+
+func _act_build(gs, p, dec: Dictionary) -> Dictionary:
+	if money < 10:
+		return _fallback_trade(p, "money insufficiente per Build")
+	var r := _pick_region(gs, func(reg): return can_build_base(reg))
+	if r == "":
+		# Nessuna Regione costruibile -> Improve Relations (regolamento).
+		return _act_improve(gs, p, [], DataLoader.load_countries(), dec)
+	_spend(p, 10)
+	bases[r] = int(bases.get(r, 0)) + 1
+	var a: Dictionary = gs.regions[r]["armies"]
+	a[power] = int(a.get(power, 0)) + 1     # 1 Armata nella Regione (Armate gratuite per l'Automa)
+	var vp := _add_influence(gs, p, r)
+	apply_cube_move(dec)
+	return {"action": "build_base", "region": r, "vp": vp, "spent": 10, "note": "+1 Armata"}
+
+
+func _act_move(gs, p, dec: Dictionary) -> Dictionary:
+	if money < 5:
+		return _fallback_trade(p, "money insufficiente per Move")
+	var r := _pick_region(gs, func(reg): return Actions.move_dest_valid(gs, p, reg))
+	if r == "":
+		return _fallback_trade(p, "nessuna destinazione valida per Move")
+	_spend(p, 5)
+	var a: Dictionary = gs.regions[r]["armies"]
+	a[power] = int(a.get(power, 0)) + 1
+	apply_cube_move(dec)
+	return {"action": "move", "region": r, "vp": 0, "spent": 5, "note": "+1 Armata"}
+
+
+func _act_domestic(_gs, p) -> Dictionary:
+	# Get a Growth Card se possibile, altrimenti +30 money. Per ora: +30 money (la presa di
+	# una Growth card con conversione costo->money arriva con lo step Research dell'Automa).
+	_earn(p, 30)
+	return {"action": "domestic", "region": "", "vp": 0, "spent": -30, "note": "+30 money"}

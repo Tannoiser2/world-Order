@@ -273,13 +273,25 @@ l'azione **effettivamente** eseguita.
 | Regola Automa | Stato | Dove |
 |---|---|---|
 | Add Auto-Influence (region/army/trade per potenza non giocata) | ✅ implementato (gioco base) | `game_phases.gd::add_auto_influence`, `auto_influence.json` |
-| Money invece di risorse; Armate gratuite | ⛔ da fare | nuovo `automa.gd` |
-| Scelta Focus + money per Focus | ⛔ da fare | richiede Decision deck |
-| Azioni via Automa board (card type → azione) | ⛔ da fare | richiede dati Automa board |
-| Improve/Engage/Invest/Move/Build/Trade/Growth (logica bot) | ⛔ da fare | nuovo `automa.gd` (riusa `actions.gd`) |
-| Research/Market dell'Automa | ⛔ da fare | richiede Market Priority |
-| Aftermath: RoI, Prosperity, THREAT, Adding Influence | ⛔ parziale | `scoring.gd`/`threat.gd` esistono |
-| Difficoltà Hard | ⛔ da fare | flag in `automa.gd` |
+| Money invece di risorse; Armate gratuite | ✅ implementato | `automa.gd`, `board_view.gd::_setup_automa` |
+| Scelta Focus + money per Focus | ✅ implementato (Focus via RNG) | `board_view.gd::_automa_prep`, `Automa.focus_money` |
+| Azioni via Automa board (card type → azione) | ✅ implementato | `Automa.take_action` / `board_action_for_type` |
+| Improve/Engage/Invest/Move/Build/Trade/Domestic (logica bot) | ✅ implementato (stadio 4b) | `Automa.take_action` (riusa `Actions`/`InfluenceTrack`) |
+| Player card fedeli (money, priorità, Prosperity) per le 4 potenze | ✅ implementato | `automa_players.json` |
+| Modalità Solo (1–3 bot) + difficoltà nel menu | ✅ implementato | `main_menu.gd` (mode "solo"), `GameConfig.automa_*` |
+| Research/Market dell'Automa | ⛔ da fare | `Automa.research_points`/`pick_market_card` pronti, manca il flusso |
+| Aftermath: RoI, Prosperity, Adding Influence dell'Automa | ⛔ da fare | `Automa.return_on_investments`/`increase_prosperity` pronti |
+| Get a Growth dell'Automa (VP) | ⛔ semplificato (+30 money) | `Automa._act_domestic` |
+| Difficoltà Hard (effetti specifici) | ⛔ parziale | flag `difficulty_hard` presente |
+
+### Semplificazioni dichiarate (stadio 4b)
+- **Move / Build a Base:** la scelta della Regione preferisce la zona di interesse e poi una
+  Regione valida, NON il calcolo completo THREAT/Difesa del regolamento (`_pick_region`).
+- **Improve Relations:** non aggiunge Influenza (coerente con i giocatori umani in questo motore).
+- **Get a Growth (Domestic):** per ora +30 money (la presa di una Growth con i suoi VP arriverà
+  con lo step Research/Aftermath dell'Automa).
+- **Tipo carta pescato:** dal mazzo reale dei 12 tipi delle Ability iniziali della potenza
+  (rimischiato a fine mazzo); la Decision card per il Focus è sostituita da RNG.
 
 ## Dati dei componenti (estratti dal regolamento)
 
