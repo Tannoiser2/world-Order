@@ -123,6 +123,8 @@ var _exhaust_ctx: Dictionary = {}       # scelta sconto attiva: {region, title, 
 var _produce_sel: Dictionary = {}       # rtype -> quantità da produrre (azione Produce)
 var _produce_mode := false              # Produce attivo: si imposta sulla resource track della plancia
 var _produce_max_types := 0             # max TIPI di risorsa producibili (count della carta; 0 = illimitato)
+var _produce_allowed: Array = []        # tipi consentiti (vuoto = tutti i producibili); per il Focus = i suoi tipi
+var _produce_after := ""                # "" = azione normale (_advance_play) · "prep" = Preparazione (-> aumento Focus)
 # Scelta a "popup" (barra in alto) durante la risoluzione di una carta. La callback NON è
 # serializzabile: la tiene SOLO l'host; il client vede prompt+etichette (sincronizzati) e
 # rimanda l'INDICE scelto col comando popup_choice, che l'host esegue chiamando la callback.
@@ -2667,13 +2669,21 @@ func _producible_types(p: PlayerState) -> Array:
 
 ## Produce sulla PLANCIA (niente popup): tocchi le caselle valide sulla resource track
 ## per impostare quanto produrre (entro la tua Produzione); le Armate con ± nella barra.
-func _open_produce_ui(max_types: int = 0) -> void:
+func _open_produce_ui(max_types: int = 0, allowed: Array = [], after: String = "") -> void:
 	_produce_sel = {}
 	_produce_max_types = max_types
+	_produce_allowed = allowed.duplicate()
+	_produce_after = after
 	_produce_mode = true
 	drawer_open = true
 	drawer_power = _active().power
 	_refresh()
+
+
+## Vero se `rt` puo' essere prodotto in questa Produce (rispetta l'eventuale lista di tipi
+## consentiti: per il Focus solo i suoi tipi, per le carte tutti).
+func _produce_type_allowed(rt: String) -> bool:
+	return _produce_allowed.is_empty() or rt in _produce_allowed
 
 
 ## Vero se non si può aggiungere `rt` come NUOVO tipo da produrre perché si è già al limite
@@ -2723,6 +2733,8 @@ func _produce_armies_adjust(delta: int) -> void:
 ## valore attuale fino a +Produzione (verso 10), col guadagno e l'eventuale costo.
 func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float) -> void:
 	for rt in RES_TOKENS:
+		if not _produce_type_allowed(rt):
+			continue
 		var cap := int(p.production.get(rt, 0))
 		if cap <= 0:
 			continue
@@ -2778,7 +2790,7 @@ func _show_produce_bar(p: PlayerState) -> void:
 		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(sl)
 	var arm_cap := int(p.production.get("armies", 0))
-	if arm_cap > 0:
+	if arm_cap > 0 and _produce_type_allowed("armies"):
 		var al := Label.new(); al.text = "Armate (-1 Materia cad.):"
 		al.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(al)
@@ -2796,8 +2808,11 @@ func _show_produce_bar(p: PlayerState) -> void:
 		choice_flow.add_child(plus)
 	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_produce)
 	choice_flow.add_child(ok)
-	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_cmd_produce_cancel)
-	choice_flow.add_child(cancel)
+	# In Preparazione (produzione del Focus) niente "Annulla": il Focus e' gia' scelto e la
+	# produzione ne fa parte. Nell'azione Produce delle carte l'Annulla ridа la carta.
+	if _produce_after != "prep":
+		var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_cmd_produce_cancel)
+		choice_flow.add_child(cancel)
 	choice_bar.visible = true
 
 
@@ -2827,6 +2842,8 @@ func _produce_summary_text() -> String:
 func _produce_cancel() -> void:
 	_produce_sel = {}
 	_produce_mode = false
+	_produce_allowed = []
+	_produce_after = ""
 	_clear_choice_bar()
 	_status("Produzione annullata.")
 	_cancel_card()
@@ -2866,12 +2883,22 @@ func _apply_produce() -> void:
 			p.armies_available += 1
 			made_a += 1
 	if made_a > 0: summary.append("Armate +%d (riserva)" % made_a)
+	# Produrre un tipo elencato sulle Commerce card le rigira a faccia in su (surplus per il Trade).
+	_flip_commerce_faceup_on_produce(p.power, _produce_sel.keys())
+	var after := _produce_after
 	_produce_sel = {}
 	_produce_mode = false
+	_produce_allowed = []
+	_produce_after = ""
 	_clear_choice_bar()
 	_event("%s: Produzione %s" % [_active().power.to_upper(), (", ".join(summary) if summary.size() > 0 else "niente")])
 	_refresh()
-	_advance_play()
+	# Contesto: in Preparazione (produzione del Focus) si prosegue con l'aumento Produzione;
+	# nell'azione Produce delle carte si avanza la giocata come sempre.
+	if after == "prep":
+		_prep_offer_increase()
+	else:
+		_advance_play()
 
 
 func _pick_choice(options: Array, cb: Callable) -> void:
@@ -4962,6 +4989,8 @@ func _ui_snapshot() -> Dictionary:
 		"move_ctx": _move_ctx.duplicate(true) if not _move_ctx.is_empty() else {},
 		"produce_mode": _produce_mode,
 		"produce_max_types": _produce_max_types,
+		"produce_allowed": _produce_allowed.duplicate(),
+		"produce_after": _produce_after,
 		"trade_mode": _trade_mode,
 		# Conteggi del turno del giocatore ATTIVO: servono al client per abilitare/disabilitare
 		# correttamente la propria mano e il tasto «Fine turno».
@@ -5053,6 +5082,8 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	var was_produce := _produce_mode
 	_produce_mode = bool(ui.get("produce_mode", false))
 	_produce_max_types = int(ui.get("produce_max_types", 0))
+	_produce_allowed = (ui.get("produce_allowed", []) as Array).duplicate()
+	_produce_after = String(ui.get("produce_after", ""))
 	_trade_mode = bool(ui.get("trade_mode", false))
 	if _trade_mode and not was_trade:
 		_trade_sel = {"export": {}, "import": {}}
@@ -5417,6 +5448,8 @@ func _reset_plays() -> void:
 func _do_focus(f: int) -> void:
 	if not playing_card.is_empty():
 		return
+	if _produce_mode:
+		return  # produzione del Focus in corso: prima conferma quella
 	if _prep_awaiting_increase:
 		return  # Focus già scelto: si attende la scelta di aumento Produzione
 	# In PREPARAZIONE la scelta del Focus si fa toccando una colonna sulla plancia: applica
@@ -5424,7 +5457,7 @@ func _do_focus(f: int) -> void:
 	# infine passa al giocatore successivo.
 	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
 		_event(_apply_focus(_active(), f))
-		_prep_offer_increase()
+		_open_focus_produce()   # il giocatore sceglie quanto produrre (stessa UI delle carte)
 		return
 	var p := _active()
 	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
@@ -5458,30 +5491,11 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 			p.exhausted[cid] = false
 			readied += 1
 			to_ready -= 1
-	# 2) Produce: i tipi specifici di questo Focus.
-	var produced := []
-	var produced_types := []
-	for rt in (fb.get("produce", []) as Array):
-		var made := 0
-		if String(rt) == "armies":
-			for _i in int(p.production.get("armies", 0)):
-				if int(p.resources.get("raw_materials", 0)) >= 1:
-					p.resources["raw_materials"] = int(p.resources.get("raw_materials", 0)) - 1
-					p.armies_available += 1
-					made += 1
-		else:
-			made = Actions.execute_produce(p, String(rt))
-		if made > 0:
-			produced.append("%s +%d" % [RES_LABEL.get(rt, rt), made])
-			produced_types.append(String(rt))
-	# Commerce: produrre un tipo elencato sulle carte prodotto le rigira a faccia in su
-	# (risorse in surplus disponibili per il Trade) - regolamento Choose Focus.
-	_flip_commerce_faceup_on_produce(p.power, produced_types)
+	# 2) Produce: NON piu' automatica. La produzione dei tipi del Focus la sceglie il giocatore
+	#    con la STESSA Produce UI delle carte (aperta da _do_focus -> _open_focus_produce).
 	var msg := "Focus %s" % FOCUS_NAME[f]
 	if readied > 0:
 		msg += " - preparate %d Country card" % readied
-	if produced.size() > 0:
-		msg += " - Prodotto: %s" % ", ".join(produced)
 	return msg + "."
 
 
@@ -5568,6 +5582,20 @@ func _apply_increase_production(p: PlayerState, type: String) -> String:
 ## Offre l'aumento Produzione dopo il Focus: imposta lo STATO (sincronizzato) e lascia che
 ## _refresh costruisca la barra per CHI agisce. Prima la barra la costruiva qui (sull'host):
 ## in rete compariva sullo schermo dell'host anche per il turno del client ("sempre su USA").
+## Apre la produzione del Focus (Preparazione) usando la STESSA Produce UI delle carte, limitata
+## ai tipi prodotti dal Focus (Domestic: Beni/Servizi · Diplomatic: Diplomazia · Military: Armate).
+## Il giocatore sceglie quanto produrre e conferma; poi si prosegue con l'aumento Produzione.
+func _open_focus_produce() -> void:
+	var p := _active()
+	var key: String = ["domestic", "diplomatic", "military"][p.focus]
+	var types: Array = (focus_bonuses.get(key, {}) as Dictionary).get("produce", [])
+	if types.is_empty():
+		_prep_offer_increase()
+		return
+	_open_produce_ui(0, types, "prep")
+	_after_change()
+
+
 func _prep_offer_increase() -> void:
 	var p := _active()
 	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
