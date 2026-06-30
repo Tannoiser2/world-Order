@@ -21,6 +21,12 @@ const RES_NAME_IT := {
 	"energy": "Energia", "raw_materials": "Materie Prime", "food": "Cibo",
 	"consumer_goods": "Beni di consumo", "services": "Servizi", "diplomacy": "Diplomazia", "armies": "Armate",
 }
+## Nomi italiani estesi delle Regioni (per le descrizioni degli Obiettivi).
+const REGION_IT := {
+	"americas": "Americhe", "europe": "Europa", "middle_east_north_africa": "Medio Oriente - Nordafrica",
+	"africa": "Africa", "central_asia": "Asia centrale", "south_asia": "Asia meridionale",
+	"east_asia_pacific": "Asia orientale - Pacifico",
+}
 const FOCUS_NAME := ["Domestic", "Diplomatic", "Military"]
 ## Op che si risolvono da sole (senza target).
 const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "trade",
@@ -4247,7 +4253,7 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 		btn.offset_left = -ts * 0.5; btn.offset_right = w; btn.offset_top = -ts * 0.6; btn.offset_bottom = ts * 0.6
 		var labels := []
 		for res in group:
-			labels.append(RES_LABEL.get(res, res))
+			labels.append(RES_NAME_IT.get(res, res))
 		btn.tooltip_text = ", ".join(labels) + ("  (ri-tocca per cambiare prodotto)" if group.size() > 1 else "")
 		btn.pressed.connect(_trade_cycle_select.bind(group.duplicate()))
 		if front != "":
@@ -4737,7 +4743,7 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 		var prods := []
 		for res in (cards[i] as Dictionary):
 			var qy := int((cards[i] as Dictionary)[res])
-			prods.append("%d %s" % [qy, RES_LABEL.get(res, res)] if qy > 1 else String(RES_LABEL.get(res, res)))
+			prods.append("%d %s" % [qy, RES_NAME_IT.get(res, res)] if qy > 1 else String(RES_NAME_IT.get(res, res)))
 		# "una risorsa per carta": le risorse sulla stessa carta sono alternative (O).
 		pcard.tooltip_text = "Commerce %d/%d%s - vende: %s" % [i + 1, cards.size(), "  (usata)" if used else "", " o ".join(prods)]
 		prow.add_child(pcard)
@@ -4784,13 +4790,17 @@ func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 		drawer_content.add_child(row)
 
 
-## Pannello "Obiettivi": gli Obiettivi Superpotenze del giocatore, con stato attuale di ogni
-## condizione (✓/✗ alla soglia del prossimo Scoring) e i VP che otterrebbe ora.
+## Pannello "Obiettivi": le CARTE Obiettivo Superpotenze del giocatore (immagine reale), con
+## sotto i VP che otterrebbe ora e, nel tooltip, lo stato live di ogni condizione.
 func _build_objectives_section(p: PlayerState) -> void:
 	if p.objectives.is_empty():
 		return
 	var ri := 0 if gs.round <= 3 else 1   # soglia del prossimo round di Scoring (3 o 6)
 	drawer_content.add_child(_section("Obiettivi (Scoring round 3 e 6) — soglie round %d" % (3 if ri == 0 else 6)))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	drawer_content.add_child(row)
+	var cw: float = clampf(_plancia_height() * 1.05, 200.0, 320.0)
 	for obj in p.objectives:
 		var conds: Array = obj.get("conditions", [])
 		var met := 0
@@ -4799,20 +4809,32 @@ func _build_objectives_section(p: PlayerState) -> void:
 				met += 1
 		var reward: Array = obj.get("reward", [])
 		var vp := int(reward[mini(met, reward.size()) - 1]) if met > 0 and not reward.is_empty() else 0
-		var head := Label.new()
-		head.text = "• %s — %d/3 condizioni → %d VP" % [obj.get("name", "?"), met, vp]
-		head.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
-		head.add_theme_font_size_override("font_size", maxi(11, _base_fs() - 1))
-		drawer_content.add_child(head)
-		for cond in conds:
-			var ok: bool = Objectives.condition_met(gs, p.power, cond, ri)
-			var cl := Label.new()
-			cl.text = "    %s %s" % ["✓" if ok else "✗", _obj_cond_desc(cond, ri)]
-			cl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6) if ok else Color(0.78, 0.78, 0.8))
-			cl.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 2))
-			cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			cl.custom_minimum_size = Vector2(280, 0)
-			drawer_content.add_child(cl)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 2)
+		box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		# La carta reale (obiettivo ~1.4:1). Niente preview-flyover: il tooltip mostra lo stato live.
+		var card := _country_card_button(obj, Vector2(cw, cw * 0.72), false, false)
+		card.disabled = false
+		card.focus_mode = Control.FOCUS_NONE
+		card.tooltip_text = _objective_tooltip(p, obj, ri)
+		box.add_child(card)
+		var lab := Label.new()
+		lab.text = "%d/3 condizioni → %d VP" % [met, vp]
+		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lab.custom_minimum_size = Vector2(cw, 0)
+		lab.add_theme_color_override("font_color", Color(0.55, 0.95, 0.6) if vp > 0 else Color(0.82, 0.82, 0.62))
+		lab.add_theme_font_size_override("font_size", maxi(11, _base_fs() - 1))
+		box.add_child(lab)
+		row.add_child(box)
+
+
+## Tooltip dell'Obiettivo: nome + ogni condizione con [v]/[x] (ASCII: niente glifi mancanti).
+func _objective_tooltip(p: PlayerState, obj: Dictionary, ri: int) -> String:
+	var lines := [String(obj.get("name", "")), ""]
+	for cond in obj.get("conditions", []):
+		var ok: bool = Objectives.condition_met(gs, p.power, cond, ri)
+		lines.append("%s %s" % ["[v]" if ok else "[ ]", _obj_cond_desc(cond, ri)])
+	return "\n".join(lines)
 
 
 ## Descrizione breve (italiano) di una condizione Obiettivo, con la soglia del round corrente.
@@ -4820,13 +4842,13 @@ func _obj_cond_desc(cond: Dictionary, ri: int) -> String:
 	var t := String(cond.get("t", ""))
 	var m: Array = cond.get("min", [])
 	var n := str(int(m[clampi(ri, 0, m.size() - 1)])) if not m.is_empty() else ""
-	var reg := String(cond.get("region", "")).replace("_", " ")
+	var reg := String(REGION_IT.get(String(cond.get("region", "")), String(cond.get("region", "")).replace("_", " ")))
 	var res := String(cond.get("res", "")) if cond.get("res", "") is String else ""
-	var resj := ", ".join((cond.get("res", []) as Array).map(func(x): return RES_LABEL.get(String(x), String(x)))) if cond.get("res", null) is Array else ""
-	var regsj := ", ".join((cond.get("regions", []) as Array).map(func(x): return String(x).replace("_", " ")))
+	var resj := ", ".join((cond.get("res", []) as Array).map(func(x): return RES_NAME_IT.get(String(x), String(x)))) if cond.get("res", null) is Array else ""
+	var regsj := ", ".join((cond.get("regions", []) as Array).map(func(x): return String(REGION_IT.get(String(x), String(x)))))
 	var per := str(int(cond.get("per", 1)))
 	match t:
-		"resource": return "≥%s %s" % [n, RES_LABEL.get(res, res)]
+		"resource": return "≥%s %s" % [n, RES_NAME_IT.get(res, res)]
 		"money": return "≥%s money" % n
 		"money_most": return "il maggior money"
 		"growth_cards": return "≥%s carte Crescita" % n
@@ -4834,7 +4856,7 @@ func _obj_cond_desc(cond: Dictionary, ri: int) -> String:
 		"prosperity_times": return "Prosperità aumentata ≥%s volte" % n
 		"fdi_count": return "IDE su ≥%s Nazioni" % n
 		"engage_markers": return "≥%s segnalini Impegno" % n
-		"production_increase": return "Produzione %s aumentata di ≥%s" % [RES_LABEL.get(res, res), n]
+		"production_increase": return "Produzione %s aumentata di ≥%s" % [RES_NAME_IT.get(res, res), n]
 		"production_increase_any": return "Produzione aumentata (%s)" % resj
 		"production_increases_count": return "≥%s Produzioni aumentate%s" % [n, " (secondarie)" if bool(cond.get("secondary", false)) else ""]
 		"influence_region": return "≥%s Influenza in %s" % [n, reg]
