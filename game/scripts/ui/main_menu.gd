@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.130"
+const VERSION := "v0.7.131"
 const CHANGELOG := [
+	"v0.7.131 - MENU rifatto: ora per OGNI superpotenza (USA, UE, Russia, Cina) scegli il ruolo — UMANO, BOT o NEUTRALE. Cosi' puoi giocare in solitaria (1 Umano + 3 Bot), completare un tavolo (2-3 Umani + Bot sui posti liberi) o lasciare le potenze libere come NEUTRALI (guidate dalle carte Auto-Influence, come nel gioco base a 2-3). Spariscono le vecchie modalita' 'Hot Seat'/'Solo': la modalita' LOCALE le ingloba (tutti Umani = hot seat; mix Umano/Bot = solitaria/completamento). Restano la difficolta' dei Bot (Normale/Difficile) e l'Online (LAN). CONFERMA REGOLE: una potenza e' O un Bot (gioca da solo) O Neutrale (Auto-Influence) — mai entrambi; i Bot NON ricevono l'influenza automatica delle Neutrali (la usano solo per decidere dove agire). +2 test (verify_solo_menu aggiornato, verify_bot_vs_neutral).",
 	"v0.7.130 - BOT che GIOCANO DAVVERO (Solo mode, stadio 4b). Nella fase Azione i bot non si limitano piu' a un Trade: pescano il TIPO della loro prossima carta, consultano la propria Automa board e ESEGUONO l'azione vera sul tabellone condiviso — Improve Relations (alleano una Nazione), Engage e Invest e Build a Base (mettono Influenza/Armate nelle Regioni, +VP), Move (spostano Armate), Trade, oppure Domestic. Pagano in money (Armate gratuite, come da regolamento), con i fallback giusti (se non possono permettersi un'azione ripiegano su Trade/Improve). Le loro Influenze e Armate contano per maggioranze, THREAT e Scoring come quelle di un giocatore. La partita scorre da sola fino in fondo (Preparazione, Azione, Research, Aftermath, riepiloghi) anche con piu' bot. Semplificazioni note in questa build: la scelta della Regione per Move/Build preferisce la zona di interesse (non il calcolo THREAT completo del regolamento); Domestic da' +30 money (la presa di una Growth card con i suoi VP arrivera' con lo step Research dell'Automa). +1 test (verify_automa_actions) e partita completa all-bot fino al Round 6 nei test.",
 	"v0.7.129 - NUOVO: modalita' SOLO (vs Bot). Nel menu, scegli 'Solo (Bot)': per ogni seggio decidi Umano o Bot (Automa) e imposti la difficolta' (Normale/Difficile). Avvii e i bot prendono i loro turni in automatico, senza bloccare la partita. I bot ora sono FEDELI alle carte ufficiali dell'espansione Diplomacy & Dominance: money iniziale, priorita' Mercato/cubetti azione e traccia Prosperita' propri per USA/UE/Russia/Cina (prima erano segnaposto copiati dagli USA). NB: in questa build le AZIONI dei bot sono ancora minimali (in Preparazione scelgono il Focus e incassano il money del Focus, in Azione fanno un Trade e passano) — la logica completa delle azioni (Improve/Engage/Invest/Build/Move via Automa board) arriva nel prossimo aggiornamento. Hot Seat e Online invariati (nessun bot).",
 	"v0.7.128 - Choose Focus: la CINA in Focus DOMESTIC puo' ora aumentare DUE Produzioni (distinte) per 15 money, non solo una per 6 (come sulla sua player board). In pratica: aumenti la prima Produzione (6 money) e poi ti viene riofferto un secondo aumento (9 money, su un'altra Produzione) oppure 'Salta'; totale 15. Le altre potenze restano a un solo aumento. Funziona anche in multiplayer (stato sincronizzato). +1 test (verify_china_focus_increase).",
@@ -236,14 +237,20 @@ const POWER_COLOR := {
 
 var _player_count := 2
 var _count_buttons: Array[Button] = []
-var _mode := "hotseat"
+var _mode := "local"                  # "local" (griglia superpotenze) | "online" (lobby LAN)
 var _mode_buttons: Array[Button] = []
-var _seat_powers: Array = []          # potenza scelta per seggio
-var _seat_bot: Array = []             # true se il seggio e' un Bot (Automa) — solo in modalita' "solo"
+var _seat_powers: Array = []          # potenza scelta per seggio (solo flusso Online)
 var _seats_box: VBoxContainer
+var _online_setup_box: VBoxContainer  # numero giocatori + potenze (visibile solo Online)
 var _warn: Label
 
-# --- Solo (Bot) ---
+# --- Locale: ruolo per ognuna delle 4 superpotenze ---
+# "human" = giocatore umano · "bot" = Automa · "neutral" = potenza neutrale (carte Auto-Influence)
+var _role := {"usa": "human", "eu": "neutral", "russia": "neutral", "china": "human"}
+var _role_box: VBoxContainer
+var _local_setup_box: VBoxContainer   # label "Superpotenze" + griglia ruoli (visibile solo Locale)
+
+# --- Difficolta' dei Bot ---
 var _difficulty := "normal"           # "normal" | "hard"
 var _diff_box: HBoxContainer
 var _diff_buttons: Array[Button] = []
@@ -303,11 +310,26 @@ func _ready() -> void:
 
 	_build_changelog()
 
-	box.add_child(_section_label("Numero di giocatori"))
+	# --- LOCALE: per ognuna delle 4 superpotenze scegli Umano / Bot / Neutrale ---
+	_local_setup_box = VBoxContainer.new()
+	_local_setup_box.add_theme_constant_override("separation", 6)
+	box.add_child(_local_setup_box)
+	_local_setup_box.add_child(_section_label("Superpotenze (Umano / Bot / Neutrale)"))
+	_role_box = VBoxContainer.new()
+	_role_box.add_theme_constant_override("separation", 6)
+	_local_setup_box.add_child(_role_box)
+	_rebuild_roles()
+
+	# --- ONLINE: numero giocatori + potenze per seggio (visibile solo in Online) ---
+	_online_setup_box = VBoxContainer.new()
+	_online_setup_box.add_theme_constant_override("separation", 6)
+	_online_setup_box.visible = false
+	box.add_child(_online_setup_box)
+	_online_setup_box.add_child(_section_label("Numero di giocatori"))
 	var counts := HBoxContainer.new()
 	counts.alignment = BoxContainer.ALIGNMENT_CENTER
 	counts.add_theme_constant_override("separation", 10)
-	box.add_child(counts)
+	_online_setup_box.add_child(counts)
 	for n in [2, 3, 4]:
 		var b := Button.new()
 		b.text = str(n)
@@ -316,31 +338,23 @@ func _ready() -> void:
 		b.pressed.connect(_on_count.bind(n))
 		counts.add_child(b)
 		_count_buttons.append(b)
-
-	box.add_child(_section_label("Potenze"))
+	_online_setup_box.add_child(_section_label("Potenze"))
 	_seats_box = VBoxContainer.new()
 	_seats_box.add_theme_constant_override("separation", 6)
-	box.add_child(_seats_box)
+	_online_setup_box.add_child(_seats_box)
 
 	box.add_child(_section_label("Modalità"))
 	var modes := HBoxContainer.new()
 	modes.alignment = BoxContainer.ALIGNMENT_CENTER
 	modes.add_theme_constant_override("separation", 10)
 	box.add_child(modes)
-	var hot := Button.new()
-	hot.text = "Hot Seat"
-	hot.toggle_mode = true
-	hot.custom_minimum_size = Vector2(140, 40)
-	hot.pressed.connect(_on_mode.bind("hotseat"))
-	modes.add_child(hot)
-	_mode_buttons.append(hot)
-	var solo := Button.new()
-	solo.text = "Solo (Bot)"
-	solo.toggle_mode = true
-	solo.custom_minimum_size = Vector2(140, 40)
-	solo.pressed.connect(_on_mode.bind("solo"))
-	modes.add_child(solo)
-	_mode_buttons.append(solo)
+	var loc := Button.new()
+	loc.text = "Locale"
+	loc.toggle_mode = true
+	loc.custom_minimum_size = Vector2(140, 40)
+	loc.pressed.connect(_on_mode.bind("local"))
+	modes.add_child(loc)
+	_mode_buttons.append(loc)
 	var online := Button.new()
 	online.text = "Online (LAN)"
 	online.toggle_mode = true
@@ -349,7 +363,7 @@ func _ready() -> void:
 	modes.add_child(online)
 	_mode_buttons.append(online)
 
-	# Selettore difficolta' dei Bot (visibile solo in modalita' Solo).
+	# Selettore difficolta' dei Bot (visibile in Locale quando c'e' almeno un Bot).
 	_diff_box = HBoxContainer.new()
 	_diff_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_diff_box.add_theme_constant_override("separation", 10)
@@ -387,11 +401,76 @@ func _ready() -> void:
 	box.add_child(play)
 
 	_update_selection(_count_buttons, 0)
-	_update_selection(_mode_buttons, 0)
+	_update_selection(_mode_buttons, 0)   # Locale
+	_update_selection(_diff_buttons, 0)   # Normale
 	_set_count(2)
+	_on_mode("local")
 
 
-# --- Numero giocatori / potenze ---
+# --- LOCALE: ruolo per superpotenza (Umano / Bot / Neutrale) ---
+
+const ROLE_LABELS := [["human", "Umano"], ["bot", "Bot"], ["neutral", "Neutrale"]]
+const ROLE_COLORS := {
+	"human": Color(0.6, 1.0, 0.6), "bot": Color(0.7, 0.85, 1.0), "neutral": Color(0.7, 0.7, 0.7),
+}
+
+func _rebuild_roles() -> void:
+	for c in _role_box.get_children():
+		c.queue_free()
+	for power in POWERS:
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 6)
+		var lbl := Label.new()
+		lbl.text = POWER_NAME[power]
+		lbl.custom_minimum_size = Vector2(72, 0)
+		lbl.add_theme_color_override("font_color", POWER_COLOR[power])
+		row.add_child(lbl)
+		for rl in ROLE_LABELS:
+			var b := Button.new()
+			b.text = rl[1]
+			b.toggle_mode = true
+			b.button_pressed = (_role[power] == rl[0])
+			b.custom_minimum_size = Vector2(80, 36)
+			if _role[power] == rl[0]:
+				b.add_theme_color_override("font_color", ROLE_COLORS[rl[0]])
+			b.pressed.connect(_on_role.bind(power, rl[0]))
+			row.add_child(b)
+		_role_box.add_child(row)
+	# _diff_box / _warn possono non esistere ancora alla prima costruzione (ordine in _ready).
+	if _diff_box != null:
+		_diff_box.visible = (_mode == "local") and _has_bot()
+	if _warn != null:
+		_validate()
+
+
+func _on_role(power: String, role: String) -> void:
+	_role[power] = role
+	_rebuild_roles()
+
+
+## Potenze attive (umane o bot) in modalita' Locale, in ordine fisso USA/EU/Russia/Cina.
+func _active_powers() -> Array:
+	var out := []
+	for power in POWERS:
+		if _role[power] == "human" or _role[power] == "bot":
+			out.append(power)
+	return out
+
+
+func _bot_powers() -> Array:
+	var out := []
+	for power in POWERS:
+		if _role[power] == "bot":
+			out.append(power)
+	return out
+
+
+func _has_bot() -> bool:
+	return not _bot_powers().is_empty()
+
+
+# --- ONLINE: numero giocatori / potenze ---
 
 func _on_count(n: int) -> void:
 	_set_count(n)
@@ -402,10 +481,6 @@ func _set_count(n: int) -> void:
 	_player_count = n
 	# default sensati e validi (rispettano il vincolo del 2 giocatori).
 	_seat_powers = GameConfig.powers_for_count_n(n).duplicate()
-	# Default Solo: il seggio 1 e' umano, gli altri sono Bot.
-	_seat_bot = []
-	for seat in n:
-		_seat_bot.append(seat != 0)
 	_rebuild_seats()
 
 
@@ -438,17 +513,6 @@ func _rebuild_seats() -> void:
 			b.disabled = (power in _seat_powers and _seat_powers[seat] != power)
 			b.pressed.connect(_on_pick_power.bind(seat, power))
 			row.add_child(b)
-		# In Solo: un interruttore Umano/Bot per ogni seggio.
-		if _mode == "solo":
-			var bot := Button.new()
-			bot.toggle_mode = true
-			bot.button_pressed = _seat_bot[seat]
-			bot.text = "Bot" if _seat_bot[seat] else "Umano"
-			bot.custom_minimum_size = Vector2(72, 36)
-			bot.add_theme_color_override("font_color",
-				Color(0.7, 0.85, 1.0) if _seat_bot[seat] else Color(0.6, 1.0, 0.6))
-			bot.pressed.connect(_on_toggle_bot.bind(seat))
-			row.add_child(bot)
 		_seats_box.add_child(row)
 	_validate()
 
@@ -458,26 +522,21 @@ func _on_pick_power(seat: int, power: String) -> void:
 	_rebuild_seats()
 
 
-func _on_toggle_bot(seat: int) -> void:
-	_seat_bot[seat] = not _seat_bot[seat]
-	_rebuild_seats()
-
-
-## Potenze controllate da Bot in modalita' Solo (sottoinsieme di _seat_powers).
-func _solo_bot_powers() -> Array:
-	var bots := []
-	for seat in _player_count:
-		if seat < _seat_bot.size() and _seat_bot[seat]:
-			bots.append(_seat_powers[seat])
-	return bots
-
-
 func _on_difficulty(d: String) -> void:
 	_difficulty = d
 	_update_selection(_diff_buttons, ["normal", "hard"].find(d))
 
 
+## Validazione: in Locale servono almeno 2 superpotenze attive (umane o bot); in Online ogni
+## seggio deve avere una potenza distinta. Ritorna true se la configurazione e' avviabile.
 func _validate() -> bool:
+	if _mode == "local":
+		var active: Array = _active_powers()
+		if active.size() < 2:
+			_warn.text = "Servono almeno 2 superpotenze Umane o Bot (le altre = Neutrali)."
+			return false
+		_warn.text = "" if _has_human() else "Nessun Umano: guarderai i Bot giocare."
+		return true
 	var chosen := {}
 	for p in _seat_powers:
 		if p == "" or chosen.has(p):
@@ -488,36 +547,49 @@ func _validate() -> bool:
 	return true
 
 
+func _has_human() -> bool:
+	for power in POWERS:
+		if _role[power] == "human":
+			return true
+	return false
+
+
 # --- Modalita' / avvio ---
 
 func _on_mode(m: String) -> void:
 	_mode = m
-	_update_selection(_mode_buttons, ["hotseat", "solo", "online"].find(m))
-	_lobby_box.visible = (m == "online")
-	_diff_box.visible = (m == "solo")
-	if m != "online":
-		# Tornando in Hot Seat / Solo si chiude la sessione di rete eventualmente aperta.
+	_update_selection(_mode_buttons, ["local", "online"].find(m))
+	var online := (m == "online")
+	_local_setup_box.visible = not online
+	_online_setup_box.visible = online
+	_lobby_box.visible = online
+	_diff_box.visible = (not online) and _has_bot()
+	if not online:
+		# Tornando in Locale si chiude la sessione di rete eventualmente aperta.
 		_free_net()
 		_reset_lobby_controls()
 	if _diff_buttons.size() == 2:
 		_update_selection(_diff_buttons, 0 if _difficulty == "normal" else 1)
-	# Rigenera i seggi: in Solo compaiono gli interruttori Umano/Bot.
-	_rebuild_seats()
+	_validate()
 
 
 func _on_play() -> void:
 	if not _validate():
 		return
-	GameConfig.player_count = _player_count
 	GameConfig.mode = _mode
-	GameConfig.powers = _seat_powers.duplicate()
-	# Bot (Automa): attivi solo in modalita' Solo; negli altri casi nessun bot.
-	if _mode == "solo":
-		GameConfig.automa_powers = _solo_bot_powers()
+	# --- LOCALE: le superpotenze attive sono i seggi; le Neutrali -> Auto-Influence. ---
+	if _mode == "local":
+		var active: Array = _active_powers()
+		GameConfig.player_count = active.size()
+		GameConfig.powers = active
+		GameConfig.automa_powers = _bot_powers()
 		GameConfig.automa_difficulty = _difficulty
 		GameConfig.net = null
 		get_tree().change_scene_to_file("res://scenes/board.tscn")
 		return
+	# --- ONLINE ---
+	GameConfig.player_count = _player_count
+	GameConfig.powers = _seat_powers.duplicate()
 	GameConfig.automa_powers = []
 	if _mode == "online":
 		# In rete avvia SOLO l'host; i client entrano al segnale `started`.
