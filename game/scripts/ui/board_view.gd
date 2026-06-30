@@ -199,6 +199,8 @@ const ONGOING_DESC := {
 	"once_per_round:draw_highest_value_then_discard": "1x/round: pesca la carta di valore più alto del mazzo, poi scartane 1.",
 	"once_per_round:improve_again_plus1": "1x/round: fai di nuovo Improve Relations (con +1).",
 	"once_per_round:convert_influence": "1x/round: converti 1 Influenza temporanea in permanente.",
+	"once_per_round:redraw_hand": "1x/round: scarta la tua mano e pesca altrettante carte.",
+	"prosperity_boost": "Aumento Prosperità: -1 Beni di consumo di costo e +1 VP.",
 }
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
@@ -4524,6 +4526,13 @@ func _use_ongoing(tag: String) -> void:
 				_refresh())
 		"once_per_round:improve_again_plus1":
 			_play_card({"display_name": "Diplomatic Opening", "effect_ops": [{"op": "improve_relations"}], "effect_modifiers": ["improve_discount:1"]})
+		"once_per_round:redraw_hand":
+			var n := p.hand.size()
+			p.discard.append_array(p.hand)
+			p.hand.clear()
+			p.draw_cards(n)
+			_status("Scartata la mano e pescate %d carte." % n)
+			_refresh()
 		_:
 			_refresh()
 
@@ -6394,9 +6403,15 @@ func _aftermath_token_defense(p: PlayerState, region: String) -> void:
 
 ## Increase Prosperity (opzionale, #7): avanza di 1 spendendo i Consumer Goods.
 func _aftermath_prosperity(p: PlayerState) -> void:
-	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
-	if GamePhases.increase_prosperity(p, steps):
+	# Growth "Tenore di Vita Elevato": ogni aumento Prosperità costa 1 Beni di consumo in meno
+	# e dà 1 VP in più (per ogni copia dell'abilità).
+	var boost := _ongoing_count(p, "prosperity_boost")
+	if _increase_prosperity_discounted(p, boost):
+		if boost > 0:
+			p.victory_points += boost
 		var _pl2 := "%s: Prosperità -> liv. %d" % [p.power.to_upper(), p.prosperity_level]
+		if boost > 0:
+			_pl2 += " (+%d VP, -%d costo)" % [boost, boost]
 		_aftermath_lines.append(_pl2); _log(_pl2)
 	_show_aftermath_choices(p)
 
