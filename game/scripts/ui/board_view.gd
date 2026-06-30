@@ -1382,16 +1382,25 @@ func _advance_play() -> void:
 				_advance_play()
 				return
 			# Influenza DIRETTAMENTE sulla mappa: si chiude il cassetto, si evidenziano le
-			# caselle valide di TUTTE le Regioni e un click = scelta (Regione + slot).
+			# caselle valide e un click = scelta (Regione + slot). Una carta può limitare le
+			# Regioni ammesse con `regions` (es. TEST NUCLEARI: solo le 3 Regioni colpite).
 			var force_slot := "permanent" if bool(op.get("permanent", false)) else ""
-			if not _begin_influence_pick(gs.regions.keys(), force_slot, _apply_add_influence):
+			var inf_regions: Array = op.get("regions", gs.regions.keys())
+			if not _begin_influence_pick(inf_regions, force_slot, _apply_add_influence):
 				_status("Nessuno slot Influenza libero.")
 				_advance_play()
 		"engage", "place_armies":
-			awaiting = "region"
-			awaiting_op = op
-			_status("Tocca una Regione sulla mappa per: %s" % name)
-			_after_change()   # chiude il cassetto: serve la mappa
+			if name == "place_armies" and op.has("region"):
+				# Collocazione su Regione FISSA (es. TEST NUCLEARI): nessun tocco, esegui e avanza.
+				EffectExecutor.run(gs, _active().power, [op])
+				_status("Collocate %d Armate in %s." % [int(op.get("n", 1)), String(op["region"]).replace("_", " ")])
+				_layout_overlays()
+				_advance_play()
+			else:
+				awaiting = "region"
+				awaiting_op = op
+				_status("Tocca una Regione sulla mappa per: %s" % name)
+				_after_change()   # chiude il cassetto: serve la mappa
 		"move", "move_free", "move_to_regions":
 			_begin_move(op)
 		"improve_relations":
@@ -1416,14 +1425,26 @@ func _advance_play() -> void:
 				_advance_play()
 			else:
 				# `count` = numero di TIPI di risorsa producibili (es. Growth Strategy = 3,
-				# R&D Champion = 2, Optimization Program = 1). 0 = illimitato.
-				_open_produce_ui(int(op.get("count", 0)))       # Produce multi-traccia con quantità
-		"choice", "choose_n":
+				# R&D Champion = 2, Optimization Program = 1). 0 = illimitato. `allowed` limita
+				# i tipi (es. POLO PRODUTTIVO GLOBALE: solo energia/materie/beni).
+				_open_produce_ui(int(op.get("count", 0)), op.get("allowed", []))
+		"choice":
 			_pick_choice(op.get("options", []), func(sub):
 				# antepone i sotto-op scelti alla coda
 				var subs: Array = sub if sub is Array else [sub]
 				for i in range(subs.size() - 1, -1, -1):
 					play_queue.push_front(subs[i])
+				_advance_play())
+		"choose_n":
+			# Scegli N opzioni (es. GIGANTE ECONOMICO: 2 di 3). Le scelte si fanno una alla
+			# volta; i sotto-op scelti si antepongono alla coda nell'ordine di scelta.
+			_pick_choice_n(op.get("options", []), int(op.get("n", 1)), func(picked: Array):
+				var flat := []
+				for opt in picked:
+					var subs: Array = opt if opt is Array else [opt]
+					flat.append_array(subs)
+				for i in range(flat.size() - 1, -1, -1):
+					play_queue.push_front(flat[i])
 				_advance_play())
 		"get_growth":
 			_pick_growth()
@@ -2917,16 +2938,48 @@ func _apply_produce() -> void:
 		_advance_play()
 
 
+## Etichette italiane leggibili per le opzioni di una scelta (choice/choose_n).
+const OP_IT := {
+	"trade": "Commercia", "produce": "Produci", "invest": "Investi",
+	"build_base": "Costruisci Base", "engage": "Impegnati", "move": "Sposta Armate",
+	"improve_relations": "Migliora Relazioni", "add_influence": "+1 Influenza",
+	"increase_prosperity": "Aumenta Prosperità", "get_growth": "Carta Crescita",
+	"draw": "Pesca", "spend": "Spendi", "noop": "Niente",
+	"gain_money": "+money", "gain_resource": "+risorsa", "gain_armies": "+Armate",
+}
+
+## Etichetta di un'opzione (lista di op) per le barre di scelta.
+func _option_label(opt: Variant) -> String:
+	var flat: Array = opt if opt is Array else [opt]
+	var parts := []
+	for o in flat:
+		var nm := String((o as Dictionary).get("op", ""))
+		parts.append(OP_IT.get(nm, nm))
+	return " + ".join(parts) if parts.size() > 0 else "?"
+
+
 func _pick_choice(options: Array, cb: Callable) -> void:
 	var items := []
 	for i in options.size():
-		var opt = options[i]
-		var lbl := ""
-		var flat: Array = opt if opt is Array else [opt]
-		for o in flat:
-			lbl += String(o.get("op", "")) + " "
-		items.append({"label": lbl.strip_edges(), "value": opt})
+		items.append({"label": _option_label(options[i]), "value": options[i]})
 	_show_popup("Scegli un'opzione:", items, cb)
+
+
+## Scelta MULTIPLA "N di M": ripete la barra finché non sono state scelte `n` opzioni
+## (o non ne restano). `cb` riceve l'Array delle opzioni scelte (ognuna è una lista di op).
+func _pick_choice_n(options: Array, n: int, cb: Callable, acc: Array = []) -> void:
+	if acc.size() >= n or options.is_empty():
+		cb.call(acc)
+		return
+	var items := []
+	for i in options.size():
+		items.append({"label": _option_label(options[i]), "value": i})
+	_show_popup("Scegli (%d di %d):" % [acc.size() + 1, n], items, func(choice):
+		var rest := options.duplicate()
+		var picked: Variant = rest[int(choice)]
+		rest.remove_at(int(choice))
+		acc.append(picked)
+		_pick_choice_n(rest, n, cb, acc))
 
 
 ## Scelta a bottoni nella BARRA SCELTE in alto (niente più popup sopra la board):
