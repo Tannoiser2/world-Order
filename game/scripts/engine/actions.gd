@@ -242,8 +242,17 @@ static func execute_build_base(gs: GameState, owner: String, country: Dictionary
 static func execute_get_growth(p: PlayerState, growth_card: Dictionary, next_level: int) -> bool:
 	if int(growth_card.get("level", 0)) != next_level:
 		return false
-	if not p.spend(growth_card.get("cost", {})):
+	# Il costo in ARMATE si paga dalla RISERVA (armies_available), non dalla resource track:
+	# lo si stacca dal resto del costo (gestito da spend) e lo si verifica/spende a parte.
+	var cost: Dictionary = (growth_card.get("cost", {}) as Dictionary).duplicate()
+	var army_cost := int(cost.get("armies", 0))
+	if army_cost > 0:
+		if p.armies_available < army_cost:
+			return false
+		cost.erase("armies")
+	if not p.spend(cost):
 		return false
+	p.armies_available -= army_cost
 	p.growth_cards.append(growth_card)
 	p.victory_points += int(growth_card.get("victory_points", 0))
 	return true

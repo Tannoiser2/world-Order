@@ -201,6 +201,8 @@ const ONGOING_DESC := {
 	"once_per_round:convert_influence": "1x/round: converti 1 Influenza temporanea in permanente.",
 	"once_per_round:redraw_hand": "1x/round: scarta la tua mano e pesca altrettante carte.",
 	"prosperity_boost": "Aumento Prosperità: -1 Beni di consumo di costo e +1 VP.",
+	"scoring_influence_tiebreak": "Scoring: vinci i pareggi di maggioranza per cubetti Influenza (ignora le Armate).",
+	"threat_defense_all_regions": "Hai +1 MINACCIA e +1 Difesa in OGNI Regione (anche senza Armate).",
 }
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
@@ -863,7 +865,7 @@ func _layout_majority() -> void:
 		var track: InfluenceTrack = rd.get("track")
 		if track == null:
 			continue
-		var ranking: Array = Scoring.region_ranking(track, rd.get("majority_bonus", []), rd.get("armies", {}))
+		var ranking: Array = Scoring.region_ranking(track, rd.get("majority_bonus", []), rd.get("armies", {}), _powers_with_ongoing("scoring_influence_tiebreak"))
 		if ranking.is_empty():
 			continue
 		var alpha := 1.0 if track.all_permanent_filled() else 0.4
@@ -4401,6 +4403,16 @@ func _ongoing_count(p: PlayerState, tag: String) -> int:
 	return _ongoing_tags(p).count(tag)
 
 
+## Poteri che possiedono almeno una Growth con l'abilità ongoing `tag` (per gli effetti che
+## agiscono nello Scoring / THREAT, es. tie-break di Influenza o Programma Nucleare).
+func _powers_with_ongoing(tag: String) -> Array:
+	var out := []
+	for p in gs.players:
+		if _ongoing_count(p, tag) > 0:
+			out.append(p.power)
+	return out
+
+
 func _ongoing_used(power: String, tag: String) -> bool:
 	return tag in (_used_ongoing.get(power, []) as Array)
 
@@ -6425,9 +6437,10 @@ func _aftermath_resolve() -> void:
 		player_powers.append(p.power)
 	# NATO (USA/EU) solo se entrambe le potenze sono in gioco (pag. 19).
 	var nato := Threat.nato_pairs(player_powers)
+	var nuclear: Array = _powers_with_ongoing("threat_defense_all_regions")   # Growth "Programma Nucleare"
 	for rid in gs.regions:
 		var rd: Dictionary = gs.regions[rid]
-		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, _threat_defense.get(rid, {}), nato)
+		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, _threat_defense.get(rid, {}), nato, nuclear)
 		for power in loss:
 			gs.add_vp(power, -int(loss[power]))
 			_aftermath_lines.append("%s: -%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])

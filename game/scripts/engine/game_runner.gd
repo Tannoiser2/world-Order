@@ -5,6 +5,23 @@ extends RefCounted
 ## loop completo (fasi, azioni, aftermath, scoring finale, vincitore), non a
 ## giocare bene. Verra' sostituita da UI (input umano) e bot.
 
+## Poteri che possiedono una Growth card con l'abilità ongoing `tag` (es. il tie-break di
+## "Autorità Inconfutabile" o il "Programma Nucleare").
+static func powers_with_ongoing(gs: GameState, tag: String) -> Array:
+	var out := []
+	for p in gs.players:
+		for c in p.growth_cards:
+			var found := false
+			for op in (c as Dictionary).get("effect_ops", []):
+				if String((op as Dictionary).get("op", "")) == "ongoing" and String((op as Dictionary).get("tag", "")) == tag:
+					found = true
+					break
+			if found:
+				out.append(p.power)
+				break
+	return out
+
+
 ## Somma i VP da tutte le Regioni che segnano (permanenti pieni).
 static func score_all_regions(gs: GameState) -> Dictionary:
 	var totals := {}
@@ -12,9 +29,10 @@ static func score_all_regions(gs: GameState) -> Dictionary:
 	for p in gs.players:
 		players.append(p.power)
 		totals[p.power] = 0
+	var tiebreak: Array = powers_with_ongoing(gs, "scoring_influence_tiebreak")
 	for rid in gs.regions:
 		var r: Dictionary = gs.regions[rid]
-		var res := Scoring.score_region(r["track"], r["majority_bonus"], r["armies"], players)
+		var res := Scoring.score_region(r["track"], r["majority_bonus"], r["armies"], players, tiebreak)
 		for power in res:
 			totals[power] = int(totals.get(power, 0)) + int(res[power])
 	return totals

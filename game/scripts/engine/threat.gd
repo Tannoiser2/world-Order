@@ -19,14 +19,18 @@ static func nato_pairs(player_powers: Array) -> Array:
 ## - defense_bonus: Dictionary power -> int (es. +2 per Country da Engage scartato).
 ## - nato: Array di coppie [a, b] che ignorano la THREAT reciproca.
 ## Ritorna Dictionary power -> VP persi (>= 0).
+## `nuclear`: poteri con la Growth "Programma Nucleare" — hanno +1 MINACCIA e +1 Difesa in
+## OGNI Regione, anche dove non hanno Armate (quindi minacciano ovunque).
 static func resolve_region(zone: Array, armies: Dictionary, military_focus: Dictionary,
-		defense_bonus: Dictionary, nato: Array = []) -> Dictionary:
+		defense_bonus: Dictionary, nato: Array = [], nuclear: Array = []) -> Dictionary:
 
 	var threat := func(p: String) -> int:
 		var a: int = int(armies.get(p, 0))
 		var t := a
 		if bool(military_focus.get(p, false)) and a > 0:
 			t += 1
+		if p in nuclear:
+			t += 1   # +1 MINACCIA ovunque (anche senza Armate)
 		return t
 
 	var defense := func(p: String) -> int:
@@ -34,6 +38,8 @@ static func resolve_region(zone: Array, armies: Dictionary, military_focus: Dict
 		if bool(military_focus.get(p, false)) and p in zone:
 			d += 1
 		d += int(defense_bonus.get(p, 0))
+		if p in nuclear:
+			d += 1   # +1 Difesa ovunque
 		return d
 
 	var ignores := func(a: String, b: String) -> bool:
@@ -42,11 +48,14 @@ static func resolve_region(zone: Array, armies: Dictionary, military_focus: Dict
 				return true
 		return false
 
-	# Tutti i poteri presenti (con almeno 1 Armata) o nella zona.
+	# Tutti i poteri presenti (con almeno 1 Armata), nella zona, o con Programma Nucleare
+	# (che minaccia ovunque anche senza Armate).
 	var present := {}
 	for p in armies.keys():
 		present[p] = true
 	for p in zone:
+		present[p] = true
+	for p in nuclear:
 		present[p] = true
 
 	var loss := {}
