@@ -404,6 +404,146 @@ func _pick_region(gs, ok: Callable) -> String:
 	return String(valid[0])
 
 
+# --- Criteri Move / Build a Base sul THREAT (regolamento Automa, "Move"/"Build a Base") ---
+# Scelta della Regione dove muovere/costruire 1 Armata, in ordine di priorità:
+#  1. Regione nella zona dove l'Automa è SOTTO MINACCIA (minima differenza THREAT-Difesa).
+#  2. Regione nella zona dove metterà ALMENO un altro giocatore sotto minaccia (ora no);
+#     a parità preferisci dove un avversario ha più Armate dell'Automa, poi dove ne minaccia di più.
+#  3. Regione FUORI zona dove mette il maggior numero di giocatori sotto minaccia.
+#  4. Una Regione valida qualsiasi (preferendo la zona).
+
+## Partner NATO dell'Automa (USA↔EU), se in gioco: si ignorano la THREAT a vicenda. "" se nessuno.
+func _nato_partner(gs) -> String:
+	if power == "usa" and gs.player_by_power("eu") != null:
+		return "eu"
+	if power == "eu" and gs.player_by_power("usa") != null:
+		return "usa"
+	return ""
+
+## Vero se la potenza `pw` ha il Military Focus questo round (come per threat.gd).
+func _is_mil_focus(gs, pw: String) -> bool:
+	var pl = gs.player_by_power(pw)
+	return pl != null and int(pl.focus) == WO.Focus.MILITARY
+
+## THREAT proiettata da `pw` in `region` (Armate + 1 se Military Focus con Armate). `extra` Armate ipotetiche.
+func _power_threat(gs, region: String, pw: String, extra: int = 0) -> int:
+	var a: int = int(gs.regions[region].get("armies", {}).get(pw, 0)) + extra
+	var t := a
+	if a > 0 and _is_mil_focus(gs, pw):
+		t += 1
+	return t
+
+## Difesa di `pw` in `region` (Armate + 1 se Military Focus e `pw` è nella zona). `extra` Armate ipotetiche.
+func _power_defense(gs, region: String, pw: String, extra: int = 0) -> int:
+	var rd: Dictionary = gs.regions[region]
+	var a: int = int(rd.get("armies", {}).get(pw, 0)) + extra
+	var d := a
+	if _is_mil_focus(gs, pw) and pw in rd.get("zone", []):
+		d += 1
+	return d
+
+## max(THREAT avversaria) - Difesa attuale dell'Automa in `region`. >0 = sotto minaccia.
+## Esclude il partner NATO.
+func _threat_margin(gs, region: String) -> int:
+	var rd: Dictionary = gs.regions[region]
+	var partner := _nato_partner(gs)
+	var my_def := _power_defense(gs, region, power)
+	var present := {}
+	for q in rd.get("armies", {}).keys():
+		present[q] = true
+	for q in rd.get("zone", []):
+		present[q] = true
+	var max_threat := 0
+	for q in present.keys():
+		if q == power or q == partner:
+			continue
+		max_threat = maxi(max_threat, _power_threat(gs, region, String(q)))
+	return max_threat - my_def
+
+## Numero di giocatori della zona che l'Automa metterebbe NUOVAMENTE sotto minaccia
+## piazzando 1 Armata in `region` (esclude sé stesso e il partner NATO).
+func _newly_threatened(gs, region: String) -> int:
+	var rd: Dictionary = gs.regions[region]
+	var partner := _nato_partner(gs)
+	var zone: Array = rd.get("zone", [])
+	var my_now := _power_threat(gs, region, power)
+	var my_after := _power_threat(gs, region, power, 1)
+	var cnt := 0
+	for pl in gs.players:
+		var q: String = pl.power
+		if q == power or q == partner or q not in zone:
+			continue
+		var dq := _power_defense(gs, region, q)
+		if my_now <= dq and my_after > dq:
+			cnt += 1
+	return cnt
+
+## Massimo numero di Armate di un avversario (≠ Automa, ≠ partner NATO) in `region`.
+func _max_opp_armies(gs, region: String) -> int:
+	var partner := _nato_partner(gs)
+	var m := 0
+	for q in gs.regions[region].get("armies", {}).keys():
+		if q == power or q == partner:
+			continue
+		m = maxi(m, int(gs.regions[region]["armies"][q]))
+	return m
+
+## Sceglie la Regione dove muovere/costruire secondo i criteri THREAT del regolamento (vedi sopra).
+func _pick_threat_region(gs, ok: Callable) -> String:
+	var valid := []
+	for r in gs.regions.keys():
+		if ok.call(r):
+			valid.append(r)
+	if valid.is_empty():
+		return ""
+	# 1) Zona, sotto minaccia ora -> minima differenza THREAT-Difesa.
+	var best := ""
+	var best_margin := 1 << 30
+	for r in valid:
+		if power not in gs.regions[r].get("zone", []):
+			continue
+		var m := _threat_margin(gs, r)
+		if m > 0 and m < best_margin:
+			best_margin = m
+			best = r
+	if best != "":
+		return best
+	# 2) Zona, mette almeno un altro giocatore sotto minaccia (ora no).
+	best = ""
+	var best_opp := -1
+	var best_cnt := 0
+	for r in valid:
+		if power not in gs.regions[r].get("zone", []):
+			continue
+		var nt := _newly_threatened(gs, r)
+		if nt <= 0:
+			continue
+		var opp := _max_opp_armies(gs, r)
+		if opp > best_opp or (opp == best_opp and nt > best_cnt):
+			best_opp = opp
+			best_cnt = nt
+			best = r
+	if best != "":
+		return best
+	# 3) Fuori zona, massimo numero di giocatori messi sotto minaccia.
+	best = ""
+	best_cnt = 0
+	for r in valid:
+		if power in gs.regions[r].get("zone", []):
+			continue
+		var nt := _newly_threatened(gs, r)
+		if nt > best_cnt:
+			best_cnt = nt
+			best = r
+	if best != "":
+		return best
+	# 4) Ripiego: una Regione valida (preferendo la zona).
+	for r in valid:
+		if power in gs.regions[r].get("zone", []):
+			return r
+	return String(valid[0])
+
+
 ## Aggiunge 1 cubo Influenza dell'Automa nella Regione (slot scelto da InfluenceTrack: permanente
 ## se libero, altrimenti temporaneo). Accredita i VP immediati al PlayerState. Ritorna i VP.
 func _add_influence(gs, p, region: String) -> int:
@@ -499,7 +639,7 @@ func _fallback_trade(p, why: String) -> Dictionary:
 func _act_build(gs, p, dec: Dictionary) -> Dictionary:
 	if money < 10:
 		return _fallback_trade(p, "money insufficiente per Build")
-	var r := _pick_region(gs, func(reg): return can_build_base(reg))
+	var r := _pick_threat_region(gs, func(reg): return can_build_base(reg))
 	if r == "":
 		# Nessuna Regione costruibile -> Improve Relations (regolamento).
 		return _act_improve(gs, p, [], DataLoader.load_countries(), dec)
@@ -515,7 +655,7 @@ func _act_build(gs, p, dec: Dictionary) -> Dictionary:
 func _act_move(gs, p, dec: Dictionary) -> Dictionary:
 	if money < 5:
 		return _fallback_trade(p, "money insufficiente per Move")
-	var r := _pick_region(gs, func(reg): return Actions.move_dest_valid(gs, p, reg))
+	var r := _pick_threat_region(gs, func(reg): return Actions.move_dest_valid(gs, p, reg))
 	if r == "":
 		return _fallback_trade(p, "nessuna destinazione valida per Move")
 	_spend(p, 5)
