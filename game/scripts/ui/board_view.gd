@@ -189,6 +189,8 @@ var _commerce_flipped: Dictionary = {}  # venditore(power) -> [indici] carte Com
 var _plays_left := 1                  # carte ancora giocabili nel turno corrente (1 base)
 var _played_this_turn := false        # vero appena giocata/passata una carta: serve per
                                       # bloccare 'Fine turno' finché non si agisce
+var _turn_start_influence := 0        # Influenza totale del giocatore a inizio turno (Growth
+                                      # "Affermazione di Predominio": +1 VP se ne aggiunge nel turno)
 
 ## Abilità continuative (Growth): descrizione e se sono attivabili una volta/round.
 const ONGOING_DESC := {
@@ -204,6 +206,7 @@ const ONGOING_DESC := {
 	"scoring_influence_tiebreak": "Scoring: vinci i pareggi di maggioranza per cubetti Influenza (ignora le Armate).",
 	"threat_defense_all_regions": "Hai +1 MINACCIA e +1 Difesa in OGNI Regione (anche senza Armate).",
 	"research_top_bonus_twice": "Durante la Ricerca: ri-ottieni il bonus superiore di 2 delle tue carte.",
+	"vp_on_influence_added": "Fine turno: +1 VP se hai aggiunto Influenza a una Regione.",
 }
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
@@ -2297,7 +2300,14 @@ func _render_growth_pick() -> void:
 func _buy_growth_action(card: Dictionary, nl: int) -> void:
 	var p := _active()
 	if Actions.execute_get_growth(p, card, nl):
-		_event("%s ottiene la Growth: %s (+%d VP)." % [p.power.to_upper(), card.get("display_name", "?"), int(card.get("victory_points", 0))])
+		var extra := 0
+		# Growth "Affermazione di Predominio": all'acquisto +N VP per ogni round GIA' completato.
+		var per := int(card.get("vp_per_completed_round", 0))
+		if per > 0:
+			extra = per * maxi(0, gs.round - 1)
+			p.victory_points += extra
+		var tot := int(card.get("victory_points", 0)) + extra
+		_event("%s ottiene la Growth: %s (+%d VP)." % [p.power.to_upper(), card.get("display_name", "?"), tot])
 	_growth_pick = {}
 	_close_popup()
 	_after_change()
@@ -5455,6 +5465,13 @@ func _end_turn() -> void:
 		_status("Devi prima giocare una carta (o la Moneta +10 per passare).")
 		return
 	_selected_hand_card = {}
+	# Growth "Affermazione di Predominio": +1 VP se nel turno appena concluso il giocatore ha
+	# aggiunto Influenza in almeno una Regione.
+	var outgoing := _active()
+	if _ongoing_count(outgoing, "vp_on_influence_added") > 0 \
+			and _player_total_influence(outgoing.power) > _turn_start_influence:
+		outgoing.victory_points += 1
+		_log("%s: +1 VP (Influenza aggiunta nel turno)" % outgoing.power.to_upper())
 	round_turn_count += 1
 	if round_turn_count >= 4 * gs.players.size():
 		_begin_research()
@@ -5484,6 +5501,15 @@ func _reset_plays() -> void:
 	_played_this_turn = false
 	if round_turn_count < gs.players.size():
 		_plays_left += _ongoing_count(_active(), "extra_play_first_turn")
+	_turn_start_influence = _player_total_influence(_active().power)
+
+
+## Influenza totale di `power` su tutte le Regioni (per "Affermazione di Predominio").
+func _player_total_influence(power: String) -> int:
+	var t := 0
+	for rid in gs.regions:
+		t += int((gs.regions[rid]["track"] as InfluenceTrack).count(power))
+	return t
 
 
 ## Azione Focus: sposta la pedina Focus sulla colonna scelta e prepara (ready) le
