@@ -225,6 +225,8 @@ func _ready() -> void:
 	var powers: Array = GameConfig.powers if GameConfig.powers.size() >= 2 else GameConfig.powers_for_count_n(2)
 	if net != null and net.is_client() and (net.powers as Array).size() >= 2:
 		powers = net.powers   # le potenze/seggi li ha assegnati l'host
+		# I Bot online li guida l'host; il client li conosce solo per MOSTRARLI (banner/etichette).
+		GameConfig.automa_powers = (net.automa as Array).duplicate()
 	gs = GameSetup.new_game(powers)
 	for p in gs.players:
 		p.draw_cards(6)   # denaro iniziale: impostato per potenza in GameSetup
@@ -6045,14 +6047,16 @@ func _prep_step() -> void:
 ## "Arma" un passo del bot: lo esegue _process dopo un breve ritardo (un passo per volta, cosi'
 ## non si blocca tutto in un frame e si VEDONO i turni dei bot). Solo locale e con bot attivi.
 func _automa_tick() -> void:
-	if net == null and not GameConfig.automa_powers.is_empty():
+	# I bot li guida chi ha l'autorità sul GameState: in locale la singola istanza, online l'HOST.
+	# Il client non li esegue mai (li riceve già risolti negli snapshot).
+	if (net == null or net.is_host()) and not GameConfig.automa_powers.is_empty():
 		_automa_pending = true
 		_automa_delay = 0.0
 
 
 ## Esegue UN passo del bot al massimo per frame, con un piccolo ritardo (un turno alla volta).
 func _process(delta: float) -> void:
-	if not _automa_pending or net != null or game_over or _automa_busy:
+	if not _automa_pending or (net != null and net.is_client()) or game_over or _automa_busy:
 		return
 	if GameConfig.automa_powers.is_empty():
 		_automa_pending = false
@@ -6064,7 +6068,7 @@ func _process(delta: float) -> void:
 
 ## Esegue UN passo del bot di turno secondo la fase. Solo locale; salta se non e' un Automa.
 func _automa_run() -> void:
-	if _automa_busy or net != null or game_over:
+	if _automa_busy or (net != null and net.is_client()) or game_over:
 		return
 	_automa_busy = true
 	# Riepilogo di fine round (le "conseguenze"): e' un ACK condiviso. Lo avanza il driver SOLO
@@ -6108,7 +6112,9 @@ func _all_automa() -> bool:
 ## dei TIPI carta dalle 12 Ability iniziali della potenza.
 func _setup_automa() -> void:
 	_automa.clear()
-	if net != null or GameConfig.automa_powers.is_empty():
+	# Lo stato Automa (cubi/FDI/Basi/deck/money) lo tiene SOLO chi guida i bot: locale o host.
+	# Il client non lo crea (riceve già tutto via snapshot).
+	if (net != null and net.is_client()) or GameConfig.automa_powers.is_empty():
 		return
 	var ab := DataLoader.load_starting_abilities()
 	for power in GameConfig.automa_powers:
