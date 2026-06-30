@@ -1,0 +1,267 @@
+{
+ "kind": "objective",
+ "source": "Obiettivi Superpotenze (espansione Diplomacy & Dominance). 8 carte per potenza. Si calcolano nei round 3 e 6: ogni carta ha 3 condizioni (soglie round3 | round6) e una RICOMPENSA a 3 livelli (1/2/3 condizioni soddisfatte -> reward[0/1/2] VP).",
+ "note": "min: [soglia_round3, soglia_round6]. Le condizioni senza soglia (maggioranze) non hanno 'min'. discard_if_no: l'Obiettivo si scarta se nessun umano controlla quella potenza (gestione futura nel setup).",
+ "regions": ["americas", "europe", "middle_east_north_africa", "africa", "central_asia", "south_asia", "east_asia_pacific"],
+ "objectives": [
+  {
+   "id": "obj_eu_terra_abbondanza", "power": "eu", "name": "Terra dell'Abbondanza", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "prosperity_times", "min": [3, 5]},
+    {"t": "resource", "res": "food", "min": [2, 2]},
+    {"t": "money", "min": [50, 100]}
+   ]
+  },
+  {
+   "id": "obj_eu_via_europea", "power": "eu", "name": "La Via Europea", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "resource", "res": "diplomacy", "min": [4, 4]},
+    {"t": "allied_total", "min": [8, 12]},
+    {"t": "regions_with_allied", "per": 1, "min": [6, 7]}
+   ]
+  },
+  {
+   "id": "obj_eu_sfida_orso", "power": "eu", "name": "Sfida l'Orso", "reward": [3, 6, 9], "discard_if_no": "russia",
+   "conditions": [
+    {"t": "influence_region", "region": "central_asia", "min": [1, 2]},
+    {"t": "influence_more_than", "power": "russia", "region": "europe"},
+    {"t": "influence_more_than", "power": "russia", "region": "middle_east_north_africa"}
+   ]
+  },
+  {
+   "id": "obj_eu_frontiere_sicure", "power": "eu", "name": "Frontiere Sicure", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "influence_highest", "region": "europe"},
+    {"t": "influence_region", "region": "middle_east_north_africa", "min": [3, 4]},
+    {"t": "armies_total", "regions": ["europe", "middle_east_north_africa"], "min": [3, 5]}
+   ]
+  },
+  {
+   "id": "obj_eu_polo_innovazione", "power": "eu", "name": "Polo di Innovazione", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "growth_cards", "min": [3, 4]},
+    {"t": "production_increase_any", "res": ["services", "consumer_goods"], "min": [1, 1]},
+    {"t": "resource", "res": "services", "min": [2, 2]}
+   ]
+  },
+  {
+   "id": "obj_eu_ordine_post_coloniale", "power": "eu", "name": "Ordine Post Coloniale", "reward": [3, 6, 9],
+   "conditions": [
+    {"t": "influence_highest", "region": "middle_east_north_africa"},
+    {"t": "influence_highest", "region": "africa", "strict": true},
+    {"t": "influence_total", "regions": ["americas", "south_asia", "east_asia_pacific"], "min": [3, 4]}
+   ]
+  },
+  {
+   "id": "obj_eu_stabilita_vicinato", "power": "eu", "name": "Stabilità nel Vicinato dell'UE", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "allied_region", "region": "europe", "min": [4, 5]},
+    {"t": "armies_region", "region": "europe", "min": [2, 4]},
+    {"t": "fdi_in_region", "region": "europe", "min": [2, 3]}
+   ]
+  },
+  {
+   "id": "obj_eu_potere_normativo", "power": "eu", "name": "Potere Normativo", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "allied_most"},
+    {"t": "regions_with_allied", "per": 2, "min": [4, 5]},
+    {"t": "engage_markers", "min": [1, 1]}
+   ]
+  },
+
+  {
+   "id": "obj_usa_egemonia_militare", "power": "usa", "name": "Egemonia Militare", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "production_increase", "res": "armies", "min": [1, 2]},
+    {"t": "regions_with_armies", "per": 3, "min": [2, 4]},
+    {"t": "armies_most"}
+   ]
+  },
+  {
+   "id": "obj_usa_sogno_americano", "power": "usa", "name": "Sogno Americano", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "prosperity_times", "min": [2, 4]},
+    {"t": "production_increase", "res": "consumer_goods", "min": [1, 2]},
+    {"t": "money", "min": [40, 80]}
+   ]
+  },
+  {
+   "id": "obj_usa_egemonia_occidentale", "power": "usa", "name": "Egemonia Occidentale", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "influence_highest", "region": "americas", "strict": true},
+    {"t": "influence_highest", "region": "europe"},
+    {"t": "influence_region", "region": "east_asia_pacific", "min": [3, 4]}
+   ]
+  },
+  {
+   "id": "obj_usa_pioniere_ricerca", "power": "usa", "name": "Pioniere di Ricerca e Sviluppo", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "growth_cards", "min": [3, 4]},
+    {"t": "deck_size", "min": [16, 19]},
+    {"t": "resource", "res": "services", "min": [2, 2]}
+   ]
+  },
+  {
+   "id": "obj_usa_dominio_economico", "power": "usa", "name": "Dominio Economico", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "fdi_count", "min": [2, 4]},
+    {"t": "money_most"},
+    {"t": "production_increases_count", "min": [2, 4]}
+   ]
+  },
+  {
+   "id": "obj_usa_doppio_contenimento", "power": "usa", "name": "Doppio Contenimento", "reward": [3, 6, 9], "discard_if_no": "russia_or_china",
+   "conditions": [
+    {"t": "influence_more_than", "power": "china", "region": "east_asia_pacific"},
+    {"t": "influence_more_than", "power": "russia", "region": "europe"},
+    {"t": "influence_region", "region": "central_asia", "min": [1, 2]}
+   ]
+  },
+  {
+   "id": "obj_usa_dominio_mari", "power": "usa", "name": "Dominio dei Mari", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "armies_total", "regions": ["europe", "middle_east_north_africa"], "min": [3, 6]},
+    {"t": "armies_total", "regions": ["east_asia_pacific", "south_asia"], "min": [2, 4]},
+    {"t": "armies_total", "regions": ["americas", "africa"], "min": [1, 2]}
+   ]
+  },
+  {
+   "id": "obj_usa_dominio_globale", "power": "usa", "name": "Dominio Globale", "reward": [3, 6, 9],
+   "conditions": [
+    {"t": "regions_with_influence", "per": 1, "min": [5, 7]},
+    {"t": "regions_with_influence", "per": 2, "min": [4, 5]},
+    {"t": "influence_most_board"}
+   ]
+  },
+
+  {
+   "id": "obj_russia_rilancio_sfera", "power": "russia", "name": "Rilancio della Sfera Sovietica", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "influence_highest", "region": "europe"},
+    {"t": "influence_highest", "region": "central_asia", "strict": true},
+    {"t": "armies_total", "regions": ["europe", "central_asia"], "min": [4, 7]}
+   ]
+  },
+  {
+   "id": "obj_russia_gigante_energetico", "power": "russia", "name": "Gigante Energetico", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "production_increase_any", "res": ["energy", "raw_materials"], "min": [1, 1]},
+    {"t": "allied_export_to", "res": ["energy", "raw_materials"], "min": [6, 7]},
+    {"t": "fdi_export_to", "res": ["energy", "raw_materials"], "min": [1, 3]}
+   ]
+  },
+  {
+   "id": "obj_russia_conquista_sud", "power": "russia", "name": "Alla Conquista del Sud del Mondo", "reward": [3, 6, 9],
+   "conditions": [
+    {"t": "influence_region", "region": "south_asia", "min": [2, 3]},
+    {"t": "influence_region", "region": "africa", "min": [1, 2]},
+    {"t": "influence_region", "region": "americas", "min": [1, 2]}
+   ]
+  },
+  {
+   "id": "obj_russia_rinascita", "power": "russia", "name": "Rinascita della Russia", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "regions_with_influence", "per": 2, "min": [3, 4]},
+    {"t": "influence_more_than_combined", "region": "central_asia"},
+    {"t": "armies_most_in_n_regions", "min": [2, 3]}
+   ]
+  },
+  {
+   "id": "obj_russia_perestrojka", "power": "russia", "name": "Perestrojka 2.0", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "prosperity_times", "min": [2, 3]},
+    {"t": "production_increases_count", "secondary": true, "min": [2, 3]},
+    {"t": "money", "min": [40, 80]}
+   ]
+  },
+  {
+   "id": "obj_russia_sfida_monroe", "power": "russia", "name": "Sfida alla Dottrina Monroe", "reward": [3, 6, 9],
+   "conditions": [
+    {"t": "allied_region", "region": "americas", "min": [2, 3]},
+    {"t": "armies_region", "region": "americas", "min": [1, 2]},
+    {"t": "fdi_in_region", "region": "americas", "min": [1, 2]}
+   ]
+  },
+  {
+   "id": "obj_russia_sfida_egemonia", "power": "russia", "name": "Sfida all'Egemonia Occidentale", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "influence_board_total", "min": [8, 13]},
+    {"t": "influence_more_than_any_of", "powers": ["usa", "eu"], "region": "europe"},
+    {"t": "influence_region", "region": "middle_east_north_africa", "min": [2, 3]}
+   ]
+  },
+  {
+   "id": "obj_russia_ordine_asiatico", "power": "russia", "name": "Ordine Asiatico", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "influence_region", "region": "central_asia", "min": [2, 3]},
+    {"t": "influence_region", "region": "south_asia", "min": [1, 2]},
+    {"t": "influence_region", "region": "east_asia_pacific", "min": [1, 2]}
+   ]
+  },
+
+  {
+   "id": "obj_china_mondo_pacifico", "power": "china", "name": "Verso un Nuovo Mondo Pacifico", "reward": [3, 6, 9], "discard_if_no": "usa",
+   "conditions": [
+    {"t": "influence_more_than", "power": "usa", "region": "east_asia_pacific"},
+    {"t": "armies_more_than", "power": "usa", "region": "east_asia_pacific"},
+    {"t": "allied_more_than", "power": "usa", "region": "east_asia_pacific"}
+   ]
+  },
+  {
+   "id": "obj_china_supremazia_economica", "power": "china", "name": "Supremazia Economica", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "money_most"},
+    {"t": "fdi_count", "min": [4, 8]},
+    {"t": "production_increases_count", "min": [4, 7]}
+   ]
+  },
+  {
+   "id": "obj_china_nuovo_ordine", "power": "china", "name": "Nuovo Ordine Mondiale", "reward": [3, 6, 9],
+   "conditions": [
+    {"t": "regions_with_influence", "per": 1, "min": [4, 6]},
+    {"t": "influence_highest_in_n_regions", "min": [2, 3]},
+    {"t": "influence_most_board"}
+   ]
+  },
+  {
+   "id": "obj_china_miracolo", "power": "china", "name": "Miracolo Economico Cinese", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "prosperity_times", "min": [3, 5]},
+    {"t": "resource", "res": "consumer_goods", "min": [2, 2]},
+    {"t": "money", "min": [40, 80]}
+   ]
+  },
+  {
+   "id": "obj_china_drago_innovazione", "power": "china", "name": "Drago dell'Innovazione", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "growth_cards", "min": [3, 4]},
+    {"t": "deck_size", "min": [16, 19]},
+    {"t": "production_increase", "res": "services", "min": [1, 2]}
+   ]
+  },
+  {
+   "id": "obj_china_sicurezza_energetica", "power": "china", "name": "Sicurezza Energetica", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "production_increase_any", "res": ["energy", "raw_materials"], "min": [1, 1]},
+    {"t": "allied_import_from", "res": ["energy", "raw_materials"], "min": [2, 3]},
+    {"t": "resource", "res": "energy", "min": [4, 4]}
+   ]
+  },
+  {
+   "id": "obj_china_via_seta", "power": "china", "name": "Nuova Via della Seta", "reward": [2, 4, 7],
+   "conditions": [
+    {"t": "regions_with_allied", "per": 1, "min": [6, 7]},
+    {"t": "fdi_most_in_n_regions", "min": [3, 5]},
+    {"t": "fdi_income_one_step", "min": [10, 20]}
+   ]
+  },
+  {
+   "id": "obj_china_leader_esportazioni", "power": "china", "name": "Leader delle Esportazioni", "reward": [1, 3, 5],
+   "conditions": [
+    {"t": "export_symbols_total", "min": [10, 15]},
+    {"t": "allied_export_to", "res": ["consumer_goods"], "min": [5, 6]},
+    {"t": "export_symbols_distinct", "min": [5, 6]}
+   ]
+  }
+ ]
+}
