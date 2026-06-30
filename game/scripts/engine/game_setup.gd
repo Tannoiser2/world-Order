@@ -70,6 +70,8 @@ static func new_game(powers: Array) -> GameState:
 			ps.production[rtype] = int(v) if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT else 1
 		# Risorse iniziali = una produzione di setup (stessa quantità della
 		# produzione, escluse le Armate che sono un tracciato a parte).
+		# Produzione iniziale memorizzata (baseline Obiettivi: "hai aumentato la Produzione").
+		ps.initial_production = ps.production.duplicate(true)
 		for rtype in ["energy", "raw_materials", "food", "consumer_goods", "services", "diplomacy"]:
 			ps.resources[rtype] = int(ps.production.get(rtype, 0))
 		# Armate iniziali = Produzione di Armate (pag. 13): vanno nella riserva.

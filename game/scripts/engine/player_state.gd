@@ -13,6 +13,7 @@ var resources: Dictionary = {
 }
 ## Livello di Produzione per tipo di risorsa.
 var production: Dictionary = {}
+var initial_production: Dictionary = {}   # Produzione di setup (baseline per gli Obiettivi)
 
 var prosperity_level: int = 0
 var focus: int = WO.Focus.DOMESTIC
