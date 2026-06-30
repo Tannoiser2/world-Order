@@ -157,6 +157,7 @@ var _automa_busy := false                # guardia anti-rientro del driver bot (
 var _automa_pending := false             # un passo bot e' "armato" (lo esegue _process dopo un breve ritardo)
 var _automa_delay := 0.0                 # tempo accumulato prima del prossimo passo bot
 var _automa: Dictionary = {}             # power -> Automa: stato extra dei bot (cubi/FDI/Basi/deck)
+var _automa_decision_deck: Array = []    # mazzo Decision card (Focus) dei bot; pescato in Preparazione
 var _research_idx := 0                  # indice nel turn_order durante la Research
 var _research_points := 0               # Research disponibili al giocatore corrente
 const MARKET_SLOTS := 5
@@ -6402,6 +6403,9 @@ func _setup_automa() -> void:
 	# Il client non lo crea (riceve già tutto via snapshot).
 	if (net != null and net.is_client()) or GameConfig.automa_powers.is_empty():
 		return
+	# Mazzo Decision card: determina il Focus dei bot ogni round (regolamento Automa, pesca 1/Automa).
+	_automa_decision_deck = DataLoader.load_automa_decision().duplicate(true)
+	_automa_decision_deck.shuffle()
 	var ab := DataLoader.load_starting_abilities()
 	for power in GameConfig.automa_powers:
 		var p = gs.player_by_power(power)
@@ -6419,7 +6423,8 @@ func _setup_automa() -> void:
 ## Focus (round x moltiplicatore). L'Automa non produce risorse e non esaurisce le Country.
 func _automa_prep() -> void:
 	var p := _active()
-	var f := randi() % 3
+	# Focus dalla Decision card (regolamento Automa): pesca 1 carta e leggi la riga della tua potenza.
+	var f := _draw_automa_focus(p.power)
 	p.focus = f
 	if _automa.has(p.power):
 		_automa[p.power].focus = f
@@ -6430,6 +6435,21 @@ func _automa_prep() -> void:
 	_log(msg)
 	_automa_announce(p, msg)
 	_prep_advance()
+
+
+## Pesca una Decision card per l'Automa e ritorna il Focus della sua potenza (rimescola a mazzo
+## vuoto). Fallback al caso non inizializzato.
+func _draw_automa_focus(power: String) -> int:
+	if _automa_decision_deck.is_empty():
+		_automa_decision_deck = DataLoader.load_automa_decision().duplicate(true)
+		_automa_decision_deck.shuffle()
+	if _automa_decision_deck.is_empty():
+		return WO.Focus.DOMESTIC
+	var card: Dictionary = _automa_decision_deck.pop_back()
+	match String(card.get(power, "domestic")):
+		"diplomatic": return WO.Focus.DIPLOMATIC
+		"military": return WO.Focus.MILITARY
+		_: return WO.Focus.DOMESTIC
 
 ## Azione del bot (stadio 4b): pesca il TIPO della prossima carta, consulta l'Automa board e
 ## ESEGUE l'azione corrispondente (Improve/Engage/Invest/Build/Move/Trade/Domestic) sul

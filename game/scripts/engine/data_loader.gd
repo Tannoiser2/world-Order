@@ -54,6 +54,12 @@ static func load_objectives() -> Array:
 	return doc.get("objectives", []) if doc else []
 
 
+## Automa Decision cards: ogni carta dà il Focus di ogni potenza (l'Automa pesca e legge la sua riga).
+static func load_automa_decision() -> Array:
+	var doc: Variant = _read(BASE + "automa_decision.json")
+	return doc.get("cards", []) if doc else []
+
+
 static func load_board() -> Dictionary:
 	var doc: Variant = _read(BASE + "board.json")
 	return doc if doc else {}

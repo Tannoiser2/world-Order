@@ -1,0 +1,18 @@
+{
+ "kind": "automa_decision",
+ "source": "Trascritto dalle Automa Decision cards (World Order: Diplomacy & Dominance, Bot.pdf). Ogni carta indica il Focus di OGNI potenza; in Preparazione ogni Automa pesca una carta e usa la riga della propria potenza. focus: domestic | diplomatic | military.",
+ "cards": [
+  {"usa": "domestic",   "eu": "domestic",   "russia": "diplomatic", "china": "domestic"},
+  {"usa": "diplomatic", "eu": "military",   "russia": "domestic",   "china": "military"},
+  {"usa": "military",   "eu": "domestic",   "russia": "military",   "china": "domestic"},
+  {"usa": "diplomatic", "eu": "domestic",   "russia": "military",   "china": "military"},
+  {"usa": "military",   "eu": "diplomatic", "russia": "diplomatic", "china": "domestic"},
+  {"usa": "domestic",   "eu": "military",   "russia": "military",   "china": "diplomatic"},
+  {"usa": "diplomatic", "eu": "diplomatic", "russia": "domestic",   "china": "military"},
+  {"usa": "military",   "eu": "domestic",   "russia": "military",   "china": "domestic"},
+  {"usa": "domestic",   "eu": "diplomatic", "russia": "domestic",   "china": "diplomatic"},
+  {"usa": "diplomatic", "eu": "military",   "russia": "diplomatic", "china": "military"},
+  {"usa": "military",   "eu": "diplomatic", "russia": "military",   "china": "domestic"},
+  {"usa": "domestic",   "eu": "diplomatic", "russia": "domestic",   "china": "diplomatic"}
+ ]
+}
