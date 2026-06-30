@@ -203,6 +203,7 @@ const ONGOING_DESC := {
 	"prosperity_boost": "Aumento Prosperità: -1 Beni di consumo di costo e +1 VP.",
 	"scoring_influence_tiebreak": "Scoring: vinci i pareggi di maggioranza per cubetti Influenza (ignora le Armate).",
 	"threat_defense_all_regions": "Hai +1 MINACCIA e +1 Difesa in OGNI Regione (anche senza Armate).",
+	"research_top_bonus_twice": "Durante la Ricerca: ri-ottieni il bonus superiore di 2 delle tue carte.",
 }
 # Gestione round/turni:
 var round_turn_count := 0   # turni totali presi nel round corrente
@@ -6055,9 +6056,26 @@ func _research_next() -> void:
 	var p := _active()
 	# Reveal della mano residua: top bonus + punti Research (+2 se Domestic).
 	_research_points = GamePhases.research_step(p, p.hand, p.focus == WO.Focus.DOMESTIC)
+	# Growth "Ottimizzazione delle Entrate": ri-applica il bonus superiore delle 2 carte migliori.
+	for _i in _ongoing_count(p, "research_top_bonus_twice"):
+		_apply_top_bonus_best(p, 2)
 	_after_change()
 	_show_research()
 	_automa_tick()
+
+
+## Applica di nuovo il `top_bonus` (money/diplomazia/armata) delle `n` carte in mano con il
+## bonus più alto (Growth "Ottimizzazione delle Entrate").
+func _apply_top_bonus_best(p: PlayerState, n: int) -> void:
+	var cards: Array = p.hand.duplicate()
+	cards.sort_custom(func(a, b):
+		return int((a.get("top_bonus", {}) as Dictionary).get("amount", 0)) > int((b.get("top_bonus", {}) as Dictionary).get("amount", 0)))
+	for i in mini(n, cards.size()):
+		var tb: Dictionary = (cards[i] as Dictionary).get("top_bonus", {})
+		match String(tb.get("kind", "")):
+			"money": p.money += int(tb.get("amount", 0))
+			"diplomacy": p.gain_resource("diplomacy", int(tb.get("amount", 0)))
+			"army": p.armies_available += int(tb.get("amount", 0))
 
 
 ## Prossima Growth card acquistabile dal giocatore (livello = possedute + 1).
