@@ -5794,7 +5794,7 @@ func _process(delta: float) -> void:
 		_automa_pending = false
 		return
 	_automa_delay += delta
-	if _automa_delay >= 0.35:
+	if _automa_delay >= 0.85:   # ritmo osservabile: una mossa del bot ogni ~0.85s
 		_automa_pending = false
 		_automa_run()
 
@@ -5870,7 +5870,9 @@ func _automa_prep() -> void:
 	_focus_round[p.power] = gs.round
 	var gain := Automa.focus_money(f, gs.round)
 	p.money += gain
-	_log("Bot %s: Focus %s (+%d money)" % [p.power.to_upper(), FOCUS_NAME[f], gain])
+	var msg := "BOT %s — Focus %s (+%d money)" % [p.power.to_upper(), FOCUS_NAME[f], gain]
+	_log(msg)
+	_automa_announce(p, msg)
 	_prep_advance()
 
 ## Azione del bot (stadio 4b): pesca il TIPO della prossima carta, consulta l'Automa board e
@@ -5890,9 +5892,25 @@ func _automa_action() -> void:
 		return
 	var ct: String = a.pop_card_type()
 	var res: Dictionary = a.take_action(gs, ct, _automa_region_hints(p.power), all_countries)
-	_log("Bot %s: %s" % [p.power.to_upper(), _automa_action_label(res, ct)])
+	var msg := "BOT %s — %s" % [p.power.to_upper(), _automa_action_label(res, ct)]
+	_log(msg)
+	_automa_announce(p, msg)
 	_played_this_turn = true
 	_end_turn()
+
+
+## Mostra in modo PROMINENTE (banner in alto, oltre al registro) cosa ha appena fatto un bot,
+## col colore della potenza — cosi' l'azione e' evidente anche senza leggere il LOG.
+func _automa_announce(p: PlayerState, msg: String) -> void:
+	if notify_banner == null:
+		return
+	notify_label.add_theme_font_size_override("font_size", _base_fs() + 2)
+	notify_label.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	notify_label.text = msg
+	notify_banner.visible = true
+	_layout_ui()
+	if _notify_timer:
+		_notify_timer.start()
 
 ## Regioni suggerite per le azioni con Auto-Influence: pesca qualche carta dal mazzo
 ## Auto-Influence (copia mescolata) e raccoglie le Regioni indicate per questa potenza.
