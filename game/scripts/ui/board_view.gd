@@ -2323,7 +2323,9 @@ func _render_growth_pick() -> void:
 
 func _buy_growth_action(card: Dictionary, nl: int) -> void:
 	var p := _active()
+	var bought := false
 	if Actions.execute_get_growth(p, card, nl):
+		bought = true
 		var extra := 0
 		# Growth "Affermazione di Predominio": all'acquisto +N VP per ogni round GIA' completato.
 		var per := int(card.get("vp_per_completed_round", 0))
@@ -2334,8 +2336,68 @@ func _buy_growth_action(card: Dictionary, nl: int) -> void:
 		_event("%s ottiene la Growth: %s (+%d VP)." % [p.power.to_upper(), card.get("display_name", "?"), tot])
 	_growth_pick = {}
 	_close_popup()
+	# Growth "Vantaggio Operativo": all'acquisto pesca 2 Orientamenti Strategici della tua
+	# potenza, tienine 1 (+VP), poi puoi attivare gratis 1 Asset posseduto. La catena di scelte
+	# chiama _advance_play() in fondo (non lo facciamo qui per non saltare i passi interattivi).
+	if bought and bool(card.get("operational_advantage", false)):
+		_after_change()
+		_operational_advantage(p)
+		return
 	_after_change()
 	_advance_play()
+
+
+## Vantaggio Operativo (Growth, Liv.4) — passo 1: pesca 2 Asset Strategici della tua
+## potenza non ancora posseduti, tienine 1 e ottieni i suoi VP iniziali.
+func _operational_advantage(p: PlayerState) -> void:
+	var owned := {}
+	for sa in p.strategic_assets:
+		owned[String(sa.get("id", ""))] = true
+	for sa in p.used_strategic_assets:
+		owned[String(sa.get("id", ""))] = true
+	var pool := []
+	for sa in DataLoader.load_strategic_assets():
+		if String(sa.get("power", "")) == p.power and not owned.has(String(sa.get("id", ""))):
+			pool.append(sa)
+	pool.shuffle()
+	var drawn: Array = pool.slice(0, 2)
+	if drawn.is_empty():
+		_status("Vantaggio Operativo: nessun nuovo Asset Strategico da pescare.")
+		_operational_activate(p)
+		return
+	var items := []
+	for sa in drawn:
+		items.append({"label": "%s (+%d VP)" % [sa.get("display_name", "?"), int(sa.get("starting_vp", 0))], "value": sa})
+	_show_popup("Vantaggio Operativo: pesca 2 Asset Strategici, tienine 1.", items, func(chosen):
+		var sa: Dictionary = chosen
+		p.strategic_assets.append(sa)
+		p.victory_points += int(sa.get("starting_vp", 0))
+		_status("Vantaggio Operativo: tieni %s (+%d VP)." % [sa.get("display_name", "?"), int(sa.get("starting_vp", 0))])
+		_operational_activate(p))
+
+
+## Vantaggio Operativo — passo 2: puoi attivare GRATIS 1 tuo Asset Strategico posseduto.
+## I suoi op vengono anteposti alla coda della carta in risoluzione (così si risolvono
+## interattivamente senza azzerare la carta che ha innescato il Get a Growth).
+func _operational_activate(p: PlayerState) -> void:
+	var items := [{"label": "Non attivare nessun Asset", "value": null}]
+	for sa in p.strategic_assets:
+		items.append({"label": "Attiva gratis: %s" % sa.get("display_name", "?"), "value": sa})
+	if items.size() == 1:
+		_advance_play()   # nessun Asset attivabile: prosegui la carta
+		return
+	_show_popup("Vantaggio Operativo: attiva gratis 1 tuo Asset Strategico (girandolo a faccia in giù)?", items, func(choice):
+		if choice == null:
+			_advance_play()
+			return
+		var sa: Dictionary = choice
+		p.strategic_assets.erase(sa)
+		p.used_strategic_assets.append(sa)
+		_event("%s attiva gratis (Vantaggio Operativo) l'Asset: %s" % [p.power.to_upper(), sa.get("display_name", "?")])
+		var sa_ops: Array = (sa.get("effect_ops", []) as Array).duplicate(true)
+		for i in range(sa_ops.size() - 1, -1, -1):
+			play_queue.push_front(sa_ops[i])
+		_advance_play())
 
 
 ## "Salta" del selettore Growth: chiude la scelta senza comprare e prosegue la carta.

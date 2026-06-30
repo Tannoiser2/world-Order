@@ -287,6 +287,19 @@
    "ability_text_it": "Una volta per round, puoi Pescare 1 carta. Poi, scarta 1 carta e ottieni risorse in base al suo tipo (o tipi): Diplomatico 2 Diplomazia, Militare 1 Armata, Economico 1 Beni di consumo, Nazionale 1 Servizi.",
    "expansion": "diplomacy_dominance",
    "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:resource_efficiency" } ]
+  },
+  {
+   "id": "growth_vantaggio_operativo",
+   "display_name": "Vantaggio Operativo",
+   "art": "wide_aux/wide_aux_008.jpg",
+   "level": 4,
+   "victory_points": 5,
+   "cost": { "services": 4, "money": 15 },
+   "ability_text": "Draw 2 new Strategic Asset cards, keep 1 and gain its starting VP. Then, you can apply the effect of 1 of your Strategic Asset cards and flip it face down.",
+   "ability_text_it": "Pesca 2 nuove carte Orientamento Strategico, tienine 1 e ottieni i suoi VP. Poi, puoi applicare l'effetto di 1 delle tue carte Orientamento Strategico e girarla a faccia in giù.",
+   "expansion": "diplomacy_dominance",
+   "operational_advantage": true,
+   "effect_ops": []
   }
  ]
 }
