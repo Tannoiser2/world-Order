@@ -45,9 +45,11 @@ func _init() -> void:
 	b.gs.players[ci].allied_countries = [{"id": "x", "region": "europe", "exports": ["food", "energy"]}]
 	b._played_this_turn = false
 	b._automa_run()
-	var b_ok: bool = b.active_seat == (1 - ci) and b.round_turn_count == 1 and b._automa.has("china")
-	print("[%s] bot Azione: azione eseguita e turno passato (seat=%d, conteggio=%d)" % [
-		"OK" if b_ok else "FAIL", b.active_seat, b.round_turn_count])
+	# Visibilita': dopo la mossa il banner prominente mostra cosa ha fatto il bot (oltre al LOG).
+	var banner_ok: bool = b.notify_banner.visible and ("BOT" in b.notify_label.text)
+	var b_ok: bool = b.active_seat == (1 - ci) and b.round_turn_count == 1 and b._automa.has("china") and banner_ok
+	print("[%s] bot Azione: azione eseguita, turno passato, banner='%s'" % [
+		"OK" if b_ok else "FAIL", b.notify_label.text])
 	if not b_ok: fails += 1
 
 	# C) Gating: con automa_powers vuoto il driver NON fa nulla (nessun bot).
