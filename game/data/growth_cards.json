@@ -275,6 +275,18 @@
    "ability_text_it": "Una volta per round, puoi esaurire 1 delle tue Nazioni Alleate per guardare un numero di carte dalla cima del tuo mazzo pari al valore di quella Nazione. Pesca 1 di queste carte e rimetti le altre in cima al tuo mazzo in qualsiasi ordine.",
    "expansion": "diplomacy_dominance",
    "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:scry_ally" } ]
+  },
+  {
+   "id": "growth_efficienza_risorse",
+   "display_name": "Efficienza delle Risorse",
+   "art": "wide_aux/wide_aux_009.jpg",
+   "level": 3,
+   "victory_points": 3,
+   "cost": { "services": 3, "any": 5 },
+   "ability_text": "Once per round, you can Draw 1 card. Then, discard 1 card and gain resources based on its type(s): Diplomatic 2 Diplomacy, Military 1 Army, Economic 1 Consumer Goods, Domestic 1 Services.",
+   "ability_text_it": "Una volta per round, puoi Pescare 1 carta. Poi, scarta 1 carta e ottieni risorse in base al suo tipo (o tipi): Diplomatico 2 Diplomazia, Militare 1 Armata, Economico 1 Beni di consumo, Nazionale 1 Servizi.",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:resource_efficiency" } ]
   }
  ]
 }

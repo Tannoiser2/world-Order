@@ -54,13 +54,31 @@ func gain_resource(rtype: String, amount: int, import_cost: int = 0) -> int:
 
 
 func has_resources(cost: Dictionary) -> bool:
+	# Chiave speciale "any" = N risorse QUALSIASI (qualunque tipo prodotto): si riservano prima
+	# i costi specifici, poi si controlla che il RESIDUO copra "any".
+	if not cost.has("any"):
+		for k in cost:
+			if k == "money":
+				if money < int(cost[k]):
+					return false
+			elif int(resources.get(k, 0)) < int(cost[k]):
+				return false
+		return true
+	var remaining := resources.duplicate()
 	for k in cost:
+		if k == "any":
+			continue
 		if k == "money":
 			if money < int(cost[k]):
 				return false
-		elif int(resources.get(k, 0)) < int(cost[k]):
-			return false
-	return true
+		else:
+			remaining[k] = int(remaining.get(k, 0)) - int(cost[k])
+			if remaining[k] < 0:
+				return false
+	var pool := 0
+	for k in remaining:
+		pool += maxi(0, int(remaining[k]))
+	return pool >= int(cost["any"])
 
 
 ## Pesca n carte dal mazzo (rimescola gli scarti se il mazzo si esaurisce).
@@ -81,11 +99,22 @@ func draw_cards(n: int) -> int:
 func spend(cost: Dictionary) -> bool:
 	if not has_resources(cost):
 		return false
+	var any_needed := 0
 	for k in cost:
-		if k == "money":
+		if k == "any":
+			any_needed = int(cost[k])
+		elif k == "money":
 			money -= int(cost[k])
 		else:
 			resources[k] -= int(cost[k])
+	# "any": preleva dalle risorse piu' abbondanti (dopo aver pagato i costi specifici).
+	if any_needed > 0:
+		var order: Array = resources.keys()
+		order.sort_custom(func(a, b): return int(resources[a]) > int(resources[b]))
+		for k in order:
+			while any_needed > 0 and int(resources[k]) > 0:
+				resources[k] -= 1
+				any_needed -= 1
 	return true
 
 

@@ -204,6 +204,7 @@ const ONGOING_DESC := {
 	"once_per_round:redraw_hand": "1x/round: scarta la tua mano e pesca altrettante carte.",
 	"once_per_round:reaction_force": "1x/round (in base al Focus): Nazionale/Diplomatico → spendi 5 money per +1 Armata; Militare → dispiega 1 Armata gratis.",
 	"once_per_round:scry_ally": "1x/round: esaurisci 1 Nazione Alleata pronta, guarda in cima al mazzo carte pari al suo valore, pescane 1 e rimetti le altre.",
+	"once_per_round:resource_efficiency": "1x/round: pesca 1 carta, poi scartane 1 e ottieni risorse dal suo tipo (Diplomatico +2 Dipl, Militare +1 Armata, Economico +1 Beni, Nazionale +1 Servizi).",
 	"prosperity_boost": "Aumento Prosperità: -1 Beni di consumo di costo e +1 VP.",
 	"scoring_influence_tiebreak": "Scoring: vinci i pareggi di maggioranza per cubetti Influenza (ignora le Armate).",
 	"threat_defense_all_regions": "Hai +1 MINACCIA e +1 Difesa in OGNI Regione (anche senza Armate).",
@@ -4615,8 +4616,40 @@ func _use_ongoing(tag: String) -> void:
 			_reaction_force(p)
 		"once_per_round:scry_ally":
 			_scry_ally(p)
+		"once_per_round:resource_efficiency":
+			p.draw_cards(1)
+			_pick_hand_card("Efficienza delle Risorse: scarta 1 carta (ottieni risorse dal suo tipo):", func(card):
+				p.hand.erase(card)
+				p.discard.append(card)
+				var got := _gain_by_card_type(p, String(card.get("type", "")))
+				_status("Efficienza: pescata 1, scartata %s → %s." % [card.get("display_name", "?"), got])
+				_refresh())
 		_:
 			_refresh()
+
+
+## Efficienza delle Risorse: risorse ottenute scartando una carta, in base al suo tipo.
+## (Le carte "mixed" hanno 2 categorie: rendono un piccolo bundle.)
+func _gain_by_card_type(p: PlayerState, type: String) -> String:
+	match type:
+		"diplomatic":
+			p.gain_resource("diplomacy", 2, 0)
+			return "+2 Diplomazia"
+		"military":
+			p.armies_available += 1
+			return "+1 Armata"
+		"economic":
+			p.gain_resource("consumer_goods", 1, 0)
+			return "+1 Beni di consumo"
+		"domestic":
+			p.gain_resource("services", 1, 0)
+			return "+1 Servizi"
+		"mixed":
+			p.gain_resource("consumer_goods", 1, 0)
+			p.gain_resource("services", 1, 0)
+			return "+1 Beni di consumo, +1 Servizi"
+		_:
+			return "niente"
 
 
 ## Forza di Reazione Rapida (Growth, Liv.1): in base al Focus scelto nel round, un bonus
@@ -6356,7 +6389,13 @@ func _section(text: String) -> Label:
 func _cost_text(cost: Dictionary) -> String:
 	var parts := []
 	for k in cost:
-		var label: String = "money" if k == "money" else String(RES_LABEL.get(k, k))
+		var label: String
+		if k == "money":
+			label = "money"
+		elif k == "any":
+			label = "Risorse qualsiasi"
+		else:
+			label = String(RES_LABEL.get(k, k))
 		parts.append("%d %s" % [int(cost[k]), label])
 	return ", ".join(parts) if parts.size() > 0 else "gratis"
 
