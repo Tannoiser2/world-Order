@@ -251,6 +251,30 @@
    "ability_text_it": "Quando ottieni questa carta, ottieni 2 VP per ogni round già completato. Alla fine di ogni turno in cui hai aggiunto Influenza a 1 Regione, ottieni 1 VP.",
    "expansion": "diplomacy_dominance",
    "effect_ops": [ { "op": "ongoing", "tag": "vp_on_influence_added" } ]
+  },
+  {
+   "id": "growth_forza_reazione_rapida",
+   "display_name": "Forza di Reazione Rapida",
+   "art": "wide_aux/wide_aux_002.jpg",
+   "level": 1,
+   "victory_points": 2,
+   "cost": { "services": 1, "armies": 1 },
+   "ability_text": "Whenever you choose your Focus: if you choose Domestic or Diplomatic, you can spend 5 money to gain 1 Army; if you choose Military, you can Deploy 1 Army for free.",
+   "ability_text_it": "Ogni volta che scegli il Focus: se scegli Nazionale o Diplomatico, puoi spendere 5 money per ottenere 1 Armata; se scegli Militare, puoi Dislocare 1 Armata gratis.",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:reaction_force" } ]
+  },
+  {
+   "id": "growth_collaborazione_alleati",
+   "display_name": "Collaborazione con gli Alleati",
+   "art": "wide_aux/wide_aux_003.jpg",
+   "level": 2,
+   "victory_points": 3,
+   "cost": { "services": 2, "diplomacy": 1 },
+   "ability_text": "Once per round, you can exhaust 1 of your allied Countries to look at a number of cards from the top of your deck equal to that Country's value. Draw 1 of those cards and put the rest back on top of your deck in any order.",
+   "ability_text_it": "Una volta per round, puoi esaurire 1 delle tue Nazioni Alleate per guardare un numero di carte dalla cima del tuo mazzo pari al valore di quella Nazione. Pesca 1 di queste carte e rimetti le altre in cima al tuo mazzo in qualsiasi ordine.",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:scry_ally" } ]
   }
  ]
 }

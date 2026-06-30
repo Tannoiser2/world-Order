@@ -202,6 +202,8 @@ const ONGOING_DESC := {
 	"once_per_round:improve_again_plus1": "1x/round: fai di nuovo Improve Relations (con +1).",
 	"once_per_round:convert_influence": "1x/round: converti 1 Influenza temporanea in permanente.",
 	"once_per_round:redraw_hand": "1x/round: scarta la tua mano e pesca altrettante carte.",
+	"once_per_round:reaction_force": "1x/round (in base al Focus): Nazionale/Diplomatico → spendi 5 money per +1 Armata; Militare → dispiega 1 Armata gratis.",
+	"once_per_round:scry_ally": "1x/round: esaurisci 1 Nazione Alleata pronta, guarda in cima al mazzo carte pari al suo valore, pescane 1 e rimetti le altre.",
 	"prosperity_boost": "Aumento Prosperità: -1 Beni di consumo di costo e +1 VP.",
 	"scoring_influence_tiebreak": "Scoring: vinci i pareggi di maggioranza per cubetti Influenza (ignora le Armate).",
 	"threat_defense_all_regions": "Hai +1 MINACCIA e +1 Difesa in OGNI Regione (anche senza Armate).",
@@ -4609,8 +4611,74 @@ func _use_ongoing(tag: String) -> void:
 			p.draw_cards(n)
 			_status("Scartata la mano e pescate %d carte." % n)
 			_refresh()
+		"once_per_round:reaction_force":
+			_reaction_force(p)
+		"once_per_round:scry_ally":
+			_scry_ally(p)
 		_:
 			_refresh()
+
+
+## Forza di Reazione Rapida (Growth, Liv.1): in base al Focus scelto nel round, un bonus
+## militare. Nazionale/Diplomatico: spendi 5 money per +1 Armata in riserva. Militare:
+## dispiega 1 Armata gratis in una Regione a scelta.
+func _reaction_force(p: PlayerState) -> void:
+	if p.focus == WO.Focus.MILITARY:
+		var items := []
+		for rid in gs.regions:
+			items.append({"label": String(rid).replace("_", " ").capitalize(), "value": String(rid)})
+		_show_popup("Forza di Reazione Rapida: dispiega 1 Armata gratis in una Regione.", items, func(rid):
+			var a: Dictionary = gs.regions[String(rid)]["armies"]
+			a[p.power] = int(a.get(p.power, 0)) + 1
+			_status("Forza di Reazione Rapida: 1 Armata dispiegata in %s." % String(rid).replace("_", " "))
+			_layout_overlays()
+			_refresh())
+	elif p.money < 5:
+		_status("Forza di Reazione Rapida: servono 5 money per +1 Armata.")
+		_refresh()
+	else:
+		_show_popup("Forza di Reazione Rapida: spendi 5 money per +1 Armata?", [
+			{"label": "Sì: -5 money, +1 Armata", "value": 1}, {"label": "No", "value": 0}], func(ch):
+			if int(ch) == 1 and p.spend({"money": 5}):
+				p.armies_available += 1
+				_status("Forza di Reazione Rapida: +1 Armata in riserva.")
+			_refresh())
+
+
+## Collaborazione con gli Alleati (Growth, Liv.2): esaurisci 1 Nazione Alleata pronta per
+## guardare in cima al mazzo tante carte quanto il suo valore, pescarne 1 e lasciare le
+## altre in cima (restano nell'ordine in cui erano).
+func _scry_ally(p: PlayerState) -> void:
+	var readies := []
+	for c in p.allied_countries:
+		if not bool(p.exhausted.get(String(c.get("id", "")), false)):
+			readies.append(c)
+	if readies.is_empty():
+		_status("Collaborazione con gli Alleati: nessuna Nazione Alleata pronta.")
+		_refresh()
+		return
+	var items := []
+	for c in readies:
+		items.append({"label": "%s (valore %d)" % [c.get("display_name", "?"), int(c.get("value", 1))], "value": c})
+	_show_popup("Collaborazione: esaurisci quale Nazione Alleata?", items, func(ally):
+		var a: Dictionary = ally
+		p.exhausted[String(a.get("id", ""))] = true
+		var n: int = mini(int(a.get("value", 1)), p.deck.size())
+		if n <= 0:
+			_status("Collaborazione: mazzo vuoto, nessuna carta da guardare.")
+			_refresh()
+			return
+		var top := []
+		for i in n:
+			top.append(p.deck[i])
+		var citems := []
+		for c in top:
+			citems.append({"label": "%s (val %d)" % [c.get("display_name", "?"), int(c.get("value", 0))], "value": c})
+		_show_popup("Guardi le prime %d carte del mazzo: pescane 1 (le altre restano in cima)." % n, citems, func(chosen):
+			p.deck.erase(chosen)
+			p.hand.append(chosen)
+			_status("Collaborazione: pescata %s." % chosen.get("display_name", "?"))
+			_refresh()))
 
 
 ## Pesca dal mazzo la carta col valore più alto (per "Knowledge Transfer").
