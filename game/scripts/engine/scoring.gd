@@ -9,7 +9,9 @@ extends RefCounted
 ## - armies: Dictionary owner -> numero di Armate nella Regione (per i pareggi)
 ## - players: lista degli owner reali (esclude "local")
 ## Ritorna Dictionary owner -> VP totali (1 per cubo + bonus maggioranza).
-static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: Dictionary, players: Array) -> Dictionary:
+## `tiebreak_powers`: poteri con la Growth "Autorità Inconfutabile" — a parità di Influenza
+## vincono il pareggio (prima delle Armate), a prescindere dalle Armate nella Regione.
+static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: Dictionary, players: Array, tiebreak_powers: Array = []) -> Dictionary:
 	# Una Regione segna solo se tutti gli slot permanenti sono coperti.
 	if not track.all_permanent_filled():
 		return {}
@@ -27,10 +29,14 @@ static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: D
 		if e["owner"] in players:
 			result[e["owner"]] = e["count"]
 
-	# Ordina per (Influenza desc, Armate desc).
+	# Ordina per (Influenza desc, poi chi ha il tie-break, poi Armate desc).
 	entries.sort_custom(func(a, b):
 		if a["count"] != b["count"]:
 			return a["count"] > b["count"]
+		var atb: bool = String(a["owner"]) in tiebreak_powers
+		var btb: bool = String(b["owner"]) in tiebreak_powers
+		if atb != btb:
+			return atb
 		return a["armies"] > b["armies"])
 
 	# Assegna i bonus maggioranza; i pari condividono la posizione PIU' BASSA.
@@ -39,6 +45,7 @@ static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: D
 		var j := i
 		while j + 1 < entries.size() \
 				and entries[j + 1]["count"] == entries[i]["count"] \
+				and (String(entries[j + 1]["owner"]) in tiebreak_powers) == (String(entries[i]["owner"]) in tiebreak_powers) \
 				and entries[j + 1]["armies"] == entries[i]["armies"]:
 			j += 1
 		var b: int = majority_bonus[j] if j < majority_bonus.size() else 0
@@ -58,7 +65,7 @@ static func score_region(track: InfluenceTrack, majority_bonus: Array, armies: D
 ## (permanenti non tutti pieni). Il chiamante mostra bandiera+bonus sulle posizioni.
 ## NB: per la UI calcola SEMPRE la classifica provvisoria (anche se i permanenti
 ## non sono pieni); è il chiamante a renderla opaca finché la Regione non segna.
-static func region_ranking(track: InfluenceTrack, majority_bonus: Array, armies: Dictionary) -> Array:
+static func region_ranking(track: InfluenceTrack, majority_bonus: Array, armies: Dictionary, tiebreak_powers: Array = []) -> Array:
 	var entries := []
 	for owner in track.owners():
 		var c: int = track.count(owner)
@@ -67,6 +74,10 @@ static func region_ranking(track: InfluenceTrack, majority_bonus: Array, armies:
 	entries.sort_custom(func(a, b):
 		if a["count"] != b["count"]:
 			return a["count"] > b["count"]
+		var atb: bool = String(a["owner"]) in tiebreak_powers
+		var btb: bool = String(b["owner"]) in tiebreak_powers
+		if atb != btb:
+			return atb
 		return a["armies"] > b["armies"])
 	var out := []
 	var i := 0
@@ -74,6 +85,7 @@ static func region_ranking(track: InfluenceTrack, majority_bonus: Array, armies:
 		var j := i
 		while j + 1 < entries.size() \
 				and entries[j + 1]["count"] == entries[i]["count"] \
+				and (String(entries[j + 1]["owner"]) in tiebreak_powers) == (String(entries[i]["owner"]) in tiebreak_powers) \
 				and entries[j + 1]["armies"] == entries[i]["armies"]:
 			j += 1
 		var b: int = majority_bonus[j] if j < majority_bonus.size() else 0

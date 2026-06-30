@@ -202,6 +202,30 @@
    "ability_text_it": "Ogni volta che aumenti la Prosperità, spendi 1 Beni di consumo in meno e ottieni 1 VP in più.",
    "expansion": "diplomacy_dominance",
    "effect_ops": [ { "op": "ongoing", "tag": "prosperity_boost" } ]
+  },
+  {
+   "id": "growth_autorita_inconfutabile",
+   "display_name": "Autorità Inconfutabile",
+   "art": "wide_aux/wide_aux_012.jpg",
+   "level": 5,
+   "victory_points": 6,
+   "cost": { "services": 6 },
+   "ability_text": "In the Influence step of Scoring, win ties by number of Influence cubes (regardless of Armies in the Region).",
+   "ability_text_it": "Nel passo Influenza del calcolo del punteggio, vinci i pareggi per il numero di cubetti Influenza (a prescindere dalle Armate nella Regione).",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "scoring_influence_tiebreak" } ]
+  },
+  {
+   "id": "growth_programma_nucleare",
+   "display_name": "Programma Nucleare",
+   "art": "wide_aux/wide_aux_013.jpg",
+   "level": 5,
+   "victory_points": 8,
+   "cost": { "services": 5, "armies": 2 },
+   "ability_text": "You have +1 THREAT and +1 Defense in all Regions (even where you have no Armies).",
+   "ability_text_it": "Hai +1 MINACCIA e +1 Difesa in tutte le Regioni (anche dove non hai Armate).",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "threat_defense_all_regions" } ]
   }
  ]
 }
