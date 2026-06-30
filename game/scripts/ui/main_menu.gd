@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.150"
+const VERSION := "v0.7.151"
 const CHANGELOG := [
+	"v0.7.151 - FEDELTA' BOT: il Focus dei Bot ora viene dalle Automa Decision card ufficiali (si pesca 1 carta e si legge la riga della propria potenza), non più scelto a caso. Il reddito resta quello da regolamento (round x10 Nazionale / x5 Diplomatico / x3 Militare): per questo i Bot hanno comunque molto denaro — è voluto dal gioco e il denaro in sé non dà punti. Bonus di Focus già corretti (Diplomatico: Engage -5; Nazionale: +2 Ricerca; Militare: +1 MINACCIA). +1 test (verify_automa_decision, 6 check).",
 	"v0.7.150 - OBIETTIVI: ritaglio più preciso delle 32 carte Obiettivo (bounding box del contenuto): niente più bordi bianchi che spuntavano in alto o ai lati; la carta riempie il riquadro.",
 	"v0.7.149 - FIX BOT: i Bot ora aumentano la PROSPERITA' nell'Aftermath, pagando in money lungo la loro traccia Prosperita' (con i relativi VP). Prima restavano a Prosperita' 0 — la fase usava il costo in Beni di consumo, che i Bot non hanno — e accumulavano money senza spenderlo. Ora a fine partita la loro Prosperita' e' al massimo e i VP includono i punti Prosperita'. (Il money dei Bot resta comunque alto: il loro reddito da Focus cresce col round e l'IA semplice non lo spende tutto; il money in se' non da' punti.) +1 test (verify_automa_prosperity, 7 check).",
 	"v0.7.148 - OBIETTIVI: il pannello ora mostra le CARTE vere degli Obiettivi (arte estratta dal PDF), invece del solo testo. Sotto ogni carta i VP che otterresti ora (es. \"2/3 condizioni -> 4 VP\") e, nel tooltip, lo stato di ogni condizione con [v]/[ ] (niente piu' icone-quadratino non disponibili nel font). Nomi delle Regioni in italiano nelle descrizioni.",
