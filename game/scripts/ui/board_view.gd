@@ -167,6 +167,9 @@ var _aftermath_choice_p: PlayerState = null  # giocatore in scelta Aftermath (su
 var _aftermath_subchoice := false        # sotto-scelta token in corso (money/Difesa): non ricostruire la barra
 var _aftermath_lines: Array[String] = [] # righe del riepilogo di fine round
 var _aftermath_ai_art := ""             # art della carta Auto-Influence (per il riepilogo)
+# Diagnostica bilanciamento (SOLO fast_sim): VP cumulati per fonte, potenza -> {fonte -> vp}.
+# Sola osservazione: non viene mai letto dalla logica di gioco (zero effetto sulle partite reali).
+var _vp_dbg: Dictionary = {}
 # Riepilogo di fine round/partita (le "conseguenze": THREAT, Scoring, Token Maggioranza...).
 # Era un popup costruito SOLO dall'host -> il client non vedeva mai le conseguenze ("fuori
 # sync"). Ora è uno STATO sincronizzato: lo vedono entrambi e il "Continua" passa dall'host.
@@ -6359,6 +6362,7 @@ func _automa_run() -> void:
 ## money all'infinito (mancava questo sink + i relativi VP).
 func _automa_aftermath(p: PlayerState) -> void:
 	var res := _automa_increase_prosperity(p)
+	_vp_dbg_add(p.power, "prosperita", int(res.get("vp", 0)))
 	if int(res.get("levels", 0)) > 0:
 		var msg := "BOT %s: Prosperità +%d -> liv. %d (-%d money, +%d VP)" % [
 			p.power.to_upper(), int(res["levels"]), p.prosperity_level, int(res["money"]), int(res["vp"])]
@@ -7008,6 +7012,15 @@ func _aftermath_prosperity(p: PlayerState) -> void:
 	_show_aftermath_choices(p)
 
 
+## Diagnostica: somma `vp` alla fonte `source` della potenza `power` (solo in fast_sim).
+func _vp_dbg_add(power: String, source: String, vp: int) -> void:
+	if not GameConfig.fast_sim:
+		return
+	var d: Dictionary = _vp_dbg.get(power, {})
+	d[source] = int(d.get(source, 0)) + vp
+	_vp_dbg[power] = d
+
+
 ## Risolve THREAT (con le Difese da Engage token scartati) e lo Scoring, poi riepiloga.
 func _aftermath_resolve() -> void:
 	var mil_focus := {}
@@ -7023,6 +7036,7 @@ func _aftermath_resolve() -> void:
 		var loss := Threat.resolve_region(rd.get("zone", []), rd.get("armies", {}), mil_focus, _threat_defense.get(rid, {}), nato, nuclear)
 		for power in loss:
 			gs.add_vp(power, -int(loss[power]))
+			_vp_dbg_add(power, "threat", -int(loss[power]))
 			_aftermath_lines.append("%s: -%d VP (THREAT in %s)" % [power.to_upper(), int(loss[power]), rid.replace("_", " ")])
 
 	# Scoring nei round 3 e 6: Regioni + 3 token Maggioranza (entrambi a OGNI round di punteggio).
@@ -7030,15 +7044,19 @@ func _aftermath_resolve() -> void:
 		var rs := GameRunner.score_all_regions(gs)
 		for power in rs:
 			gs.add_vp(power, int(rs[power]))
+			_vp_dbg_add(power, "regioni", int(rs[power]))
 		_aftermath_lines.append("Scoring Regioni: " + _vp_summary(rs))
 		# Abilità speciali di scoring: USA (Global Superpower Status), Russia (Secured Sphere).
 		var sp := GameRunner.apply_power_special_scoring(gs)
 		if not sp.is_empty():
+			for power in sp:
+				_vp_dbg_add(power, "speciali", int(sp[power]))
 			_aftermath_lines.append("Abilità speciali: " + _vp_summary(sp))
 		# 3 token Maggioranza (più money / più armate sul board / più Country alleate).
 		var mt := GameRunner.score_majority_tokens(gs)
 		for power in mt:
 			gs.add_vp(power, int(mt[power]))
+			_vp_dbg_add(power, "token", int(mt[power]))
 		_aftermath_lines.append("Token Maggioranza: " + _vp_summary(mt))
 		# Obiettivi Superpotenze: soglie round 3 (ri=0) o round 6 (ri=1).
 		var obj_ri := 0 if gs.round == 3 else 1
@@ -7049,6 +7067,7 @@ func _aftermath_resolve() -> void:
 				got += Objectives.objective_score(gs, p.power, obj, obj_ri)
 			if got > 0:
 				gs.add_vp(p.power, got)
+				_vp_dbg_add(p.power, "obiettivi", got)
 				obj_vp[p.power] = got
 		if not obj_vp.is_empty():
 			_aftermath_lines.append("Obiettivi: " + _vp_summary(obj_vp))
