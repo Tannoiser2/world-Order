@@ -34,6 +34,7 @@ const WS_MAX_QUEUED := 4096      # pacchetti in coda max
 var role: int = Role.NONE
 var my_seat: int = -1
 var powers: Array = []
+var automa: Array = []   # seggi (potenze) controllati dai Bot; li guida l'host, i client li mostrano
 
 var _peer: WebSocketMultiplayerPeer = null
 # Lobby host: peer_id -> {seat, name}. L'host e' peer 1 / seggio 0.
@@ -272,15 +273,16 @@ func broadcast_snapshots(provider: Callable) -> void:
 
 
 ## HOST: avvia la partita assegnando le potenze ai seggi e avvisando i client.
-func start_game(powers_by_seat: Array) -> void:
+func start_game(powers_by_seat: Array, automa_powers: Array = []) -> void:
 	if role != Role.HOST:
 		return
 	powers = powers_by_seat.duplicate()
+	automa = automa_powers.duplicate()
 	_started = true
 	for id in _seats:
 		if id == HOST_ID:
 			continue
-		_send(id, {"t": "start", "seat": int(_seats[id]["seat"]), "powers": powers})
+		_send(id, {"t": "start", "seat": int(_seats[id]["seat"]), "powers": powers, "automa": automa})
 	started.emit(0, powers)
 
 
@@ -299,6 +301,7 @@ func _handle(from_id: int, msg: Dictionary) -> void:
 		"start":
 			my_seat = int(msg.get("seat", my_seat))
 			powers = msg.get("powers", [])
+			automa = msg.get("automa", [])   # seggi controllati dai Bot (li guida l'host)
 			_started = true
 			started.emit(my_seat, powers)
 		"command":

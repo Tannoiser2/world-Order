@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.143"
+const VERSION := "v0.7.144"
 const CHANGELOG := [
+	"v0.7.144 - BOT ONLINE: i Bot ora giocano anche nelle partite in rete! Li guida l'HOST (autoritativo) e i client li ricevono già risolti via snapshot, vedendo le loro mosse nel banner e nel Registro come per gli umani. Nel menu Online spunta 'Riempi i posti liberi con i Bot': i seggi senza un giocatore collegato vengono affidati ai Bot (serve almeno l'host umano), con scelta della difficolta'. +1 test (verify_net_bot, 6 check). I 138 test del motore e tutti i test di rete restano verdi.",
 	"v0.7.143 - ESPANSIONE: ULTIMA CARTA CRESCITA 'Vantaggio Operativo' (Liv.4, 5 VP, costa 4 Servizi + 15 money). Modulo Carte Crescita COMPLETO (10 su 10)! All'acquisto peschi 2 nuove carte Orientamento Strategico della tua potenza, ne tieni 1 (+ i suoi VP iniziali); poi puoi attivare GRATIS 1 tuo Asset Strategico (i suoi effetti si risolvono subito e la carta si gira a faccia in giù). +1 test (verify_growth_vantaggio, 10 check).",
 	"v0.7.142 - ESPANSIONE: CARTA CRESCITA 'Efficienza delle Risorse' (Liv.3, 3 VP; ora 9 delle 10). Costa 3 Servizi + 5 Risorse QUALSIASI (nuovo tipo di costo: paghi 5 unità di risorse a piacere). 1x/round: pesca 1 carta, poi scartane 1 e ottieni risorse dal suo tipo — Diplomatico +2 Diplomazia, Militare +1 Armata, Economico +1 Beni di consumo, Nazionale +1 Servizi (le carte miste rendono Beni + Servizi). +1 test (verify_growth_efficiency, 8 check).",
 	"v0.7.141 - ESPANSIONE: altre 2 CARTE CRESCITA (ora 8 delle 10). 'Forza di Reazione Rapida' (Liv.1, 2 VP, costa 1 Servizi + 1 Armata): 1x/round, in base al Focus — con Nazionale/Diplomatico spendi 5 money per +1 Armata in riserva, con Militare dispieghi 1 Armata gratis in una Regione a scelta. 'Collaborazione con gli Alleati' (Liv.2, 3 VP, costa 2 Servizi + 1 Diplomazia): 1x/round esaurisci 1 Nazione Alleata pronta per guardare in cima al mazzo tante carte quanto il suo valore, pescarne 1 e lasciare le altre in cima. Bottone 'Usa' nel pannello Abilita' continuative. +1 test (verify_growth_reaction_scry, 10 check).",
@@ -267,6 +268,10 @@ var _difficulty := "normal"           # "normal" | "hard"
 var _diff_box: HBoxContainer
 var _diff_buttons: Array[Button] = []
 
+# --- Bot in Online: riempi i seggi non occupati da umani con i Bot (li guida l'host) ---
+var _online_fill_bots := false
+var _online_bots_check: CheckBox
+
 # --- Lobby LAN (modalità Online) ---
 var _net: NetSession = null
 var _lobby_box: VBoxContainer
@@ -354,6 +359,11 @@ func _ready() -> void:
 	_seats_box = VBoxContainer.new()
 	_seats_box.add_theme_constant_override("separation", 6)
 	_online_setup_box.add_child(_seats_box)
+	# Bot online: i seggi non occupati da umani vengono guidati dai Bot (logica sull'host).
+	_online_bots_check = CheckBox.new()
+	_online_bots_check.text = "Riempi i posti liberi con i Bot"
+	_online_bots_check.toggled.connect(_on_online_bots_toggled)
+	_online_setup_box.add_child(_online_bots_check)
 
 	box.add_child(_section_label("Modalità"))
 	var modes := HBoxContainer.new()
@@ -539,6 +549,15 @@ func _on_difficulty(d: String) -> void:
 	_update_selection(_diff_buttons, ["normal", "hard"].find(d))
 
 
+## Online: attiva/disattiva il riempimento dei posti liberi con i Bot (mostra la difficolta').
+func _on_online_bots_toggled(on: bool) -> void:
+	_online_fill_bots = on
+	_diff_box.visible = (_mode == "online" and on) or (_mode == "local" and _has_bot())
+	if _diff_buttons.size() == 2:
+		_update_selection(_diff_buttons, 0 if _difficulty == "normal" else 1)
+	_validate()
+
+
 ## Validazione: in Locale servono almeno 2 superpotenze attive (umane o bot); in Online ogni
 ## seggio deve avere una potenza distinta. Ritorna true se la configurazione e' avviabile.
 func _validate() -> bool:
@@ -575,7 +594,7 @@ func _on_mode(m: String) -> void:
 	_local_setup_box.visible = not online
 	_online_setup_box.visible = online
 	_lobby_box.visible = online
-	_diff_box.visible = (not online) and _has_bot()
+	_diff_box.visible = (_has_bot() if not online else _online_fill_bots)
 	if not online:
 		# Tornando in Locale si chiude la sessione di rete eventualmente aperta.
 		_free_net()
@@ -608,11 +627,27 @@ func _on_play() -> void:
 		if _net == null or not _net.is_host():
 			_warn.text = "Ospita una partita (i client partono quando avvii)."
 			return
-		if _net.lobby_players().size() < _player_count:
-			_warn.text = "Aspetta che si colleghino %d giocatori (ora %d)." % [_player_count, _net.lobby_players().size()]
+		# Seggi occupati da umani (< player_count); i restanti sono Bot se richiesto.
+		var occupied := {}
+		for pl in _net.lobby_players():
+			var s := int((pl as Dictionary).get("seat", -1))
+			if s >= 0 and s < _player_count:
+				occupied[s] = true
+		var bot_powers: Array = []
+		for seat in range(_player_count):
+			if not occupied.has(seat):
+				bot_powers.append(_seat_powers[seat])
+		if _online_fill_bots:
+			if occupied.size() < 1:
+				_warn.text = "Serve almeno 1 umano (l'host); i posti liberi diventano Bot."
+				return
+		elif not bot_powers.is_empty():
+			_warn.text = "Aspetta che si colleghino %d giocatori (ora %d) — oppure spunta 'Riempi i posti liberi con i Bot'." % [_player_count, occupied.size()]
 			return
+		GameConfig.automa_powers = bot_powers if _online_fill_bots else []
+		GameConfig.automa_difficulty = _difficulty
 		GameConfig.net = _net
-		_net.start_game(_seat_powers.duplicate())
+		_net.start_game(_seat_powers.duplicate(), GameConfig.automa_powers)
 		get_tree().change_scene_to_file("res://scenes/board.tscn")
 		return
 	get_tree().change_scene_to_file("res://scenes/board.tscn")
