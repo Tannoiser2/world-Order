@@ -37,6 +37,7 @@ var fdi_values: Array = []         # valori dei Paesi con un tuo token FDI (per 
 var fdi_countries: Array = []      # id dei Paesi su cui hai un token FDI (per il rendering)
 var bases: Array = []              # id dei Paesi su cui hai una Base militare
 var engage_tokens: Array = []      # Regioni su cui hai un Engage token (max 3)
+var objectives: Array = []         # Obiettivi Superpotenze assegnati (calcolati nei round 3 e 6)
 
 const RESOURCE_CAP := 10
 
@@ -140,6 +141,7 @@ func to_dict() -> Dictionary:
 		"fdi_countries": fdi_countries.duplicate(true),
 		"bases": bases.duplicate(true),
 		"engage_tokens": engage_tokens.duplicate(true),
+		"objectives": objectives.duplicate(true),
 	}
 
 
@@ -167,4 +169,5 @@ static func from_dict(d: Dictionary) -> PlayerState:
 	p.fdi_countries = (d.get("fdi_countries", []) as Array).duplicate(true)
 	p.bases = (d.get("bases", []) as Array).duplicate(true)
 	p.engage_tokens = (d.get("engage_tokens", []) as Array).duplicate(true)
+	p.objectives = (d.get("objectives", []) as Array).duplicate(true)
 	return p

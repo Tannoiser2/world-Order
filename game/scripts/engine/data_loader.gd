@@ -48,6 +48,12 @@ static func load_strategic_assets() -> Array:
 	return doc.get("cards", []) if doc else []
 
 
+## Obiettivi Superpotenze (espansione): 8 per potenza, calcolati nei round 3 e 6.
+static func load_objectives() -> Array:
+	var doc: Variant = _read(BASE + "objectives.json")
+	return doc.get("objectives", []) if doc else []
+
+
 static func load_board() -> Dictionary:
 	var doc: Variant = _read(BASE + "board.json")
 	return doc if doc else {}
