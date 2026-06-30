@@ -19,6 +19,9 @@ static var powers: Array = ["usa", "china", "russia", "eu"]
 ## `powers`. Difficolta': "normal" | "hard".
 static var automa_powers: Array = []
 static var automa_difficulty: String = "normal"
+## Simulazione headless: salta il lavoro UI (refresh/overlay) per girare molte partite
+## tutte-Bot velocemente. Default false (gioco normale invariato).
+static var fast_sim: bool = false
 
 
 ## Vero se la potenza indicata e' controllata da un Automa (bot).
