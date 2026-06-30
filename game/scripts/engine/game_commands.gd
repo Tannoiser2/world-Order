@@ -24,6 +24,8 @@ const KNOWN := [
 	# Improve Relations: scelta della Country sul tabellone + conferma/salta dello sconto
 	# (esaurire alleati). Le callback non sono serializzabili: le esegue l'host.
 	"pick_board_country", "exhaust_confirm", "exhaust_skip",
+	# Choose Focus: scelta interattiva delle Nazioni esaurite da riattivare (ready)
+	"prep_ready_pick", "prep_ready_skip",
 	# Scelta a "popup" (es. quante Armate / quanto money): il client invia l'INDICE scelto,
 	# l'host esegue la callback corrispondente (non serializzabile).
 	"popup_choice",
@@ -56,6 +58,16 @@ static func make(type: String, seat: int, seq: int, args: Dictionary = {}) -> Di
 
 static func choose_focus(seat: int, seq: int, focus: int) -> Dictionary:
 	return make("choose_focus", seat, seq, {"focus": focus})
+
+
+## Choose Focus - scelta interattiva delle Nazioni da riattivare (ready): tocca una Country
+## esaurita per riattivarla, oppure "Continua" per terminare la scelta.
+static func prep_ready_pick(seat: int, seq: int, country_id: String) -> Dictionary:
+	return make("prep_ready_pick", seat, seq, {"country_id": country_id})
+
+
+static func prep_ready_skip(seat: int, seq: int) -> Dictionary:
+	return make("prep_ready_skip", seat, seq, {})
 
 
 ## La carta è riferita per INDICE in mano (stabile e non ambiguo, anche con

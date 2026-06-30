@@ -143,6 +143,7 @@ var _playing_eo := false                # true se stiamo risolvendo l'Executive 
 var _eo_ops: Array = []                 # effect_ops dell'Executive Order (scelta a 8 opzioni), dai dati
 var _focus_round: Dictionary = {}       # power -> round in cui ha già scelto il Focus (gratis 1x/round)
 var _prep_idx := 0                       # giocatore corrente nella PREPARATION guidata (scelta Focus)
+var _prep_ready_remaining := 0           # Country esaurite ancora da RIATTIVARE a scelta (0 = nessuna scelta)
 var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
 var _prep_increases_done := 0            # quanti aumenti Produzione gia' fatti in questo passo Focus
 var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in questo passo (Cina: 2 distinti)
@@ -3508,10 +3509,12 @@ func _refresh() -> void:
 		# Aftermath (prima la barra la creava solo l'host: a fine round il client si bloccava).
 		_aftermath_bar(_aftermath_choice_p)
 	elif i_acting and _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
-		# PREPARAZIONE: barra del giocatore di turno ricostruita dallo stato. Prima il Focus
-		# (istruzione) e poi, scelto il Focus, l'Aumento Produzione: così la scelta dell'aumento
-		# appare a CHI agisce (il client) e non resta sullo schermo dell'host ("sempre su USA").
-		if _prep_awaiting_increase:
+		# PREPARAZIONE: barra del giocatore di turno ricostruita dallo stato. In ordine: Focus
+		# (istruzione) -> scelta delle Nazioni da riattivare (ready) -> Aumento Produzione. Cosi'
+		# ogni scelta appare a CHI agisce (il client) e non resta sullo schermo dell'host.
+		if _prep_ready_remaining > 0:
+			_show_ready_bar()
+		elif _prep_awaiting_increase:
 			_show_increase_bar()
 		else:
 			_prep_bar()
@@ -4277,12 +4280,21 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		var cid := String(cn.get("id", ""))
 		var spent := bool(p.exhausted.get(cid, false))
 		var ex_this: bool = ex_active and (cn in ex_elig)
+		# READY (Choose Focus): le Nazioni ESAURITE si toccano per riattivarle.
+		var ready_active: bool = _prep_ready_remaining > 0 and is_active and _ui_phase == "Preparazione"
+		var ready_this: bool = ready_active and spent
 		var highlight: bool = (is_active and awaiting == "allied_country" and (cn in elig)) \
-			or (ex_this and bool(_exhaust_sel.get(cid, false)))
+			or (ex_this and bool(_exhaust_sel.get(cid, false))) \
+			or ready_this
 		var dim: bool = (is_active and awaiting == "allied_country" and not (cn in elig)) \
-			or (ex_active and not ex_this)
-		var on_press: Callable = _cmd_exhaust_ally.bind(cn) if ex_this else Callable()
-		var clickable: bool = (is_active and not dim) or ex_this
+			or (ex_active and not ex_this) \
+			or (ready_active and not ready_this)
+		var on_press: Callable = Callable()
+		if ex_this:
+			on_press = _cmd_exhaust_ally.bind(cn)
+		elif ready_this:
+			on_press = _cmd_prep_ready_pick.bind(cn)
+		var clickable: bool = (is_active and not dim) or ex_this or ready_this
 		var sz := Vector2(cw, ch)
 		var stack := _ally_stack(cn, cards.size(), sz, highlight, clickable, spent, on_press)
 		_overlay_country_markers(stack, sz, cid in p.fdi_countries, cid in p.bases)
@@ -4717,6 +4729,14 @@ func apply_command(cmd: Dictionary) -> bool:
 	match String(cmd["type"]):
 		"choose_focus":
 			_do_focus(int(a["focus"]))
+		"prep_ready_pick":
+			if _prep_ready_remaining <= 0:
+				return false
+			_prep_ready_pick(String(a.get("country_id", "")))
+		"prep_ready_skip":
+			if _prep_ready_remaining <= 0:
+				return false
+			_prep_ready_skip()
 		"play_card":
 			var p := _active()
 			var idx := int(a["hand_index"])
@@ -5001,6 +5021,7 @@ func _ui_snapshot() -> Dictionary:
 		# ricostruire la barra dell'aumento (prima viveva solo sull'host -> "sempre su USA").
 		"prep_idx": _prep_idx,
 		"prep_increase": _prep_awaiting_increase,
+		"prep_ready_remaining": _prep_ready_remaining,
 		"prep_increases_done": _prep_increases_done,
 		"prep_increased_types": _prep_increased_types.duplicate(),
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
@@ -5098,6 +5119,7 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	# il client apre la plancia giusta e vede la barra dell'aumento quando tocca a lui.
 	_prep_idx = int(ui.get("prep_idx", _prep_idx))
 	_prep_awaiting_increase = bool(ui.get("prep_increase", false))
+	_prep_ready_remaining = int(ui.get("prep_ready_remaining", 0))
 	_prep_increases_done = int(ui.get("prep_increases_done", 0))
 	_prep_increased_types = (ui.get("prep_increased_types", []) as Array).duplicate()
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
@@ -5457,7 +5479,10 @@ func _do_focus(f: int) -> void:
 	# infine passa al giocatore successivo.
 	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
 		_event(_apply_focus(_active(), f))
-		_open_focus_produce()   # il giocatore sceglie quanto produrre (stessa UI delle carte)
+		if _prep_ready_remaining > 0:
+			_after_change()   # scelta interattiva: quali Nazioni esaurite riattivare
+		else:
+			_open_focus_produce()   # il giocatore sceglie quanto produrre (stessa UI delle carte)
 		return
 	var p := _active()
 	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
@@ -5481,21 +5506,29 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 	var key: String = ["domestic", "diplomatic", "military"][f]
 	var fb: Dictionary = focus_bonuses.get(key, {})
 	# 1) Ready: quante Country card prepara questo Focus (per-potenza dalla player board: l'UE
-	#    ne prepara una in più per Focus) (+ abilità ongoing).
+	#    ne prepara una in più per Focus) (+ abilità ongoing). Se le esaurite sono PIU' del numero
+	#    riattivabile, la scelta di QUALI riattivare la fa il giocatore (interattiva); altrimenti
+	#    si riattivano tutte da sole.
 	var to_ready := _focus_ready_count(p.power, key) + _ongoing_count(p, "ready_extra_on_focus")
-	var readied := 0
+	var exhausted_ids := []
 	for cid in p.exhausted:
-		if to_ready <= 0:
-			break
 		if bool(p.exhausted[cid]):
+			exhausted_ids.append(cid)
+	var readied := 0
+	if exhausted_ids.size() <= to_ready:
+		for cid in exhausted_ids:
 			p.exhausted[cid] = false
 			readied += 1
-			to_ready -= 1
+		_prep_ready_remaining = 0
+	else:
+		_prep_ready_remaining = to_ready   # scelta interattiva: il giocatore tocca le carte
 	# 2) Produce: NON piu' automatica. La produzione dei tipi del Focus la sceglie il giocatore
 	#    con la STESSA Produce UI delle carte (aperta da _do_focus -> _open_focus_produce).
 	var msg := "Focus %s" % FOCUS_NAME[f]
 	if readied > 0:
 		msg += " - preparate %d Country card" % readied
+	elif _prep_ready_remaining > 0:
+		msg += " - scegli fino a %d Nazioni da riattivare" % _prep_ready_remaining
 	return msg + "."
 
 
@@ -5582,6 +5615,35 @@ func _apply_increase_production(p: PlayerState, type: String) -> String:
 ## Offre l'aumento Produzione dopo il Focus: imposta lo STATO (sincronizzato) e lascia che
 ## _refresh costruisca la barra per CHI agisce. Prima la barra la costruiva qui (sull'host):
 ## in rete compariva sullo schermo dell'host anche per il turno del client ("sempre su USA").
+## Riattiva una Country esaurita scelta dal giocatore (Choose Focus). Quando il numero
+## consentito e' esaurito, prosegue con la produzione del Focus.
+func _prep_ready_pick(country_id: String) -> void:
+	var p := _active()
+	if not bool(p.exhausted.get(country_id, false)):
+		return  # solo le Nazioni ESAURITE si riattivano
+	p.exhausted[country_id] = false
+	_prep_ready_remaining -= 1
+	_event("%s: riattivata 1 Nazione." % p.power.to_upper())
+	if _prep_ready_remaining <= 0:
+		_open_focus_produce()
+	else:
+		_after_change()
+
+
+## "Continua": termina la scelta del ready (anche se non si sono riattivate tutte le possibili).
+func _prep_ready_skip() -> void:
+	_prep_ready_remaining = 0
+	_open_focus_produce()
+
+
+func _cmd_prep_ready_pick(cn: Dictionary) -> void:
+	apply_command(GameCommands.prep_ready_pick(active_seat, _next_seq(), String(cn.get("id", ""))))
+
+
+func _cmd_prep_ready_skip() -> void:
+	apply_command(GameCommands.prep_ready_skip(active_seat, _next_seq()))
+
+
 ## Apre la produzione del Focus (Preparazione) usando la STESSA Produce UI delle carte, limitata
 ## ai tipi prodotti dal Focus (Domestic: Beni/Servizi · Diplomatic: Diplomazia · Military: Armate).
 ## Il giocatore sceglie quanto produrre e conferma; poi si prosegue con l'aumento Produzione.
@@ -5604,6 +5666,27 @@ func _prep_offer_increase() -> void:
 		return
 	_prep_awaiting_increase = true
 	_after_change()   # la barra la (ri)costruisce _refresh per il giocatore di turno
+
+
+## Barra "Riattiva Nazioni" (ready) del Choose Focus: il giocatore tocca le proprie Nazioni
+## ESAURITE sulla plancia per riattivarle (fino al numero del Focus), poi "Continua".
+func _show_ready_bar() -> void:
+	_clear_choice_bar()
+	var p := _active()
+	var head := Label.new()
+	head.text = "Choose Focus - %s: tocca le tue Nazioni ESAURITE (grigie) sulla plancia per riattivarle - ancora %d" % [
+		p.power.to_upper(), _prep_ready_remaining]
+	head.add_theme_font_size_override("font_size", _base_fs() + 1)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(head)
+	var cont := Button.new()
+	cont.text = "Continua"
+	cont.add_theme_font_size_override("font_size", _base_fs() + 1)
+	cont.pressed.connect(_cmd_prep_ready_skip)
+	choice_flow.add_child(cont)
+	choice_bar.visible = true
+	_layout_ui()
 
 
 ## Barra "Aumento Produzione" ricostruita dallo STATO sincronizzato: la disegna _refresh per
@@ -5682,6 +5765,7 @@ func _prep_step() -> void:
 		return
 	active_seat = gs.turn_order[_prep_idx]
 	_prep_awaiting_increase = false
+	_prep_ready_remaining = 0
 	_prep_increases_done = 0
 	_prep_increased_types = []
 	drawer_open = true
