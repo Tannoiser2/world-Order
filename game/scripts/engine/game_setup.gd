@@ -98,6 +98,41 @@ static func new_game(powers: Array) -> GameState:
 	for i in gs.players.size():
 		gs.turn_order.append(i)
 
+	_assign_objectives(gs)
+
 	gs.round = 1
 	gs.phase = WO.Phase.PREPARATION
 	return gs
+
+
+## Obiettivi Superpotenze: ogni potenza pesca OBJECTIVES_PER_POWER tra i suoi (scartando
+## quelli che si riferiscono a una potenza non in gioco). Si calcolano nei round 3 e 6.
+const OBJECTIVES_PER_POWER := 2
+
+static func _assign_objectives(gs: GameState) -> void:
+	var present := {}
+	for p in gs.players:
+		present[p.power] = true
+	var by_power := {}
+	for obj in DataLoader.load_objectives():
+		if not _objective_applies(obj, present):
+			continue
+		var pw := String(obj.get("power", ""))
+		if not by_power.has(pw):
+			by_power[pw] = []
+		by_power[pw].append(obj)
+	for p in gs.players:
+		var pool: Array = (by_power.get(p.power, []) as Array).duplicate()
+		pool.shuffle()
+		p.objectives.assign(pool.slice(0, OBJECTIVES_PER_POWER))
+
+
+## Un Obiettivo "discard_if_no" si tiene solo se la/le potenza/e citate sono in gioco.
+static func _objective_applies(obj: Dictionary, present: Dictionary) -> bool:
+	var cond := String(obj.get("discard_if_no", ""))
+	if cond == "":
+		return true
+	for pw in cond.split("_or_"):
+		if present.has(String(pw)):
+			return true
+	return false

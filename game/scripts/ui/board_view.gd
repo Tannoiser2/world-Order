@@ -3988,6 +3988,7 @@ func _refresh_drawer_content() -> void:
 	# 3) Carte crescita (riga ancora sotto, quando acquistate).
 	_build_growth_section(p, is_active, colv)
 	_build_ongoing_section(p, is_active)
+	_build_objectives_section(p)
 	# La MANO (pannello full-width in basso) è SEMPRE quella del giocatore di turno,
 	# indipendentemente da quale board si sta guardando con le linguette.
 	_build_hand_section(_active(), true)
@@ -4781,6 +4782,91 @@ func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 			b.pressed.connect(_cmd_use_ongoing.bind(tag))
 			row.add_child(b)
 		drawer_content.add_child(row)
+
+
+## Pannello "Obiettivi": gli Obiettivi Superpotenze del giocatore, con stato attuale di ogni
+## condizione (✓/✗ alla soglia del prossimo Scoring) e i VP che otterrebbe ora.
+func _build_objectives_section(p: PlayerState) -> void:
+	if p.objectives.is_empty():
+		return
+	var ri := 0 if gs.round <= 3 else 1   # soglia del prossimo round di Scoring (3 o 6)
+	drawer_content.add_child(_section("Obiettivi (Scoring round 3 e 6) — soglie round %d" % (3 if ri == 0 else 6)))
+	for obj in p.objectives:
+		var conds: Array = obj.get("conditions", [])
+		var met := 0
+		for cond in conds:
+			if Objectives.condition_met(gs, p.power, cond, ri):
+				met += 1
+		var reward: Array = obj.get("reward", [])
+		var vp := int(reward[mini(met, reward.size()) - 1]) if met > 0 and not reward.is_empty() else 0
+		var head := Label.new()
+		head.text = "• %s — %d/3 condizioni → %d VP" % [obj.get("name", "?"), met, vp]
+		head.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
+		head.add_theme_font_size_override("font_size", maxi(11, _base_fs() - 1))
+		drawer_content.add_child(head)
+		for cond in conds:
+			var ok: bool = Objectives.condition_met(gs, p.power, cond, ri)
+			var cl := Label.new()
+			cl.text = "    %s %s" % ["✓" if ok else "✗", _obj_cond_desc(cond, ri)]
+			cl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6) if ok else Color(0.78, 0.78, 0.8))
+			cl.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 2))
+			cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			cl.custom_minimum_size = Vector2(280, 0)
+			drawer_content.add_child(cl)
+
+
+## Descrizione breve (italiano) di una condizione Obiettivo, con la soglia del round corrente.
+func _obj_cond_desc(cond: Dictionary, ri: int) -> String:
+	var t := String(cond.get("t", ""))
+	var m: Array = cond.get("min", [])
+	var n := str(int(m[clampi(ri, 0, m.size() - 1)])) if not m.is_empty() else ""
+	var reg := String(cond.get("region", "")).replace("_", " ")
+	var res := String(cond.get("res", "")) if cond.get("res", "") is String else ""
+	var resj := ", ".join((cond.get("res", []) as Array).map(func(x): return RES_LABEL.get(String(x), String(x)))) if cond.get("res", null) is Array else ""
+	var regsj := ", ".join((cond.get("regions", []) as Array).map(func(x): return String(x).replace("_", " ")))
+	var per := str(int(cond.get("per", 1)))
+	match t:
+		"resource": return "≥%s %s" % [n, RES_LABEL.get(res, res)]
+		"money": return "≥%s money" % n
+		"money_most": return "il maggior money"
+		"growth_cards": return "≥%s carte Crescita" % n
+		"deck_size": return "≥%s carte nel mazzo" % n
+		"prosperity_times": return "Prosperità aumentata ≥%s volte" % n
+		"fdi_count": return "IDE su ≥%s Nazioni" % n
+		"engage_markers": return "≥%s segnalini Impegno" % n
+		"production_increase": return "Produzione %s aumentata di ≥%s" % [RES_LABEL.get(res, res), n]
+		"production_increase_any": return "Produzione aumentata (%s)" % resj
+		"production_increases_count": return "≥%s Produzioni aumentate%s" % [n, " (secondarie)" if bool(cond.get("secondary", false)) else ""]
+		"influence_region": return "≥%s Influenza in %s" % [n, reg]
+		"influence_total": return "≥%s Influenza tra %s" % [n, regsj]
+		"influence_board_total": return "≥%s Influenza sul tabellone" % n
+		"influence_highest": return "Influenza %s in %s" % ["più alta (stretta)" if bool(cond.get("strict", false)) else "più alta", reg]
+		"influence_more_than": return "più Influenza di %s in %s" % [String(cond.get("power", "")).to_upper(), reg]
+		"influence_more_than_any_of": return "più Influenza di %s in %s" % [" o ".join((cond.get("powers", []) as Array).map(func(x): return String(x).to_upper())), reg]
+		"influence_more_than_combined": return "più Influenza di tutti gli altri in %s" % reg
+		"influence_highest_in_n_regions": return "Influenza più alta in ≥%s Regioni" % n
+		"influence_most_board": return "più cubetti Influenza sul tabellone"
+		"regions_with_influence": return "≥%s Regioni con ≥%s Influenza" % [n, per]
+		"armies_region": return "≥%s Armate in %s" % [n, reg]
+		"armies_total": return "≥%s Armate tra %s" % [n, regsj]
+		"regions_with_armies": return "≥%s Regioni con ≥%s Armate" % [n, per]
+		"armies_most": return "più Armate sul tabellone"
+		"armies_more_than": return "più Armate di %s in %s" % [String(cond.get("power", "")).to_upper(), reg]
+		"armies_most_in_n_regions": return "più Armate in ≥%s Regioni" % n
+		"allied_total": return "≥%s Nazioni Alleate" % n
+		"allied_region": return "≥%s Nazioni Alleate in %s" % [n, reg]
+		"regions_with_allied": return "≥%s Regioni con ≥%s Alleate" % [n, per]
+		"allied_most": return "più Nazioni Alleate di ogni altro"
+		"allied_more_than": return "più Alleate di %s in %s" % [String(cond.get("power", "")).to_upper(), reg]
+		"fdi_in_region": return "IDE su ≥%s Nazioni in %s" % [n, reg]
+		"fdi_most_in_n_regions": return "più IDE in ≥%s Regioni" % n
+		"fdi_export_to": return "IDE su ≥%s Nazioni (export %s)" % [n, resj]
+		"fdi_income_one_step": return "≥%s money da IDE in un Ritorno" % n
+		"export_symbols_total": return "≥%s simboli Export sulle Alleate" % n
+		"export_symbols_distinct": return "≥%s simboli Export diversi" % n
+		"allied_export_to": return "≥%s Alleate verso cui esporti %s" % [n, resj]
+		"allied_import_from": return "≥%s Alleate da cui importi %s" % [n, resj]
+		_: return t
 
 
 ## Attiva un'abilità once-per-round e la marca usata per il round.
@@ -6873,6 +6959,18 @@ func _aftermath_resolve() -> void:
 		for power in mt:
 			gs.add_vp(power, int(mt[power]))
 		_aftermath_lines.append("Token Maggioranza: " + _vp_summary(mt))
+		# Obiettivi Superpotenze: soglie round 3 (ri=0) o round 6 (ri=1).
+		var obj_ri := 0 if gs.round == 3 else 1
+		var obj_vp := {}
+		for p in gs.players:
+			var got := 0
+			for obj in p.objectives:
+				got += Objectives.objective_score(gs, p.power, obj, obj_ri)
+			if got > 0:
+				gs.add_vp(p.power, got)
+				obj_vp[p.power] = got
+		if not obj_vp.is_empty():
+			_aftermath_lines.append("Obiettivi: " + _vp_summary(obj_vp))
 
 	# Riepilogo SINCRONIZZATO: lo stato (righe + art) va a entrambi; il "Continua" passa
 	# dall'host (_next_round). Senza questo il client non vedeva le conseguenze del round.
