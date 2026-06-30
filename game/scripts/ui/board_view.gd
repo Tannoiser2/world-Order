@@ -177,6 +177,7 @@ var _play_ops_started := 0
 var active_mods: Dictionary = {}   # effect_modifiers della carta in gioco (parse)
 var awaiting := ""          # "" | "region" | "board_country" | "allied_country" | "move"
 var awaiting_op: Dictionary = {}
+var _action_region := ""    # Regione dell'ultima Engage/Build a Base (per gli op "su quella Regione")
 ## Stati che richiedono di toccare la MAPPA (Regioni): i bottoni-Regione diventano
 ## cliccabili e il cassetto plancia va CHIUSO per non coprire/bloccare la mappa.
 const AWAITING_REGION := ["region", "move", "convert_influence", "reset_influence"]
@@ -1163,6 +1164,7 @@ func _on_allied_pressed(country: Dictionary) -> void:
 	awaiting = ""
 	# L'Influenza di Invest/Build va nella Regione della Country: scegli lo slot.
 	var region := String(country.get("region", ""))
+	_action_region = region   # Regione dell'ultima azione (per gli op "su quella Regione")
 	_pick_slot(region, func(slot):
 		if name == "invest":
 			var ivp := Actions.execute_invest(gs, p.power, country, slot)
@@ -1307,6 +1309,7 @@ func _play_strategic_asset(hand_card: Dictionary, asset: Dictionary) -> void:
 	_playing_asset = true
 	playing_card = asset
 	play_queue = (asset.get("effect_ops", []) as Array).duplicate(true)
+	_action_region = ""
 	active_mods = Modifiers.parse(asset.get("effect_modifiers", []))
 	_event("%s attiva l'Asset Strategico: %s%s" % [p.power.to_upper(), asset.get("display_name", "?"), _mods_text(active_mods)])
 	_advance_play()
@@ -1324,6 +1327,7 @@ func _play_card(card: Dictionary) -> void:
 	playing_card = card
 	play_queue = (card["effect_ops"] as Array).duplicate(true)
 	_play_ops_started = 0
+	_action_region = ""   # niente Regione "ereditata" da una carta precedente
 	active_mods = Modifiers.parse(card.get("effect_modifiers", []))
 	var mtxt := _mods_text(active_mods)
 	_event("%s gioca: %s%s" % [_active().power.to_upper(), card.get("display_name", "carta"), mtxt])
@@ -1529,10 +1533,146 @@ func _advance_play() -> void:
 			_resolve_spend_for_gain(op)
 		"research_free":
 			_resolve_research_free(op)
+		"remove_enemy_army":
+			_op_remove_enemy_army(op)         # Distensione Diplomatica
+		"deploy_force":
+			_op_deploy_force(op)              # Dimostrazione di Forza
+		"invest_foreign":
+			_op_invest_foreign(op)            # Nuovi Accordi Finanziari
+		"copy_opponent_card":
+			_op_copy_opponent_card(op)        # Intelligence di Acquisizione
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
 			_advance_play()
+
+
+# --- Carte Azione aggiuntive (Diplomacy & Dominance): effetti con interazione fra giocatori ---
+
+## Distensione Diplomatica: dopo l'Engage, puoi spendere 1 Diplomazia per spostare 1 Armata di un
+## altro giocatore dalla Regione appena Impegnata alla sua riserva.
+func _op_remove_enemy_army(op: Dictionary) -> void:
+	var p := _active()
+	var region := _action_region
+	if region == "" or not gs.regions.has(region) or int(p.resources.get("diplomacy", 0)) < int(op.get("cost_diplomacy", 1)):
+		_advance_play()
+		return
+	var armies: Dictionary = gs.regions[region]["armies"]
+	var items := [{"label": "Non spostare nessuna Armata", "value": ""}]
+	for pw in armies:
+		if String(pw) != p.power and int(armies[pw]) > 0:
+			items.append({"label": "Sposta 1 Armata di %s (−1 Diplomazia)" % String(pw).to_upper(), "value": String(pw)})
+	if items.size() == 1:
+		_advance_play()
+		return
+	_show_popup("Distensione Diplomatica in %s: spostare 1 Armata nemica?" % region.replace("_", " "), items, func(choice):
+		var pw := String(choice)
+		if pw != "" and p.spend({"diplomacy": int(op.get("cost_diplomacy", 1))}):
+			gs.regions[region]["armies"][pw] = int(gs.regions[region]["armies"][pw]) - 1
+			var ep := gs.player_by_power(pw)
+			if ep != null:
+				ep.armies_available += 1
+			_status("Distensione: 1 Armata di %s rimossa da %s." % [pw.to_upper(), region.replace("_", " ")])
+		_layout_overlays()
+		_advance_play())
+
+
+## Dimostrazione di Forza: dopo la Base, puoi dislocare 1 Armata nella sua Regione; se lo fai,
+## ogni altro giocatore esaurisce 1 sua Nazione Alleata pronta in quella Regione.
+func _op_deploy_force(op: Dictionary) -> void:
+	var p := _active()
+	var region := _action_region
+	if region == "" or not gs.regions.has(region):
+		_advance_play()
+		return
+	_show_popup("Dimostrazione di Forza: disloca 1 Armata in %s? (gli altri esauriscono 1 alleato lì)" % region.replace("_", " "),
+		[{"label": "Sì, disloca 1 Armata", "value": 1}, {"label": "No", "value": 0}], func(ch):
+			if int(ch) == 1:
+				var a: Dictionary = gs.regions[region]["armies"]
+				a[p.power] = int(a.get(p.power, 0)) + 1
+				var forced := []
+				for op2 in gs.players:
+					if op2.power == p.power:
+						continue
+					for c in op2.allied_countries:
+						var cid := String(c.get("id", ""))
+						if String(c.get("region", "")) == region and not bool(op2.exhausted.get(cid, false)):
+							op2.exhausted[cid] = true
+							forced.append(String(op2.power).to_upper())
+							break
+				_status("Forza: 1 Armata in %s; esauriti alleati di %s." % [
+					region.replace("_", " "), ", ".join(forced) if not forced.is_empty() else "nessuno"])
+			_layout_overlays()
+			_advance_play())
+
+
+## Nuovi Accordi Finanziari: investi in una Nazione Alleata di un ALTRO giocatore che ha un IDE,
+## pagando il suo costo di Invest + 5 money; guadagni Influenza nella sua Regione ed esaurisci la Nazione.
+func _op_invest_foreign(op: Dictionary) -> void:
+	var p := _active()
+	var extra := int(op.get("extra_cost", 5))
+	var items := [{"label": "Non investire", "value": null}]
+	for op2 in gs.players:
+		if op2.power == p.power:
+			continue
+		for c in op2.allied_countries:
+			var cid := String(c.get("id", ""))
+			if cid in op2.fdi_countries:
+				var cost := int(c.get("invest_cost", 0)) + extra
+				items.append({"label": "%s di %s (costo %d)" % [c.get("display_name", "?"), String(op2.power).to_upper(), cost],
+					"value": {"owner": String(op2.power), "cid": cid, "region": String(c.get("region", "")), "name": String(c.get("display_name", "?")), "cost": cost}})
+	if items.size() == 1:
+		_status("Nuovi Accordi Finanziari: nessuna Nazione Alleata altrui con IDE.")
+		_advance_play()
+		return
+	_show_popup("Nuovi Accordi Finanziari: investi in una Nazione Alleata altrui (con IDE).", items, func(choice):
+		if choice == null:
+			_advance_play()
+			return
+		var sel: Dictionary = choice
+		if not p.spend({"money": int(sel["cost"])}):
+			_status("Money insufficiente (serve %d)." % int(sel["cost"]))
+			_advance_play()
+			return
+		var region := String(sel["region"])
+		if gs.regions.has(region):
+			var vp: int = gs.regions[region]["track"].add(p.power, "")
+			p.victory_points += vp
+		if int(gs.supply.get("fdi", 0)) > 0:
+			gs.supply["fdi"] = int(gs.supply["fdi"]) - 1
+		var ep := gs.player_by_power(String(sel["owner"]))
+		if ep != null:
+			ep.exhausted[String(sel["cid"])] = true   # esaurisci la Nazione altrui
+		_status("Nuovi Accordi Finanziari: investito in %s (+Influenza in %s)." % [sel["name"], region.replace("_", " ")])
+		_layout_overlays()
+		_advance_play())
+
+
+## Intelligence di Acquisizione: guarda la mano (e le carte giocate) di un altro giocatore e copia
+## l'effetto di UNA sua carta, come se l'avessi giocata tu (la carta resta dov'è).
+func _op_copy_opponent_card(op: Dictionary) -> void:
+	var p := _active()
+	var items := []
+	for op2 in gs.players:
+		if op2.power == p.power:
+			continue
+		for c in op2.hand:
+			if (c as Dictionary).has("effect_ops") and not (c.get("effect_ops", []) as Array).is_empty():
+				items.append({"label": "[mano %s] %s" % [String(op2.power).to_upper(), c.get("display_name", "?")], "value": c})
+		for c in op2.played:
+			if (c as Dictionary).has("effect_ops") and not (c.get("effect_ops", []) as Array).is_empty():
+				items.append({"label": "[giocata %s] %s" % [String(op2.power).to_upper(), c.get("display_name", "?")], "value": c})
+	if items.is_empty():
+		_status("Intelligence di Acquisizione: nessuna carta avversaria da copiare.")
+		_advance_play()
+		return
+	_show_popup("Intelligence di Acquisizione: copia l'effetto di una carta avversaria.", items, func(choice):
+		var c: Dictionary = choice
+		var ops: Array = c.get("effect_ops", [])
+		for i in range(ops.size() - 1, -1, -1):
+			play_queue.push_front((ops[i] as Dictionary).duplicate(true))
+		_status("Intelligence: copi l'effetto di %s." % c.get("display_name", "?"))
+		_advance_play())
 
 
 ## spend_for_gain: spendi fino a spend_max money; per ogni `per` money speso applichi
@@ -1750,6 +1890,7 @@ func _resolve_engage(region: String, chosen: Array) -> void:
 
 
 func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
+	_action_region = region   # Regione dell'ultima azione (per gli op "su quella Regione")
 	var p := _active()
 	var ed := Modifiers.engage_discount(active_mods, gs, p.power, region)
 	var values := _values_of(chosen)

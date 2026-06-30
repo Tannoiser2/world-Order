@@ -883,6 +883,58 @@
      "op": "build_base"
     }
    ]
+  },
+  {
+   "id": "mk_nuovi_accordi_finanziari",
+   "display_name": "Nuovi Accordi Finanziari",
+   "type": "economic",
+   "art": "action_aux/action_aux_000.jpg",
+   "market_cost": 5,
+   "top_bonus": { "amount": 8, "kind": "money" },
+   "research_bonus": 3,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Choose an allied Country of another player that has an FDI marker. Invest in that Country, even if exhausted, paying 5 money more.",
+   "effect_text_it": "Scegli una Nazione Alleata di un altro giocatore con sopra un segnalino IDE. Investi in quella Nazione, anche se è esaurita, pagando 5 money in più.",
+   "effect_ops": [ { "op": "invest_foreign", "extra_cost": 5 } ]
+  },
+  {
+   "id": "mk_dimostrazione_di_forza",
+   "display_name": "Dimostrazione di Forza",
+   "type": "military",
+   "art": "action_aux/action_aux_001.jpg",
+   "market_cost": 5,
+   "top_bonus": { "amount": 1, "kind": "army" },
+   "research_bonus": 2,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Build a Base in 1 allied Country. Then, you can Deploy 1 Army in that Country's Region. If you do, every other player must exhaust 1 of their allied Countries in that Region.",
+   "effect_text_it": "Costruisci una Base in 1 Nazione Alleata. Poi, puoi Dislocare 1 Armata nella Regione di quella Nazione. Se lo fai, ogni altro giocatore deve esaurire 1 delle sue Nazioni Alleate in quella Regione.",
+   "effect_ops": [ { "op": "build_base" }, { "op": "deploy_force" } ]
+  },
+  {
+   "id": "mk_distensione_diplomatica",
+   "display_name": "Distensione Diplomatica",
+   "type": "diplomatic",
+   "art": "action_aux/action_aux_002.jpg",
+   "market_cost": 4,
+   "top_bonus": { "amount": 1, "kind": "diplomacy" },
+   "research_bonus": 3,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Engage in 1 Region. You can spend 1 additional Diplomacy to move 1 Army of another player from that Region back to their board.",
+   "effect_text_it": "Impegnati in 1 Regione. Puoi spendere 1 Diplomazia aggiuntiva per spostare 1 Armata di un altro giocatore da quella Regione alla sua plancia.",
+   "effect_ops": [ { "op": "engage" }, { "op": "remove_enemy_army", "cost_diplomacy": 1 } ]
+  },
+  {
+   "id": "mk_intelligence_di_acquisizione",
+   "display_name": "Intelligence di Acquisizione",
+   "type": "domestic",
+   "art": "action_aux/action_aux_003.jpg",
+   "market_cost": 5,
+   "top_bonus": { "amount": 6, "kind": "money" },
+   "research_bonus": 4,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Choose another player and look at their hand. You can choose a card in their hand or one they already played this round, applying its effect as if you just played it. (The card stays where it is.)",
+   "effect_text_it": "Scegli un altro giocatore e guarda la sua mano. Puoi scegliere una carta che ha in mano oppure una carta che ha già giocato in questo round, applicandone l'effetto come se l'avessi appena giocata tu. (La carta rimane dove si trova.)",
+   "effect_ops": [ { "op": "copy_opponent_card" } ]
   }
  ]
 }
