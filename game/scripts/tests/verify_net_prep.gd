@@ -53,13 +53,23 @@ func _init() -> void:
 		"OK" if s1 else "FAIL", str(client.drawer_open), client.choice_flow.get_child_count()])
 	if not s1: fails += 1
 
-	# 2) Il client sceglie il Focus -> l'host applica e OFFRE l'aumento (stato sincronizzato).
-	client.apply_command(GameCommands.choose_focus(1, 1, 0))
+	# 2) Il client sceglie il Focus -> si apre la PRODUZIONE del Focus (Produce UI), sincronizzata
+	#    a CHI agisce (il client). La produzione non e' piu' automatica.
+	client.apply_command(GameCommands.choose_focus(1, 1, 0))   # Domestic
 	await process_frame
-	var s2: bool = host._prep_awaiting_increase and client._prep_awaiting_increase
-	print("[%s] aumento Produzione in attesa, sincronizzato (host=%s, client=%s)" % [
-		"OK" if s2 else "FAIL", str(host._prep_awaiting_increase), str(client._prep_awaiting_increase)])
+	var s2: bool = host._produce_mode and client._produce_mode and host._produce_after == "prep" \
+		and not host._prep_awaiting_increase
+	print("[%s] dopo il Focus: Produce del Focus aperta e sincronizzata (host=%s, client=%s)" % [
+		"OK" if s2 else "FAIL", str(host._produce_mode), str(client._produce_mode)])
 	if not s2: fails += 1
+
+	# 2b) Il client conferma la produzione (anche a 0) -> ora si offre l'Aumento Produzione.
+	client.apply_command(GameCommands.produce(1, 2, {}))
+	await process_frame
+	var s2b: bool = host._prep_awaiting_increase and client._prep_awaiting_increase and not host._produce_mode
+	print("[%s] dopo la Produce -> Aumento Produzione in attesa (host=%s, client=%s)" % [
+		"OK" if s2b else "FAIL", str(host._prep_awaiting_increase), str(client._prep_awaiting_increase)])
+	if not s2b: fails += 1
 
 	# 3) La barra dell'aumento è sul CLIENT (più bottoni), NON sull'host (USA, non di turno).
 	var client_bar: int = client.choice_flow.get_child_count()
@@ -70,7 +80,7 @@ func _init() -> void:
 	if not s3: fails += 1
 
 	# 4) Il client salta l'aumento -> la Preparazione avanza (qui finisce: inizia l'Azione).
-	client.apply_command(GameCommands.increase_production(1, 2, ""))
+	client.apply_command(GameCommands.increase_production(1, 3, ""))
 	await process_frame
 	var s4: bool = host._ui_phase == "Azione" and client._ui_phase == "Azione"
 	print("[%s] dopo l'aumento la Preparazione avanza (host fase=%s, client fase=%s)" % [
