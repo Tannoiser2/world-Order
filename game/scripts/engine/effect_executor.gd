@@ -16,6 +16,7 @@ const KNOWN := [
 	"add_influence", "sell_armies", "place_armies", "spend", "noop", "ongoing",
 	"gain_money_per_fdi", "move_free", "move_to_regions", "repeat", "spend_for_gain",
 	"spend_then", "discard", "research_free", "increase_prosperity",
+	"remove_enemy_army", "deploy_force", "invest_foreign", "copy_opponent_card",
 ]
 
 
