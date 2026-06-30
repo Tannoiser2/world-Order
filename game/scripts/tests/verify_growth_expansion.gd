@@ -85,6 +85,23 @@ func _init() -> void:
 		"OK" if s4 else "FAIL", p2.victory_points - vp2_before, cg2_before - int(p2.resources.get("consumer_goods", 0))])
 	if not s4: fails += 1
 
+	# 5) "Ottimizzazione delle Entrate": ri-applica il top_bonus delle 2 carte migliori.
+	b.active_seat = 0
+	p.money = 0
+	p.resources["diplomacy"] = 0
+	p.armies_available = 0
+	p.hand = [
+		{"top_bonus": {"kind": "money", "amount": 2}},
+		{"top_bonus": {"kind": "money", "amount": 5}},
+		{"top_bonus": {"kind": "diplomacy", "amount": 3}},
+	]
+	b._apply_top_bonus_best(p, 2)
+	# le 2 migliori per amount: 5 (money) e 3 (diplomazia).
+	var s5: bool = p.money == 5 and int(p.resources.get("diplomacy", 0)) == 3
+	print("[%s] Ottimizzazione Entrate: +%d money, +%d diplomazia (atteso 5, 3)" % [
+		"OK" if s5 else "FAIL", p.money, int(p.resources.get("diplomacy", 0))])
+	if not s5: fails += 1
+
 	b.queue_free()
 	await process_frame
 	print("Verifica Growth espansione (1° gruppo): %s" % ("OK" if fails == 0 else "%d FALLITI" % fails))

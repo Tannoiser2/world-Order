@@ -226,6 +226,18 @@
    "ability_text_it": "Hai +1 MINACCIA e +1 Difesa in tutte le Regioni (anche dove non hai Armate).",
    "expansion": "diplomacy_dominance",
    "effect_ops": [ { "op": "ongoing", "tag": "threat_defense_all_regions" } ]
+  },
+  {
+   "id": "growth_ottimizzazione_entrate",
+   "display_name": "Ottimizzazione delle Entrate",
+   "art": "wide_aux/wide_aux_000.jpg",
+   "level": 1,
+   "victory_points": 1,
+   "cost": { "services": 1, "money": 10 },
+   "ability_text": "During the Research step, gain the top bonus from 2 of your cards again.",
+   "ability_text_it": "Durante il passo Ricerca, ottieni di nuovo il bonus superiore da 2 delle tue carte.",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "research_top_bonus_twice" } ]
   }
  ]
 }
