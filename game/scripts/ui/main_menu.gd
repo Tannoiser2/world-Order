@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.138"
+const VERSION := "v0.7.139"
 const CHANGELOG := [
+	"v0.7.139 - ESPANSIONE: Carta CRESCITA 'Affermazione di Predominio' (Liv.4, 4 Servizi + 2 Diplomazia). Quando la ottieni guadagni 2 VP per ogni round GIA' completato (es. al round 4 = +6 VP). Inoltre, alla fine di OGNI turno in cui hai aggiunto Influenza ad almeno una Regione, ottieni +1 VP. Ora 6 delle 10 Carte Crescita aggiuntive. +1 test (verify_growth_predominio).",
 	"v0.7.138 - ESPANSIONE: Carta CRESCITA 'Ottimizzazione delle Entrate' (Liv.1, 1 VP, 1 Servizio + 10 money). Durante il passo Ricerca ottieni di NUOVO il bonus superiore (in alto) di 2 delle tue carte migliori — money/diplomazia/armata raddoppiati per le 2 carte di bonus piu' alto. Ora 5 delle 10 Carte Crescita aggiuntive. +1 check (verify_growth_expansion).",
 	"v0.7.137 - ESPANSIONE: altre 2 Carte CRESCITA (le piu' potenti, Liv.5). 'Autorità Inconfutabile' (6 VP): nel calcolo del punteggio vinci i PAREGGI di maggioranza per numero di cubetti Influenza, a prescindere dalle Armate nella Regione. 'Programma Nucleare' (8 VP, costa anche 2 Armate dalla riserva): hai +1 MINACCIA e +1 Difesa in TUTTE le Regioni, anche dove non hai Armate. Ora sono 4 delle 10 Carte Crescita aggiuntive. +2 test (verify_growth_endgame: tie-break, THREAT, costo in Armate).",
 	"v0.7.136 - ESPANSIONE Diplomacy & Dominance: prime 2 Carte CRESCITA aggiuntive. 'Cambio di Leadership' (Liv.2, 4 VP): una volta per round puoi scartare tutta la mano e ripescare altrettante carte (bottone 'Usa' nel pannello Abilita' continuative). 'Tenore di Vita Elevato' (Liv.3, 4 VP): ogni volta che aumenti la Prosperita' spendi 1 Beni di consumo in meno e ottieni 1 VP in piu'. Si comprano con l'azione 'Get a Growth' come le altre. (Le altre 8 Carte Crescita dell'espansione e gli altri moduli - Azioni, Orientamenti, Obiettivi - arrivano nei prossimi aggiornamenti.) +1 test (verify_growth_expansion).",
