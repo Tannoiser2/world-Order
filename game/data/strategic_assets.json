@@ -1,6 +1,6 @@
 {
  "kind": "strategic_asset",
- "source": "Trascritto a piena risoluzione (game/assets/cards/strategic_asset/). Alloro = VP iniziali (sommati nel setup). Uso singolo per partita. 5 per potenza (alcune comuni tra potenze, es. Arms Export e NATO).",
+ "source": "Trascritto a piena risoluzione (game/assets/cards/strategic_asset/). Alloro = VP iniziali (sommati nel setup). Uso singolo per partita. 5 per potenza nel base (alcune comuni, es. Arms Export e NATO); l'espansione Diplomacy & Dominance aggiunge altri Orientamenti Strategici (expansion: diplomacy_dominance).",
  "cards": [
   {
    "id": "sa_eu_central_european_bank",
@@ -541,6 +541,71 @@
     {
      "op": "play_another"
     }
+   ]
+  },
+  {
+   "id": "sa_russia_test_nucleari",
+   "power": "russia",
+   "display_name": "Test Nucleari",
+   "art": "strategic_asset/strategic_asset_020.jpg",
+   "starting_vp": 2,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Spend 1 Services and 25 money to place 1 Army from the reserve in Europe, 1 in Central Asia and 1 in East Asia - Pacific. Then, add 1 Influence to 1 of these Regions.",
+   "effect_text_it": "Spendi 1 Servizi e 25 money per collocare 1 Armata presa dalla riserva in Europa, 1 in Asia centrale e 1 in Asia orientale - Pacifico. Poi, aggiungi 1 Influenza a 1 di queste Regioni.",
+   "effect_ops": [
+    {"op": "spend", "services": 1, "money": 25},
+    {"op": "place_armies", "region": "europe", "n": 1},
+    {"op": "place_armies", "region": "central_asia", "n": 1},
+    {"op": "place_armies", "region": "east_asia_pacific", "n": 1},
+    {"op": "add_influence", "regions": ["europe", "central_asia", "east_asia_pacific"]}
+   ]
+  },
+  {
+   "id": "sa_china_polo_produttivo_globale",
+   "power": "china",
+   "display_name": "Polo Produttivo Globale",
+   "art": "strategic_asset/strategic_asset_021.jpg",
+   "starting_vp": 2,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Perform the following actions in any order: Trade; Produce Energy, Raw Materials and Consumer Goods.",
+   "effect_text_it": "Svolgi le azioni seguenti in qualsiasi ordine: Commercia; Produci energia, materie prime e beni di consumo.",
+   "effect_ops": [
+    {"op": "trade"},
+    {"op": "produce", "count": 3, "allowed": ["energy", "raw_materials", "consumer_goods"]}
+   ]
+  },
+  {
+   "id": "sa_eu_iniziativa_global_gateway",
+   "power": "eu",
+   "display_name": "Iniziativa Global Gateway",
+   "art": "strategic_asset/strategic_asset_022.jpg",
+   "starting_vp": 1,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Invest in 1 allied Country. You can also Invest in 1 additional allied Country of another Region, spending 10 money more.",
+   "effect_text_it": "Investi in 1 Nazione Alleata. Puoi anche Investire in 1 Nazione Alleata aggiuntiva di un'altra Regione, spendendo 10 money in più.",
+   "effect_ops": [
+    {"op": "invest"},
+    {"op": "choice", "options": [
+     [{"op": "noop"}],
+     [{"op": "spend", "money": 10}, {"op": "invest"}]
+    ]}
+   ]
+  },
+  {
+   "id": "sa_eu_gigante_economico",
+   "power": "eu",
+   "display_name": "Gigante Economico",
+   "art": "strategic_asset/strategic_asset_023.jpg",
+   "starting_vp": 2,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Choose 2 of the following actions, in any order: Trade; Produce 2 resource types; Invest in 1 allied Country.",
+   "effect_text_it": "Scegli 2 delle azioni seguenti, in qualsiasi ordine: Commercia; Produci 2 tipi di risorse; Investi in 1 Nazione Alleata.",
+   "effect_ops": [
+    {"op": "choose_n", "n": 2, "options": [
+     [{"op": "trade"}],
+     [{"op": "produce", "count": 2}],
+     [{"op": "invest"}]
+    ]}
    ]
   }
  ]
