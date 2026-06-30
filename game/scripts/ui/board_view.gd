@@ -461,7 +461,7 @@ func _refill_available(rid: String) -> void:
 # --- Tabellone e Regioni ---
 
 func _layout_overlays() -> void:
-	if overlay == null:
+	if GameConfig.fast_sim or overlay == null:
 		return
 	for c in overlay.get_children():
 		c.queue_free()
@@ -3757,6 +3757,8 @@ func _update_drawer_state() -> void:
 
 
 func _refresh() -> void:
+	if GameConfig.fast_sim:
+		return   # simulazione headless: niente lavoro UI (i bot leggono lo stato, non la UI)
 	ui_theme.default_font_size = _base_fs()
 	var p := _active()
 	_update_drawer_state()
