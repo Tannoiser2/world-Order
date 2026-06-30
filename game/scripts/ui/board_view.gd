@@ -16,6 +16,11 @@ const RES_LABEL := {
 	"energy": "En", "raw_materials": "RM", "food": "Food",
 	"consumer_goods": "CG", "services": "Serv", "diplomacy": "Dip", "armies": "Army",
 }
+## Nomi italiani estesi (per la legenda/riepilogo del Produce).
+const RES_NAME_IT := {
+	"energy": "Energia", "raw_materials": "Materie Prime", "food": "Cibo",
+	"consumer_goods": "Beni di consumo", "services": "Servizi", "diplomacy": "Diplomazia", "armies": "Armate",
+}
 const FOCUS_NAME := ["Domestic", "Diplomatic", "Military"]
 ## Op che si risolvono da sole (senza target).
 const AUTO_OPS := ["gain_money", "gain_resource", "gain_armies", "gain_vp", "trade",
@@ -2738,12 +2743,15 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 				sb.bg_color = Color(0.30, 0.30, 0.36, 0.92); b.text = "-"
 			else:
 				sb.bg_color = Color(0.16, 0.5, 0.28, 0.92)
+				# Riga 1: quante ne PRODUCI (+N). Riga 2 (derivate): COSTO in primarie, con
+				# l'iniziale della risorsa (es. "-2En -2RM"), cosi' si capisce cosa si spende.
 				b.text = "+%d" % k
+				b.autowrap_mode = TextServer.AUTOWRAP_OFF
 				if not req.is_empty():
 					var bits := []
 					for ck in req:
-						bits.append("-%d" % (int(req[ck]) * k))
-					b.text += " " + ",".join(bits)
+						bits.append("-%d%s" % [int(req[ck]) * k, RES_LABEL.get(ck, ck)])
+					b.text += "\n" + " ".join(bits)
 			if i == staged and i != cur:
 				sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4)
 			b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
@@ -2755,12 +2763,20 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 func _show_produce_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var info := Label.new()
-	info.text = "PRODUCE - tocca le caselle sulla track della plancia (entro la tua Produzione)"
+	info.text = "PRODUCE: tocca le caselle VERDI sulla track. +N = quante ne PRODUCI · -N = costo in primarie (per le risorse derivate)."
 	if _produce_max_types > 0:
-		info.text += " - fino a %d tipi (scelti %d/%d)" % [_produce_max_types, _produce_sel.size(), _produce_max_types]
+		info.text += " Fino a %d tipi (scelti %d/%d)." % [_produce_max_types, _produce_sel.size(), _produce_max_types]
 	info.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
+	# Riepilogo DINAMICO leggibile di cosa si sta producendo (nomi estesi + costo).
+	var summary := _produce_summary_text()
+	if summary != "":
+		var sl := Label.new()
+		sl.text = summary
+		sl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
+		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(sl)
 	var arm_cap := int(p.production.get("armies", 0))
 	if arm_cap > 0:
 		var al := Label.new(); al.text = "Armate (-1 Materia cad.):"
@@ -2783,6 +2799,29 @@ func _show_produce_bar(p: PlayerState) -> void:
 	var cancel := Button.new(); cancel.text = "Annulla"; cancel.pressed.connect(_cmd_produce_cancel)
 	choice_flow.add_child(cancel)
 	choice_bar.visible = true
+
+
+## Riepilogo leggibile della selezione Produce corrente: per ogni tipo, nome esteso, quantita'
+## prodotta e (per le derivate) il costo in primarie. "" se non si sta producendo nulla.
+func _produce_summary_text() -> String:
+	var parts := []
+	for rt in RES:   # ordine stabile
+		if not _produce_sel.has(rt):
+			continue
+		var q := int(_produce_sel[rt])
+		if q <= 0:
+			continue
+		var s := "%s +%d" % [String(RES_NAME_IT.get(rt, rt)), q]
+		var req: Dictionary = Actions.SECONDARY_REQ.get(rt, {})
+		if not req.is_empty():
+			var costs := []
+			for ck in req:
+				costs.append("%d %s" % [int(req[ck]) * q, String(RES_NAME_IT.get(ck, ck))])
+			s += " (costa %s)" % ", ".join(costs)
+		parts.append(s)
+	if parts.is_empty():
+		return ""
+	return "Stai producendo: " + "  ·  ".join(parts)
 
 
 func _produce_cancel() -> void:
