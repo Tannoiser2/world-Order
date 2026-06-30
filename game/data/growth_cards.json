@@ -178,6 +178,30 @@
     "diplomacy": 3
    },
    "ability_text": ""
+  },
+  {
+   "id": "growth_cambio_leadership",
+   "display_name": "Cambio di Leadership",
+   "art": "wide_aux/wide_aux_010.jpg",
+   "level": 2,
+   "victory_points": 4,
+   "cost": { "services": 2, "consumer_goods": 1 },
+   "ability_text": "Once per round, you can discard your hand. Then, draw that many cards.",
+   "ability_text_it": "Una volta per round, puoi scartare la tua mano. Poi, pesca altrettante carte.",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:redraw_hand" } ]
+  },
+  {
+   "id": "growth_tenore_vita_elevato",
+   "display_name": "Tenore di Vita Elevato",
+   "art": "wide_aux/wide_aux_011.jpg",
+   "level": 3,
+   "victory_points": 4,
+   "cost": { "services": 3, "consumer_goods": 1 },
+   "ability_text": "Whenever you Increase Prosperity, spend 1 less Consumer Goods and gain 1 extra VP.",
+   "ability_text_it": "Ogni volta che aumenti la Prosperità, spendi 1 Beni di consumo in meno e ottieni 1 VP in più.",
+   "expansion": "diplomacy_dominance",
+   "effect_ops": [ { "op": "ongoing", "tag": "prosperity_boost" } ]
   }
  ]
 }
