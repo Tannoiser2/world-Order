@@ -6346,8 +6346,45 @@ func _automa_run() -> void:
 				_research_next()
 		"Aftermath":
 			if _aftermath_choice_p != null and GameConfig.is_automa(_aftermath_choice_p.power):
-				_aftermath_continue()
+				_automa_aftermath(_aftermath_choice_p)
 	_automa_busy = false
+
+
+## Scelte di Aftermath del BOT: aumenta la Prosperità finché può permetterselo (col money,
+## non con i Beni di consumo che l'Automa non usa) seguendo la sua traccia Prosperità, poi
+## passa al giocatore successivo. Senza questo i bot restavano a Prosperità 0 e accumulavano
+## money all'infinito (mancava questo sink + i relativi VP).
+func _automa_aftermath(p: PlayerState) -> void:
+	var res := _automa_increase_prosperity(p)
+	if int(res.get("levels", 0)) > 0:
+		var msg := "BOT %s: Prosperità +%d -> liv. %d (-%d money, +%d VP)" % [
+			p.power.to_upper(), int(res["levels"]), p.prosperity_level, int(res["money"]), int(res["vp"])]
+		_aftermath_lines.append(msg)
+		_log(msg)
+	_aftermath_continue()
+
+
+## Aumenta la Prosperità dell'Automa pagando in money (traccia Prosperità della sua Player card:
+## ogni spazio ha cost + vp). Aumenta finché può permettersi il prossimo spazio. Ritorna
+## {levels, money, vp}.
+func _automa_increase_prosperity(p: PlayerState) -> Dictionary:
+	var track: Array = DataLoader.load_automa_players().get(p.power, {}).get("prosperity", [])
+	var levels := 0
+	var spent := 0
+	var vp := 0
+	while p.prosperity_level < track.size():
+		var step: Dictionary = track[p.prosperity_level]
+		var cost := int(step.get("cost", 1 << 30))
+		if p.money < cost:
+			break
+		p.money -= cost
+		p.prosperity_level += 1
+		var v := int(step.get("vp", 0))
+		p.victory_points += v
+		levels += 1
+		spent += cost
+		vp += v
+	return {"levels": levels, "money": spent, "vp": vp}
 
 ## Vero se TUTTI i seggi della partita sono controllati da bot (nessun umano al tavolo).
 func _all_automa() -> bool:
