@@ -62,6 +62,20 @@ func convert_temp_to_permanent(owner: String) -> bool:
 	return true
 
 
+## Scambia 1 Influenza temporanea di `mine` con 1 Influenza permanente di `theirs`
+## (Orientamento "Agenzia Centrale di Intelligence"): il cubo di `mine` diventa
+## permanente in quello slot, quello di `theirs` diventa temporaneo nello slot
+## lasciato libero. Nessun VP (come le altre conversioni). False se manca l'uno o l'altro.
+func swap_temp_perm(mine: String, theirs: String) -> bool:
+	var ti := temp.find(mine)
+	var pi := perm.find(theirs)
+	if ti == -1 or pi == -1:
+		return false
+	temp[ti] = theirs
+	perm[pi] = mine
+	return true
+
+
 ## Reset: "protegge" un cubo temporaneo spostandolo all'ultima posizione libera.
 func reset_temporary(owner: String) -> bool:
 	var idx := temp.find(owner)

@@ -553,11 +553,34 @@
    "effect_text": "Spend 1 Services and 25 money to place 1 Army from the reserve in Europe, 1 in Central Asia and 1 in East Asia - Pacific. Then, add 1 Influence to 1 of these Regions.",
    "effect_text_it": "Spendi 1 Servizi e 25 money per collocare 1 Armata presa dalla riserva in Europa, 1 in Asia centrale e 1 in Asia orientale - Pacifico. Poi, aggiungi 1 Influenza a 1 di queste Regioni.",
    "effect_ops": [
-    {"op": "spend", "services": 1, "money": 25},
-    {"op": "place_armies", "region": "europe", "n": 1},
-    {"op": "place_armies", "region": "central_asia", "n": 1},
-    {"op": "place_armies", "region": "east_asia_pacific", "n": 1},
-    {"op": "add_influence", "regions": ["europe", "central_asia", "east_asia_pacific"]}
+    {
+     "op": "spend",
+     "services": 1,
+     "money": 25
+    },
+    {
+     "op": "place_armies",
+     "region": "europe",
+     "n": 1
+    },
+    {
+     "op": "place_armies",
+     "region": "central_asia",
+     "n": 1
+    },
+    {
+     "op": "place_armies",
+     "region": "east_asia_pacific",
+     "n": 1
+    },
+    {
+     "op": "add_influence",
+     "regions": [
+      "europe",
+      "central_asia",
+      "east_asia_pacific"
+     ]
+    }
    ]
   },
   {
@@ -570,8 +593,18 @@
    "effect_text": "Perform the following actions in any order: Trade; Produce Energy, Raw Materials and Consumer Goods.",
    "effect_text_it": "Svolgi le azioni seguenti in qualsiasi ordine: Commercia; Produci energia, materie prime e beni di consumo.",
    "effect_ops": [
-    {"op": "trade"},
-    {"op": "produce", "count": 3, "allowed": ["energy", "raw_materials", "consumer_goods"]}
+    {
+     "op": "trade"
+    },
+    {
+     "op": "produce",
+     "count": 3,
+     "allowed": [
+      "energy",
+      "raw_materials",
+      "consumer_goods"
+     ]
+    }
    ]
   },
   {
@@ -584,11 +617,28 @@
    "effect_text": "Invest in 1 allied Country. You can also Invest in 1 additional allied Country of another Region, spending 10 money more.",
    "effect_text_it": "Investi in 1 Nazione Alleata. Puoi anche Investire in 1 Nazione Alleata aggiuntiva di un'altra Regione, spendendo 10 money in più.",
    "effect_ops": [
-    {"op": "invest"},
-    {"op": "choice", "options": [
-     [{"op": "noop"}],
-     [{"op": "spend", "money": 10}, {"op": "invest"}]
-    ]}
+    {
+     "op": "invest"
+    },
+    {
+     "op": "choice",
+     "options": [
+      [
+       {
+        "op": "noop"
+       }
+      ],
+      [
+       {
+        "op": "spend",
+        "money": 10
+       },
+       {
+        "op": "invest"
+       }
+      ]
+     ]
+    }
    ]
   },
   {
@@ -601,11 +651,154 @@
    "effect_text": "Choose 2 of the following actions, in any order: Trade; Produce 2 resource types; Invest in 1 allied Country.",
    "effect_text_it": "Scegli 2 delle azioni seguenti, in qualsiasi ordine: Commercia; Produci 2 tipi di risorse; Investi in 1 Nazione Alleata.",
    "effect_ops": [
-    {"op": "choose_n", "n": 2, "options": [
-     [{"op": "trade"}],
-     [{"op": "produce", "count": 2}],
-     [{"op": "invest"}]
-    ]}
+    {
+     "op": "choose_n",
+     "n": 2,
+     "options": [
+      [
+       {
+        "op": "trade"
+       }
+      ],
+      [
+       {
+        "op": "produce",
+        "count": 2
+       }
+      ],
+      [
+       {
+        "op": "invest"
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sa_russia_cambio_di_regime",
+   "power": "russia",
+   "display_name": "Cambio di Regime",
+   "art": "strategic_asset/strategic_asset_024.jpg",
+   "starting_vp": 4,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Choose another player that is not China. Spend 1 Services, 1 Army and 5 money, then take 1 of their non-starting allied Countries of value 1, discard any FDI/Military Base tokens on it and place it ready in front of you, even if you normally couldn't Improve Relations with it. Then, add 1 Influence to that Country's Region.",
+   "effect_text_it": "Scegli un altro giocatore che non sia la Cina. Spendi 1 Servizi, 1 Armata e 5 money, poi prendi 1 delle sue Nazioni Alleate non iniziali di valore 1, scarta tutti i segnalini IDE e Base Militare su di essa e collocala pronta davanti a te, anche se normalmente non puoi Migliorare le Relazioni con essa. Poi, aggiungi 1 Influenza alla Regione di quella Nazione.",
+   "effect_ops": [
+    {
+     "op": "regime_change",
+     "exclude": "china"
+    }
+   ]
+  },
+  {
+   "id": "sa_russia_brics",
+   "power": "russia",
+   "display_name": "BRICS",
+   "art": "strategic_asset/strategic_asset_025.jpg",
+   "starting_vp": 2,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Spend 30 money to add 1 Influence to 2 of the following Regions: Americas, Africa and South Asia. Then, China can spend 20 money (or as much as it has, if less) to add 1 Influence to the third Region.",
+   "effect_text_it": "Spendi 30 money per aggiungere 1 Influenza a 2 delle seguenti Regioni: Americhe, Africa e Asia meridionale. Poi, la Cina può spendere 20 money (o tutto quello che ha, se ne ha di meno) per aggiungere 1 Influenza alla terza Regione.",
+   "effect_ops": [
+    {
+     "op": "brics"
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_cambio_di_regime",
+   "power": "usa",
+   "display_name": "Cambio di Regime",
+   "art": "strategic_asset/strategic_asset_027.jpg",
+   "starting_vp": 4,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Choose another player that is not the EU. Spend 1 Services, 1 Army and 5 money, then take 1 of their non-starting allied Countries of value 1, discard any FDI/Military Base tokens on it and place it ready in front of you, even if you normally couldn't Improve Relations with it. Then, add 1 Influence to that Country's Region.",
+   "effect_text_it": "Scegli un altro giocatore che non sia l'UE. Spendi 1 Servizi, 1 Armata e 5 money, poi prendi 1 delle sue Nazioni Alleate non iniziali di valore 1, scarta tutti i segnalini IDE e Base Militare su di essa e collocala pronta davanti a te, anche se normalmente non puoi Migliorare le Relazioni con essa. Poi, aggiungi 1 Influenza alla Regione di quella Nazione.",
+   "effect_ops": [
+    {
+     "op": "regime_change",
+     "exclude": "eu"
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_aiuti_economici_e_militari",
+   "power": "usa",
+   "display_name": "Aiuti Economici e Militari",
+   "art": "strategic_asset/strategic_asset_028.jpg",
+   "starting_vp": 1,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Exhaust 2 of your allied Countries in different Regions. Spend 2 Armies and 15 money to add 1 Influence in each of their respective Regions and gain 2 Diplomacy.",
+   "effect_text_it": "Esaurisci 2 delle tue Nazioni Alleate in Regioni diverse. Spendi 2 Armate e 15 money per aggiungere 1 Influenza in ciascuna delle rispettive Regioni e ottenere 2 Diplomazia.",
+   "effect_ops": [
+    {
+     "op": "aid_econ_military"
+    }
+   ]
+  },
+  {
+   "id": "sa_usa_agenzia_centrale_di_intelligence",
+   "power": "usa",
+   "display_name": "Agenzia Centrale di Intelligence",
+   "art": "strategic_asset/strategic_asset_026.jpg",
+   "starting_vp": 5,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Spend 10 money to swap 1 of your temporary Influence in a Region with 1 permanent Influence of another player in the same Region. Then, you can do the same in another Region, spending 1 Services instead.",
+   "effect_text_it": "Spendi 10 money per scambiare 1 tua Influenza temporanea in una Regione con 1 Influenza permanente di un altro giocatore, nella stessa Regione. Poi, puoi fare la stessa cosa in un'altra Regione, spendendo invece 1 Servizi.",
+   "effect_ops": [
+    {
+     "op": "swap_influence"
+    }
+   ]
+  },
+  {
+   "id": "sa_china_surplus_commerciale",
+   "power": "china",
+   "display_name": "Surplus Commerciale",
+   "art": "strategic_asset/strategic_asset_030.jpg",
+   "starting_vp": 2,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Trade. Add 1 Influence in every Region in which you got at least 35 money from exporting to its Countries.",
+   "effect_text_it": "Commercia. Aggiungi 1 Influenza in ogni Regione in cui hai ottenuto almeno 35 money dall'esportazione verso le sue Nazioni.",
+   "effect_ops": [
+    {
+     "op": "trade"
+    },
+    {
+     "op": "surplus_regional_influence",
+     "threshold": 35
+    }
+   ]
+  },
+  {
+   "id": "sa_china_consenso_di_pechino",
+   "power": "china",
+   "display_name": "Consenso di Pechino",
+   "art": "strategic_asset/strategic_asset_029.jpg",
+   "starting_vp": 3,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "You can increase your Prosperity. Then, gain 1 Diplomacy for each time you increased your prosperity and Engage in 1 Region, even if you don't have any allied Countries there.",
+   "effect_text_it": "Puoi aumentare la tua Prosperità. Poi, ottieni 1 Diplomazia per ogni volta che hai aumentato la tua prosperità e Impegnati in 1 Regione, anche se non hai Nazioni Alleate in quella Regione.",
+   "effect_ops": [
+    {
+     "op": "china_prosperity_engage"
+    }
+   ]
+  },
+  {
+   "id": "sa_eu_politica_estera_di_sicurezza_comune",
+   "power": "eu",
+   "display_name": "Politica Estera di Sicurezza Comune",
+   "art": "strategic_asset/strategic_asset_031.jpg",
+   "starting_vp": 3,
+   "expansion": "diplomacy_dominance",
+   "effect_text": "Exhaust EU member states to Produce Diplomacy and Army. Then, Engage in 1 Region or Build a Base in 1 allied Country.",
+   "effect_text_it": "Esaurisci Stati membri dell'UE per Produrre Diplomazia e Armata. Poi, Impegnati in 1 Regione o Costruisci una Base in 1 Nazione Alleata.",
+   "effect_ops": [
+    {
+     "op": "eu_foreign_policy"
+    }
    ]
   }
  ]

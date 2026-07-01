@@ -81,13 +81,13 @@ static func has_allied_country_in_region(p: PlayerState, region: String) -> bool
 ## Ritorna i VP immediati guadagnati (dallo slot Influenza), o -1 se fallisce.
 static func execute_engage(gs: GameState, owner: String, region: String,
 		exhausted_values: Array = [], diplomatic_focus: bool = false,
-		slot_type: String = "", extra_discount: int = 0) -> int:
+		slot_type: String = "", extra_discount: int = 0, bypass_ally_check: bool = false) -> int:
 	var p := gs.player_by_power(owner)
 	if p == null or not gs.regions.has(region):
 		return -1
 	# Prerequisito (regolamento pag. 13): si può Engage solo in una Regione dove si
-	# ha almeno 1 Country alleata.
-	if not has_allied_country_in_region(p, region):
+	# ha almeno 1 Country alleata. Alcuni effetti (es. "Consenso di Pechino") lo scavalcano.
+	if not bypass_ally_check and not has_allied_country_in_region(p, region):
 		return -1
 	var cost := engage_cost(int(gs.regions[region]["engage_cost"]), exhausted_values, diplomatic_focus, extra_discount)
 	if not p.spend({"diplomacy": cost}):

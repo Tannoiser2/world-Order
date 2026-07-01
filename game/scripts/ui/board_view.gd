@@ -1551,6 +1551,20 @@ func _advance_play() -> void:
 			_op_invest_foreign(op)            # Nuovi Accordi Finanziari
 		"copy_opponent_card":
 			_op_copy_opponent_card(op)        # Intelligence di Acquisizione
+		"regime_change":
+			_op_regime_change(op)             # Cambio di Regime (Russia/USA)
+		"brics":
+			_op_brics(op)                     # BRICS (Russia)
+		"swap_influence":
+			_op_swap_influence(op)            # Agenzia Centrale di Intelligence (USA)
+		"aid_econ_military":
+			_op_aid_econ_military(op)         # Aiuti Economici e Militari (USA)
+		"surplus_regional_influence":
+			_op_surplus_regional_influence(op)   # Surplus Commerciale (China)
+		"china_prosperity_engage":
+			_op_china_prosperity_engage(op)   # Consenso di Pechino (China)
+		"eu_foreign_policy":
+			_op_eu_foreign_policy(op)         # Politica Estera di Sicurezza Comune (UE)
 		_:
 			if name in AUTO_OPS:
 				EffectExecutor.run(gs, _active().power, [op])
@@ -1685,6 +1699,397 @@ func _op_copy_opponent_card(op: Dictionary) -> void:
 		_advance_play())
 
 
+# --- Orientamenti Strategici nuovi (Diplomacy & Dominance): effetti con interazione fra giocatori ---
+
+## Cambio di Regime (Russia/USA): scegli un altro giocatore (non quello escluso da `exclude`,
+## es. Cina o UE), spendi 1 Servizi + 1 Armata (riserva) + 5 money, prendi 1 sua Nazione
+## Alleata NON iniziale di valore 1 (scarta i suoi IDE/Base, arriva pronta anche se
+## normalmente non potresti allearti con lei), poi aggiungi 1 Influenza alla sua Regione.
+func _op_regime_change(op: Dictionary) -> void:
+	var p := _active()
+	var exclude := String(op.get("exclude", ""))
+	var items := []
+	for other in gs.players:
+		if other.power == p.power or other.power == exclude:
+			continue
+		var starting: Array = GameSetup.STARTING_ALLIES.get(other.power, [])
+		for c in other.allied_countries:
+			if int(c.get("value", 0)) == 1 and not (String(c.get("display_name", "")) in starting):
+				items.append({"label": "%s (di %s)" % [c.get("display_name", "?"), other.power.to_upper()],
+					"value": {"owner": other.power, "country": c}})
+	if items.is_empty():
+		_status("Cambio di Regime: nessuna Nazione Alleata idonea (non iniziale, valore 1).")
+		_advance_play()
+		return
+	if int(p.resources.get("services", 0)) < 1 or p.armies_available < 1 or p.money < 5:
+		_status("Cambio di Regime: servono 1 Servizi, 1 Armata e 5 money.")
+		_advance_play()
+		return
+	_show_popup("Cambio di Regime: prendi 1 Nazione Alleata altrui (non iniziale, valore 1).", items, func(choice):
+		var sel: Dictionary = choice
+		var ep := gs.player_by_power(String(sel["owner"]))
+		var country: Dictionary = sel["country"]
+		var cid := String(country.get("id", ""))
+		if ep == null or not p.spend({"services": 1, "money": 5}):
+			_advance_play()
+			return
+		p.armies_available -= 1
+		ep.allied_countries = ep.allied_countries.filter(func(c): return String(c.get("id", "")) != cid)
+		ep.exhausted.erase(cid)
+		ep.fdi_countries.erase(cid)
+		ep.fdi_values.erase(int(country.get("value", 0)))
+		ep.bases.erase(cid)
+		p.allied_countries.append(country)
+		p.exhausted[cid] = false
+		var region := String(country.get("region", ""))
+		if gs.regions.has(region):
+			var vp: int = gs.regions[region]["track"].add(p.power, "")
+			p.victory_points += vp
+		_status("Cambio di Regime: presa %s da %s." % [country.get("display_name", "?"), String(sel["owner"]).to_upper()])
+		_layout_overlays()
+		_advance_play())
+
+
+## BRICS (Russia): spendi 30 money, aggiungi 1 Influenza a 2 delle 3 Regioni (Americhe,
+## Africa, Asia meridionale). Poi la Cina (se in gioco) può spendere fino a 20 money
+## (o quanto ne ha) per aggiungere 1 Influenza alla terza Regione.
+func _op_brics(_op: Dictionary) -> void:
+	var p := _active()
+	if p.money < 30:
+		_status("BRICS: servono 30 money.")
+		_advance_play()
+		return
+	p.money -= 30
+	_brics_pick_region(["americas", "africa", "south_asia"], [], 2)
+
+
+func _brics_pick_region(remaining: Array, chosen: Array, n: int) -> void:
+	if n <= 0:
+		_brics_place(chosen, 0, remaining)
+		return
+	var items := []
+	for r in remaining:
+		items.append({"label": String(r).replace("_", " ").capitalize(), "value": r})
+	_show_popup("BRICS: scegli una Regione (%d da scegliere)." % n, items, func(choice):
+		var r := String(choice)
+		var rest: Array = remaining.duplicate()
+		rest.erase(r)
+		chosen.append(r)
+		_brics_pick_region(rest, chosen, n - 1))
+
+
+## Posa l'Influenza (map-click) su ognuna delle Regioni scelte, poi passa alla Cina.
+func _brics_place(chosen: Array, i: int, leftover: Array) -> void:
+	if i >= chosen.size():
+		_brics_china_third(leftover[0] if leftover.size() == 1 else "")
+		return
+	var region: String = chosen[i]
+	_begin_influence_pick([region], "", func(_r: String, slot: String):
+		var vp: int = gs.regions[region]["track"].add(_active().power, slot)
+		_active().victory_points += vp
+		_layout_overlays()
+		_brics_place(chosen, i + 1, leftover))
+
+
+## La Cina può spendere fino a 20 (o quanto ha) per 1 Influenza nella terza Regione.
+func _brics_china_third(region: String) -> void:
+	var china := gs.player_by_power("china")
+	if region == "" or china == null or china.power == _active().power or china.money <= 0:
+		_advance_play()
+		return
+	var pay := mini(20, china.money)
+	_show_popup("La Cina può spendere %d money per 1 Influenza in %s: procedere?" % [pay, region.replace("_", " ").capitalize()],
+		[{"label": "Sì (Cina)", "value": true}, {"label": "No", "value": false}], func(yes):
+			if bool(yes):
+				china.money -= pay
+				_begin_influence_pick([region], "", func(_r: String, slot: String):
+					var vp: int = gs.regions[region]["track"].add(china.power, slot)
+					china.victory_points += vp
+					_status("BRICS: la Cina aggiunge Influenza in %s (-%d money)." % [region.replace("_", " ").capitalize(), pay])
+					_layout_overlays()
+					_advance_play())
+			else:
+				_advance_play())
+
+
+## Agenzia Centrale di Intelligence (USA): spendi 10 money per scambiare 1 tua Influenza
+## temporanea con 1 Influenza permanente di un altro giocatore nella stessa Regione.
+## Poi puoi ripeterlo in un'altra Regione spendendo 1 Servizi invece.
+func _op_swap_influence(_op: Dictionary) -> void:
+	_swap_influence_round(true, "")
+
+
+func _swap_candidates(exclude_region: String) -> Array:
+	var p := _active()
+	var out := []
+	for rid in gs.regions:
+		if rid == exclude_region:
+			continue
+		var track: InfluenceTrack = gs.regions[rid]["track"]
+		if not track.temp.has(p.power):
+			continue
+		for o in track.perm:
+			if o != null and o != p.power:
+				out.append(rid)
+				break
+	return out
+
+
+func _swap_influence_round(first: bool, used_region: String) -> void:
+	var p := _active()
+	var cost := {"money": 10} if first else {"services": 1}
+	if not p.has_resources(cost):
+		_advance_play()
+		return
+	var candidates := _swap_candidates(used_region)
+	if candidates.is_empty():
+		if first:
+			_status("Agenzia Centrale di Intelligence: nessuna Regione idonea (serve 1 tua Influenza temporanea e 1 permanente altrui nella stessa Regione).")
+		_advance_play()
+		return
+	var items := []
+	for rid in candidates:
+		items.append({"label": String(rid).replace("_", " "), "value": rid})
+	if not first:
+		items.append({"label": "Non ripetere", "value": ""})
+	var verb := "1a" if first else "2a (facoltativa, costo 1 Servizi)"
+	_show_popup("Agenzia Centrale di Intelligence: scegli la Regione per lo scambio %s." % verb, items, func(choice):
+		var region := String(choice)
+		if region == "":
+			_advance_play()
+			return
+		_swap_pick_owner(region, cost, first))
+
+
+func _swap_pick_owner(region: String, cost: Dictionary, first: bool) -> void:
+	var p := _active()
+	var track: InfluenceTrack = gs.regions[region]["track"]
+	var owners := {}
+	for o in track.perm:
+		if o != null and o != p.power:
+			owners[o] = true
+	var owner_list: Array = owners.keys()
+	if owner_list.size() == 1:
+		_swap_resolve(region, String(owner_list[0]), cost, first)
+		return
+	var items := []
+	for o in owner_list:
+		items.append({"label": String(o).to_upper(), "value": o})
+	_show_popup("Con quale giocatore in %s?" % region.replace("_", " "), items, func(choice):
+		_swap_resolve(region, String(choice), cost, first))
+
+
+func _swap_resolve(region: String, owner: String, cost: Dictionary, first: bool) -> void:
+	var p := _active()
+	if not p.spend(cost):
+		_advance_play()
+		return
+	var track: InfluenceTrack = gs.regions[region]["track"]
+	if track.swap_temp_perm(p.power, owner):
+		_status("Agenzia Centrale di Intelligence: scambio in %s con %s." % [region.replace("_", " "), owner.to_upper()])
+		_layout_overlays()
+	if first:
+		_swap_influence_round(false, region)
+	else:
+		_advance_play()
+
+
+## Aiuti Economici e Militari (USA): esaurisci 2 Nazioni Alleate PRONTE in Regioni
+## diverse, spendi 2 Armate (riserva) e 15 money, aggiungi 1 Influenza in ciascuna
+## delle 2 Regioni e ottieni 2 Diplomazia.
+func _op_aid_econ_military(_op: Dictionary) -> void:
+	var p := _active()
+	var ready := []
+	for c in p.allied_countries:
+		if not bool(p.exhausted.get(String(c.get("id", "")), false)):
+			ready.append(c)
+	var regions := {}
+	for c in ready:
+		regions[String(c.get("region", ""))] = true
+	if ready.size() < 2 or regions.size() < 2 or p.armies_available < 2 or p.money < 15:
+		_status("Aiuti Economici e Militari: servono 2 Nazioni Alleate pronte in Regioni diverse, 2 Armate e 15 money.")
+		_advance_play()
+		return
+	_aid_pick_first(ready)
+
+
+func _aid_pick_first(ready: Array) -> void:
+	var items := []
+	for c in ready:
+		items.append({"label": "%s (%s)" % [c.get("display_name", "?"), String(c.get("region", "")).replace("_", " ")], "value": c})
+	_show_popup("Aiuti Economici e Militari: scegli la 1a Nazione Alleata da esaurire.", items, func(choice):
+		var first: Dictionary = choice
+		var rest: Array = ready.filter(func(c): return String(c.get("region", "")) != String(first.get("region", "")))
+		_aid_pick_second(first, rest))
+
+
+func _aid_pick_second(first: Dictionary, rest: Array) -> void:
+	var items := []
+	for c in rest:
+		items.append({"label": "%s (%s)" % [c.get("display_name", "?"), String(c.get("region", "")).replace("_", " ")], "value": c})
+	_show_popup("Aiuti Economici e Militari: scegli la 2a Nazione Alleata (Regione diversa).", items, func(choice):
+		_aid_resolve(first, choice))
+
+
+func _aid_resolve(first: Dictionary, second: Dictionary) -> void:
+	var p := _active()
+	if not p.spend({"money": 15}) or p.armies_available < 2:
+		_status("Aiuti Economici e Militari: money/Armate insufficienti.")
+		_advance_play()
+		return
+	p.armies_available -= 2
+	p.exhausted[String(first.get("id", ""))] = true
+	p.exhausted[String(second.get("id", ""))] = true
+	p.gain_resource("diplomacy", 2, 0)
+	_aid_add_influence([String(first.get("region", "")), String(second.get("region", ""))], 0)
+
+
+func _aid_add_influence(regions: Array, i: int) -> void:
+	if i >= regions.size():
+		_status("Aiuti Economici e Militari: completato (+2 Diplomazia).")
+		_advance_play()
+		return
+	var region: String = regions[i]
+	_begin_influence_pick([region], "", func(_r: String, slot: String):
+		var vp: int = gs.regions[region]["track"].add(_active().power, slot)
+		_active().victory_points += vp
+		_layout_overlays()
+		_aid_add_influence(regions, i + 1))
+
+
+## Surplus Commerciale (China): dopo il Commercio, aggiungi 1 Influenza in OGNI Regione
+## in cui il valore esportato (simboli sulle tue Nazioni Alleate di quella Regione) è
+## almeno `threshold` money. Attribuzione proporzionale al peso della Regione sul totale
+## dei simboli venduti per ciascun tipo di risorsa esportato in questo Commercio.
+func _op_surplus_regional_influence(op: Dictionary) -> void:
+	var p := _active()
+	var threshold := int(op.get("threshold", 35))
+	if _trade_exported.is_empty():
+		_advance_play()
+		return
+	var per_region := {}
+	for rtype in _trade_exported:
+		var qty := int(_trade_exported[rtype])
+		if qty <= 0:
+			continue
+		var by_region := {}
+		var total := 0
+		for c in p.allied_countries:
+			var n: int = (c.get("exports", []) as Array).count(rtype)
+			if n <= 0:
+				continue
+			var rid := String(c.get("region", ""))
+			by_region[rid] = int(by_region.get(rid, 0)) + n
+			total += n
+		if total <= 0:
+			continue
+		var gain: int = int(Actions.EXPORT_GAIN.get(rtype, 0)) * qty
+		for rid in by_region:
+			per_region[rid] = float(per_region.get(rid, 0.0)) + gain * float(by_region[rid]) / float(total)
+	var qualifying := []
+	for rid in per_region:
+		if float(per_region[rid]) >= threshold:
+			qualifying.append(rid)
+	if qualifying.is_empty():
+		_status("Surplus Commerciale: nessuna Regione ha raggiunto %d money esportati." % threshold)
+		_advance_play()
+		return
+	_surplus_add_influence(qualifying, 0)
+
+
+func _surplus_add_influence(regions: Array, i: int) -> void:
+	if i >= regions.size():
+		_status("Surplus Commerciale: completato.")
+		_advance_play()
+		return
+	var region: String = regions[i]
+	_begin_influence_pick([region], "", func(_r: String, slot: String):
+		var vp: int = gs.regions[region]["track"].add(_active().power, slot)
+		_active().victory_points += vp
+		_layout_overlays()
+		_surplus_add_influence(regions, i + 1))
+
+
+## Consenso di Pechino (China): puoi aumentare la Prosperità (costo normale in Beni di
+## Consumo); se lo fai, ottieni 1 Diplomazia. Poi Impegnati in 1 Regione, anche senza
+## Nazioni Alleate lì.
+func _op_china_prosperity_engage(_op: Dictionary) -> void:
+	var p := _active()
+	var steps: Array = DataLoader.load_player_boards().get("prosperity_track", {}).get("steps_partial", [])
+	var can_afford: bool = p.prosperity_level < steps.size() \
+		and int(p.resources.get("consumer_goods", 0)) >= int((steps[p.prosperity_level] as Dictionary).get("cost_consumer_goods", 999))
+	if not can_afford:
+		_china_engage_step()
+		return
+	_show_popup("Consenso di Pechino: aumentare la Prosperità?", [
+		{"label": "Sì", "value": true}, {"label": "No", "value": false}], func(yes):
+			if bool(yes) and _increase_prosperity_discounted(p, 0):
+				p.gain_resource("diplomacy", 1, 0)
+				_status("Consenso di Pechino: Prosperità -> livello %d (+1 Diplomazia)." % p.prosperity_level)
+				_after_change()
+			_china_engage_step())
+
+
+## Impegnati in 1 Regione a scelta, anche senza Nazioni Alleate lì lì (scavalca il requisito normale).
+func _china_engage_step() -> void:
+	awaiting = "region"
+	awaiting_op = {"op": "china_free_engage"}
+	_status("Consenso di Pechino: Impegnati in 1 Regione (anche senza Nazioni Alleate lì).")
+	_after_change()
+
+
+## Politica Estera di Sicurezza Comune (UE): esaurisci Stati membri dell'UE (Nazioni
+## Alleate pronte in Europa) per Produrre 1 Diplomazia e 1 Armata (1 Stato esaurito per
+## risorsa). Poi Impegnati in 1 Regione o Costruisci una Base in 1 Nazione Alleata.
+func _op_eu_foreign_policy(_op: Dictionary) -> void:
+	var p := _active()
+	var ready := []
+	for c in p.allied_countries:
+		if String(c.get("region", "")) == "europe" and not bool(p.exhausted.get(String(c.get("id", "")), false)):
+			ready.append(c)
+	if ready.is_empty():
+		_status("Politica Estera di Sicurezza Comune: nessuno Stato membro dell'UE pronto da esaurire.")
+		_eu_foreign_choice()
+		return
+	_eu_pick_member(ready, 0)
+
+
+## Esaurisce fino a 2 Stati membri (il 1° -> +1 Diplomazia, il 2° -> +1 Armata).
+func _eu_pick_member(ready: Array, step: int) -> void:
+	if step >= 2 or ready.is_empty():
+		_eu_foreign_choice()
+		return
+	var p := _active()
+	var items := []
+	for c in ready:
+		items.append({"label": c.get("display_name", "?"), "value": c})
+	items.append({"label": "Non esaurire altri Stati", "value": {}})
+	var gain := "Diplomazia" if step == 0 else "Armata"
+	_show_popup("Politica Estera: esaurisci uno Stato membro dell'UE per +1 %s?" % gain, items, func(choice):
+		var c: Dictionary = choice
+		if c.is_empty():
+			_eu_foreign_choice()
+			return
+		p.exhausted[String(c.get("id", ""))] = true
+		if step == 0:
+			p.gain_resource("diplomacy", 1, 0)
+		else:
+			p.armies_available += 1
+		_status("Politica Estera: %s esaurita (+1 %s)." % [c.get("display_name", "?"), gain])
+		_after_change()
+		var rest: Array = ready.filter(func(x): return String(x.get("id", "")) != String(c.get("id", "")))
+		_eu_pick_member(rest, step + 1))
+
+
+## Impegnati in 1 Regione o Costruisci una Base: antepone l'op generico corrispondente.
+func _eu_foreign_choice() -> void:
+	_show_popup("Politica Estera: scegli l'azione finale.", [
+		{"label": "Impegnati (Engage) in 1 Regione", "value": "engage"},
+		{"label": "Costruisci una Base in 1 Nazione Alleata", "value": "build_base"}], func(choice):
+			play_queue.push_front({"op": String(choice)})
+			_advance_play())
+
+
 ## spend_for_gain: spendi fino a spend_max money; per ogni `per` money speso applichi
 ## `gain` (es. +3 Diplomazia). Scelta a popup (Non spendere / soglie abbordabili).
 func _resolve_spend_for_gain(op: Dictionary) -> void:
@@ -1761,6 +2166,9 @@ func _resolve_region_op(region: String) -> void:
 		_pick_exhaust_discount(region,
 			"Engage in %s (costo %d Dip)" % [region.replace("_", " "), int(gs.regions[region]["engage_cost"])],
 			func(chosen: Array): _resolve_engage(region, chosen))
+		return
+	if name == "china_free_engage":
+		_resolve_china_free_engage(region)
 		return
 	match name:
 		"place_armies":
@@ -1918,6 +2326,25 @@ func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
 	_event("%s: Engage in %s (-%d Dip, +%d VP%s)." % [
 		p.power.to_upper(), region.replace("_", " "), cost, vp,
 		", %d alleati esauriti" % chosen.size() if chosen.size() > 0 else ""])
+	_layout_overlays()
+	_advance_play()
+
+
+## Consenso di Pechino: Engage senza il requisito di Nazione Alleata nella Regione
+## (nessuno sconto da esaurimento: la Regione può non avere Nazioni Alleate).
+func _resolve_china_free_engage(region: String) -> void:
+	var p := _active()
+	_action_region = region
+	var diplo := p.focus == WO.Focus.DIPLOMATIC
+	var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), [], diplo, 0)
+	var vp := Actions.execute_engage(gs, p.power, region, [], diplo, "", 0, true)
+	if vp < 0:
+		if _action_failed("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost]):
+			return
+		_layout_overlays()
+		_advance_play()
+		return
+	_event("%s: Consenso di Pechino - Engage in %s (-%d Dip, +%d VP)." % [p.power.to_upper(), region.replace("_", " "), cost, vp])
 	_layout_overlays()
 	_advance_play()
 
