@@ -1491,13 +1491,11 @@ func _advance_play() -> void:
 				_status("Tocca una Regione dove hai Influenza temporanea da proteggere (reset).")
 				_after_change()
 		"increase_production":
-			var cnt := int(op.get("count", 1))
-			_pick_resource("Aumenta quale Produzione (+%d)?" % cnt, func(rt):
-				var pp := _active()
-				pp.production[rt] = int(pp.production.get(rt, 0)) + cnt
-				_status("Produzione %s +%d." % [RES_LABEL.get(rt, rt), cnt])
-				_after_change()
-				_advance_play())
+			# `count` = quante Produzioni DISTINTE aumentare, ognuna di +1 (regolamento: "Increase
+			# N of your Productions by 1" / FAQ "must choose N DIFFERENT Productions"). Con count=1
+			# coincide col vecchio +1 a una sola risorsa; con count>1 (es. Industrial Development,
+			# Rapid Industrialization) va scelta una risorsa DIVERSA per ciascun aumento.
+			_pick_increase_production(int(op.get("count", 1)), [])
 		"ready_country":
 			var n := int(op.get("n", 1))
 			var pr2 := _active()
@@ -2923,6 +2921,15 @@ func _buy_growth_action(card: Dictionary, nl: int) -> void:
 		_after_change()
 		_operational_advantage(p)
 		return
+	# Growth con un effetto IMMEDIATO proprio (es. Industrial Development: aumenta 2 Produzioni):
+	# lo si mette in testa alla coda e lo si risolve prima di riprendere la carta che ha portato
+	# a "Get a Growth Card". Gli "ongoing" restano passivi (letti altrove via p.growth_cards),
+	# quindi NON vanno accodati qui.
+	if bought:
+		var immediate_ops: Array = (card.get("effect_ops", []) as Array).filter(
+			func(o): return String((o as Dictionary).get("op", "")) != "ongoing")
+		for i in range(immediate_ops.size() - 1, -1, -1):
+			play_queue.push_front((immediate_ops[i] as Dictionary).duplicate(true))
 	_after_change()
 	_advance_play()
 
@@ -3336,6 +3343,32 @@ func _pick_resource(prompt: String, cb: Callable) -> void:
 	for rt in RES:
 		items.append({"label": RES_LABEL[rt], "value": rt})
 	_show_popup(prompt, items, cb)
+
+
+## "Increase N Productions by 1": sceglie N tipi DISTINTI (uno alla volta), ognuno +1.
+## `done` accumula i tipi già scelti in questa risoluzione (esclusi dalle scelte successive).
+func _pick_increase_production(remaining: int, done: Array) -> void:
+	if remaining <= 0:
+		_advance_play()
+		return
+	var items := []
+	for rt in RES:
+		if rt in done:
+			continue
+		items.append({"label": RES_LABEL[rt], "value": rt})
+	if items.is_empty():
+		_advance_play()
+		return
+	var ord := done.size() + 1
+	var prompt := "Aumenta quale Produzione (+1)?" if remaining == 1 and ord == 1 \
+		else "Aumenta quale Produzione (+1) — %d di %d?" % [ord, ord + remaining - 1]
+	_show_popup(prompt, items, func(rt):
+		var pp := _active()
+		pp.production[rt] = int(pp.production.get(rt, 0)) + 1
+		_status("Produzione %s +1." % RES_LABEL.get(rt, rt))
+		_after_change()
+		done.append(rt)
+		_pick_increase_production(remaining - 1, done))
 
 
 # --- Produce: azione domestica multi-traccia con quantità a scelta ---

@@ -260,8 +260,10 @@ static func valid_shape(cmd: Variant) -> bool:
 		"pick_influence_cell":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != "" \
 				and String(args.get("slot", "")) in ["permanent", "temporary"]
-		"pick_allied_country", "exhaust_ally":
+		"pick_allied_country", "exhaust_ally", "prep_ready_pick":
 			return typeof(args.get("country_id")) == TYPE_STRING and String(args["country_id"]) != ""
+		"prep_ready_skip":
+			return true
 		"popup_choice":
 			return typeof(args.get("index")) == TYPE_INT and int(args["index"]) >= 0
 		"pick_board_country":
