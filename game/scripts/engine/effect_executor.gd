@@ -17,6 +17,8 @@ const KNOWN := [
 	"gain_money_per_fdi", "move_free", "move_to_regions", "repeat", "spend_for_gain",
 	"spend_then", "discard", "research_free", "increase_prosperity",
 	"remove_enemy_army", "deploy_force", "invest_foreign", "copy_opponent_card",
+	"regime_change", "brics", "swap_influence", "aid_econ_military",
+	"surplus_regional_influence", "china_prosperity_engage", "eu_foreign_policy",
 ]
 
 
