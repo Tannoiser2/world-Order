@@ -5369,17 +5369,17 @@ func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 		drawer_content.add_child(row)
 
 
-## Pannello "Obiettivi": le CARTE Obiettivo Superpotenze del giocatore (immagine reale), con
-## sotto i VP che otterrebbe ora e, nel tooltip, lo stato live di ogni condizione.
+## Pannello Obiettivi: le CARTE Obiettivo Superpotenze del giocatore (immagine reale - niente
+## etichetta "Obiettivi", si riconoscono da sole), con sotto i VP che otterrebbe ora e, nel
+## tooltip, lo stato live di ogni condizione (ricalcolato ad ogni _refresh, non una tantum).
 func _build_objectives_section(p: PlayerState) -> void:
 	if p.objectives.is_empty():
 		return
 	var ri := 0 if gs.round <= 3 else 1   # soglia del prossimo round di Scoring (3 o 6)
-	drawer_content.add_child(_section("Obiettivi (Scoring round 3 e 6) — soglie round %d" % (3 if ri == 0 else 6)))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	drawer_content.add_child(row)
-	var cw: float = clampf(_plancia_height() * 1.05, 200.0, 320.0)
+	var cw: float = clampf(_plancia_height() * 0.9, 170.0, 270.0)
 	for obj in p.objectives:
 		var conds: Array = obj.get("conditions", [])
 		var met := 0
