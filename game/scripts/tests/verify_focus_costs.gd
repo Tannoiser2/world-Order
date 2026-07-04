@@ -49,32 +49,33 @@ func _init() -> void:
 	print("[%s] _increase_prod_options UE Diplomatic: %s" % ["OK" if s3 else "FAIL", str(opts)])
 	if not s3: fails += 1
 
-	# 4) Integrazione _apply_focus: l'UE con Diplomatic prepara 5 carte Nazione esaurite.
+	# 4) Integrazione _apply_focus: l'UE con Diplomatic prepara 5 carte Nazione esaurite
+	#    (esattamente 5 esaurite <= 5 riattivabili -> auto-ready, niente scelta interattiva).
 	var p = b.gs.players[eu_seat]
-	p.exhausted = {"c1": true, "c2": true, "c3": true, "c4": true, "c5": true, "c6": true}
+	p.exhausted = {"c1": true, "c2": true, "c3": true, "c4": true, "c5": true}
 	b._focus_round.erase("eu")            # forza la riapplicazione del Focus
 	b._apply_focus(p, WO.Focus.DIPLOMATIC)
 	var still_exhausted := 0
 	for cid in p.exhausted:
 		if bool(p.exhausted[cid]):
 			still_exhausted += 1
-	var readied := 6 - still_exhausted
-	var s4: bool = readied == 5
+	var readied := 5 - still_exhausted
+	var s4: bool = readied == 5 and b._prep_ready_remaining == 0
 	print("[%s] _apply_focus UE Diplomatic prepara 5 carte (preparate=%d)" % ["OK" if s4 else "FAIL", readied])
 	if not s4: fails += 1
 
-	# 5) E gli USA con Diplomatic ne preparano 4 (per confronto).
+	# 5) E gli USA con Diplomatic ne preparano 4 (per confronto; 4 esaurite <= 4 riattivabili).
 	var usa_seat := _seat_of(b, "usa")
 	var pu = b.gs.players[usa_seat]
-	pu.exhausted = {"u1": true, "u2": true, "u3": true, "u4": true, "u5": true, "u6": true}
+	pu.exhausted = {"u1": true, "u2": true, "u3": true, "u4": true}
 	b._focus_round.erase("usa")
 	b._apply_focus(pu, WO.Focus.DIPLOMATIC)
 	var su := 0
 	for cid in pu.exhausted:
 		if bool(pu.exhausted[cid]):
 			su += 1
-	var s5: bool = (6 - su) == 4
-	print("[%s] _apply_focus USA Diplomatic prepara 4 carte (preparate=%d)" % ["OK" if s5 else "FAIL", 6 - su])
+	var s5: bool = (4 - su) == 4 and b._prep_ready_remaining == 0
+	print("[%s] _apply_focus USA Diplomatic prepara 4 carte (preparate=%d)" % ["OK" if s5 else "FAIL", 4 - su])
 	if not s5: fails += 1
 
 	b.queue_free()

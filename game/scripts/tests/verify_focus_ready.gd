@@ -57,16 +57,27 @@ func _init() -> void:
 		"OK" if s1 else "FAIL", b._prep_ready_remaining, str(b._produce_mode)])
 	if not s1: fails += 1
 
-	# 2) Il giocatore tocca una Nazione esaurita -> riattivata; finito il ready si apre la Produce.
+	# 2) Il giocatore tocca una Nazione esaurita -> riattivata; finito il ready si passa
+	#    al passo successivo, l'aumento Produzione opzionale (NON piu' direttamente la Produce).
 	b._prep_ready_pick(ids[0])
 	await process_frame
 	var s2: bool = not bool(p.exhausted.get(ids[0], false)) and b._prep_ready_remaining == 0 \
-		and b._produce_mode and bool(p.exhausted.get(ids[1], false))   # le altre restano esaurite
-	print("[%s] riattivata la scelta -> Produce aperta (id0 ready=%s, remaining=%d)" % [
-		"OK" if s2 else "FAIL", str(not bool(p.exhausted.get(ids[0], false))), b._prep_ready_remaining])
+		and b._prep_awaiting_increase and not b._produce_mode \
+		and bool(p.exhausted.get(ids[1], false))   # le altre restano esaurite
+	print("[%s] riattivata la scelta -> passo Aumento Produzione (id0 ready=%s, remaining=%d, await=%s)" % [
+		"OK" if s2 else "FAIL", str(not bool(p.exhausted.get(ids[0], false))), b._prep_ready_remaining, str(b._prep_awaiting_increase)])
 	if not s2: fails += 1
 
-	# 3) Esaurite <= consentito (1 esaurita, ready 1) -> riattivazione AUTOMATICA, niente scelta.
+	# 2b) Saltando (o esaurendo) l'aumento Produzione, infine si apre la Produce del Focus.
+	b.apply_command(GameCommands.increase_production(us, b._next_seq(), ""))
+	await process_frame
+	var s2b: bool = not b._prep_awaiting_increase and b._produce_mode
+	print("[%s] dopo l'aumento (saltato) -> Produce del Focus aperta (produce=%s)" % [
+		"OK" if s2b else "FAIL", str(b._produce_mode)])
+	if not s2b: fails += 1
+
+	# 3) Esaurite <= consentito (1 esaurita, ready 1) -> riattivazione AUTOMATICA, niente scelta;
+	#    si passa comunque prima per l'aumento Produzione (non direttamente alla Produce).
 	_setup_prep(b, us)
 	p.money = 50
 	p.production = {"energy": 3, "raw_materials": 3, "food": 3, "consumer_goods": 2, "services": 1, "diplomacy": 1, "armies": 1}
@@ -75,10 +86,10 @@ func _init() -> void:
 	p.exhausted[ids[0]] = true
 	b._do_focus(WO.Focus.DOMESTIC)
 	await process_frame
-	var s3: bool = b._prep_ready_remaining == 0 and b._produce_mode \
+	var s3: bool = b._prep_ready_remaining == 0 and b._prep_awaiting_increase and not b._produce_mode \
 		and not bool(p.exhausted.get(ids[0], false))   # riattivata da sola
-	print("[%s] 1 esaurita, ready 1 -> auto-riattivata, Produce diretta (remaining=%d)" % [
-		"OK" if s3 else "FAIL", b._prep_ready_remaining])
+	print("[%s] 1 esaurita, ready 1 -> auto-riattivata, poi Aumento Produzione (remaining=%d, await=%s)" % [
+		"OK" if s3 else "FAIL", b._prep_ready_remaining, str(b._prep_awaiting_increase)])
 	if not s3: fails += 1
 
 	b.queue_free()
