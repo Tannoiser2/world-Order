@@ -182,119 +182,193 @@
   {
    "id": "growth_cambio_leadership",
    "display_name": "Cambio di Leadership",
-   "art": "wide_aux/wide_aux_010.jpg",
+   "art": "wide_aux/wide_aux_020.jpg",
    "level": 2,
    "victory_points": 4,
-   "cost": { "services": 2, "consumer_goods": 1 },
+   "cost": {
+    "services": 2,
+    "consumer_goods": 1
+   },
    "ability_text": "Once per round, you can discard your hand. Then, draw that many cards.",
    "ability_text_it": "Una volta per round, puoi scartare la tua mano. Poi, pesca altrettante carte.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:redraw_hand" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:redraw_hand"
+    }
+   ]
   },
   {
    "id": "growth_tenore_vita_elevato",
    "display_name": "Tenore di Vita Elevato",
-   "art": "wide_aux/wide_aux_011.jpg",
+   "art": "wide_aux/wide_aux_021.jpg",
    "level": 3,
    "victory_points": 4,
-   "cost": { "services": 3, "consumer_goods": 1 },
+   "cost": {
+    "services": 3,
+    "consumer_goods": 1
+   },
    "ability_text": "Whenever you Increase Prosperity, spend 1 less Consumer Goods and gain 1 extra VP.",
    "ability_text_it": "Ogni volta che aumenti la Prosperità, spendi 1 Beni di consumo in meno e ottieni 1 VP in più.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "prosperity_boost" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "prosperity_boost"
+    }
+   ]
   },
   {
    "id": "growth_autorita_inconfutabile",
    "display_name": "Autorità Inconfutabile",
-   "art": "wide_aux/wide_aux_012.jpg",
+   "art": "wide_aux/wide_aux_022.jpg",
    "level": 5,
    "victory_points": 6,
-   "cost": { "services": 6 },
+   "cost": {
+    "services": 6
+   },
    "ability_text": "In the Influence step of Scoring, win ties by number of Influence cubes (regardless of Armies in the Region).",
    "ability_text_it": "Nel passo Influenza del calcolo del punteggio, vinci i pareggi per il numero di cubetti Influenza (a prescindere dalle Armate nella Regione).",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "scoring_influence_tiebreak" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "scoring_influence_tiebreak"
+    }
+   ]
   },
   {
    "id": "growth_programma_nucleare",
    "display_name": "Programma Nucleare",
-   "art": "wide_aux/wide_aux_013.jpg",
+   "art": "wide_aux/wide_aux_023.jpg",
    "level": 5,
    "victory_points": 8,
-   "cost": { "services": 5, "armies": 2 },
+   "cost": {
+    "services": 5,
+    "armies": 2
+   },
    "ability_text": "You have +1 THREAT and +1 Defense in all Regions (even where you have no Armies).",
    "ability_text_it": "Hai +1 MINACCIA e +1 Difesa in tutte le Regioni (anche dove non hai Armate).",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "threat_defense_all_regions" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "threat_defense_all_regions"
+    }
+   ]
   },
   {
    "id": "growth_ottimizzazione_entrate",
    "display_name": "Ottimizzazione delle Entrate",
-   "art": "wide_aux/wide_aux_000.jpg",
+   "art": "wide_aux/wide_aux_014.jpg",
    "level": 1,
    "victory_points": 1,
-   "cost": { "services": 1, "money": 10 },
+   "cost": {
+    "services": 1,
+    "money": 10
+   },
    "ability_text": "During the Research step, gain the top bonus from 2 of your cards again.",
    "ability_text_it": "Durante il passo Ricerca, ottieni di nuovo il bonus superiore da 2 delle tue carte.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "research_top_bonus_twice" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "research_top_bonus_twice"
+    }
+   ]
   },
   {
    "id": "growth_affermazione_predominio",
    "display_name": "Affermazione di Predominio",
-   "art": "wide_aux/wide_aux_001.jpg",
+   "art": "wide_aux/wide_aux_015.jpg",
    "level": 4,
    "victory_points": 0,
    "vp_per_completed_round": 2,
-   "cost": { "services": 4, "diplomacy": 2 },
+   "cost": {
+    "services": 4,
+    "diplomacy": 2
+   },
    "ability_text": "When you gain this card, gain 2 VP for each round already completed. At the end of each turn in which you added Influence to a Region, gain 1 VP.",
    "ability_text_it": "Quando ottieni questa carta, ottieni 2 VP per ogni round già completato. Alla fine di ogni turno in cui hai aggiunto Influenza a 1 Regione, ottieni 1 VP.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "vp_on_influence_added" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "vp_on_influence_added"
+    }
+   ]
   },
   {
    "id": "growth_forza_reazione_rapida",
    "display_name": "Forza di Reazione Rapida",
-   "art": "wide_aux/wide_aux_002.jpg",
+   "art": "wide_aux/wide_aux_016.jpg",
    "level": 1,
    "victory_points": 2,
-   "cost": { "services": 1, "armies": 1 },
+   "cost": {
+    "services": 1,
+    "armies": 1
+   },
    "ability_text": "Whenever you choose your Focus: if you choose Domestic or Diplomatic, you can spend 5 money to gain 1 Army; if you choose Military, you can Deploy 1 Army for free.",
    "ability_text_it": "Ogni volta che scegli il Focus: se scegli Nazionale o Diplomatico, puoi spendere 5 money per ottenere 1 Armata; se scegli Militare, puoi Dislocare 1 Armata gratis.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:reaction_force" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:reaction_force"
+    }
+   ]
   },
   {
    "id": "growth_collaborazione_alleati",
    "display_name": "Collaborazione con gli Alleati",
-   "art": "wide_aux/wide_aux_003.jpg",
+   "art": "wide_aux/wide_aux_017.jpg",
    "level": 2,
    "victory_points": 3,
-   "cost": { "services": 2, "diplomacy": 1 },
+   "cost": {
+    "services": 2,
+    "diplomacy": 1
+   },
    "ability_text": "Once per round, you can exhaust 1 of your allied Countries to look at a number of cards from the top of your deck equal to that Country's value. Draw 1 of those cards and put the rest back on top of your deck in any order.",
    "ability_text_it": "Una volta per round, puoi esaurire 1 delle tue Nazioni Alleate per guardare un numero di carte dalla cima del tuo mazzo pari al valore di quella Nazione. Pesca 1 di queste carte e rimetti le altre in cima al tuo mazzo in qualsiasi ordine.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:scry_ally" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:scry_ally"
+    }
+   ]
   },
   {
    "id": "growth_efficienza_risorse",
    "display_name": "Efficienza delle Risorse",
-   "art": "wide_aux/wide_aux_009.jpg",
+   "art": "wide_aux/wide_aux_018.jpg",
    "level": 3,
    "victory_points": 3,
-   "cost": { "services": 3, "any": 5 },
+   "cost": {
+    "services": 3,
+    "any": 5
+   },
    "ability_text": "Once per round, you can Draw 1 card. Then, discard 1 card and gain resources based on its type(s): Diplomatic 2 Diplomacy, Military 1 Army, Economic 1 Consumer Goods, Domestic 1 Services.",
    "ability_text_it": "Una volta per round, puoi Pescare 1 carta. Poi, scarta 1 carta e ottieni risorse in base al suo tipo (o tipi): Diplomatico 2 Diplomazia, Militare 1 Armata, Economico 1 Beni di consumo, Nazionale 1 Servizi.",
    "expansion": "diplomacy_dominance",
-   "effect_ops": [ { "op": "ongoing", "tag": "once_per_round:resource_efficiency" } ]
+   "effect_ops": [
+    {
+     "op": "ongoing",
+     "tag": "once_per_round:resource_efficiency"
+    }
+   ]
   },
   {
    "id": "growth_vantaggio_operativo",
    "display_name": "Vantaggio Operativo",
-   "art": "wide_aux/wide_aux_008.jpg",
+   "art": "wide_aux/wide_aux_019.jpg",
    "level": 4,
    "victory_points": 5,
-   "cost": { "services": 4, "money": 15 },
+   "cost": {
+    "services": 4,
+    "money": 15
+   },
    "ability_text": "Draw 2 new Strategic Asset cards, keep 1 and gain its starting VP. Then, you can apply the effect of 1 of your Strategic Asset cards and flip it face down.",
    "ability_text_it": "Pesca 2 nuove carte Orientamento Strategico, tienine 1 e ottieni i suoi VP. Poi, puoi applicare l'effetto di 1 delle tue carte Orientamento Strategico e girarla a faccia in giù.",
    "expansion": "diplomacy_dominance",
