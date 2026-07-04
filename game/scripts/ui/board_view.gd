@@ -153,6 +153,7 @@ var _prep_ready_remaining := 0           # Country esaurite ancora da RIATTIVARE
 var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
 var _prep_increases_done := 0            # quanti aumenti Produzione gia' fatti in questo passo Focus
 var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in questo passo (Cina: 2 distinti)
+var _exhausted_seen: Dictionary = {}     # country_id -> pronta/esaurita all'ultimo render (per animare il "giro" solo alla transizione)
 var _automa_busy := false                # guardia anti-rientro del driver bot (Automa)
 var _automa_pending := false             # un passo bot e' "armato" (lo esegue _process dopo un breve ritardo)
 var _automa_delay := 0.0                 # tempo accumulato prima del prossimo passo bot
@@ -5075,10 +5076,39 @@ func _overlay_country_markers(card: Control, sz: Vector2, has_fdi: bool, has_bas
 
 
 ## Aspetto "esaurita" (tapped): carta grigia e leggermente ruotata.
-func _apply_exhausted(card: Control, sz: Vector2) -> void:
-	card.modulate = Color(0.55, 0.55, 0.6)
+## Aspetto "Esaurita" (grigio marcato e ruotata, ben distinguibile da "Pronta") o normale.
+func _set_exhausted_look(card: Control, sz: Vector2, exhausted: bool) -> void:
 	card.pivot_offset = sz * 0.5
-	card.rotation_degrees = 8.0
+	if exhausted:
+		card.modulate = Color(0.32, 0.32, 0.36)
+		card.rotation_degrees = 8.0
+	else:
+		card.modulate = Color(1, 1, 1)
+		card.rotation_degrees = 0.0
+
+
+## Anima il "giro" della carta tra Pronta <-> Esaurita: schiaccia in orizzontale (scala X a
+## ~0), scambia l'aspetto a metà corsa, poi la riespande. Come un vero giro della carta.
+func _flip_country_card(card: Control, sz: Vector2, to_exhausted: bool) -> void:
+	card.pivot_offset = sz * 0.5
+	var tw := card.create_tween()
+	tw.tween_property(card, "scale:x", 0.05, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func(): _set_exhausted_look(card, sz, to_exhausted))
+	tw.tween_property(card, "scale:x", 1.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## Applica l'aspetto Pronta/Esaurita alla carta `cid`, animando il giro SOLO se lo stato è
+## appena cambiato rispetto all'ultimo render (_exhausted_seen): evita di rigiocare
+## l'animazione a ogni refresh mentre lo stato resta invariato.
+func _apply_exhausted(card: Control, sz: Vector2, cid: String, exhausted: bool) -> void:
+	var was: bool = bool(_exhausted_seen.get(cid, exhausted))
+	if cid != "" and was != exhausted:
+		_set_exhausted_look(card, sz, was)   # parte dall'aspetto PRECEDENTE, poi anima verso il nuovo
+		_flip_country_card(card, sz, exhausted)
+	else:
+		_set_exhausted_look(card, sz, exhausted)
+	if cid != "":
+		_exhausted_seen[cid] = exhausted
 
 
 ## Pila di carte della stessa nazione: le copie in più stanno dietro, leggermente
@@ -5086,11 +5116,11 @@ func _apply_exhausted(card: Control, sz: Vector2) -> void:
 ## exhausted=true -> la nazione è esaurita (grigia/ruotata).
 func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, clickable: bool, exhausted := false, on_press := Callable()) -> Control:
 	var handler: Callable = on_press if on_press.is_valid() else _cmd_pick_allied_country.bind(cn)
+	var cid := String(cn.get("id", ""))
 	if count <= 1:
 		var single := _country_card_button(cn, sz, highlight)
 		single.disabled = not clickable
-		if exhausted:
-			_apply_exhausted(single, sz)
+		_apply_exhausted(single, sz, cid, exhausted)
 		if clickable:
 			single.pressed.connect(handler)
 		return single
@@ -5109,14 +5139,13 @@ func _ally_stack(cn: Dictionary, count: int, sz: Vector2, highlight: bool, click
 		back.focus_mode = Control.FOCUS_NONE
 		back.position = Vector2(off_x * j, off_y * j)
 		if exhausted:
-			back.modulate = Color(0.55, 0.55, 0.6)
+			back.modulate = Color(0.32, 0.32, 0.36)
 		holder.add_child(back)
 	# Carta in primo piano (in alto): cliccabile + flyover.
 	var front := _country_card_button(cn, sz, highlight)
 	front.position = Vector2(0, 0)
 	front.disabled = not clickable
-	if exhausted:
-		_apply_exhausted(front, sz)
+	_apply_exhausted(front, sz, cid, exhausted)
 	if clickable:
 		front.pressed.connect(handler)
 	holder.add_child(front)
@@ -5162,6 +5191,17 @@ func _ongoing_used(power: String, tag: String) -> bool:
 	return tag in (_used_ongoing.get(power, []) as Array)
 
 
+## Tag "once_per_round:..." della Growth `g` (una singola carta), "" se non ne ha uno
+## (abilità sempre attiva, effetto immediato una tantum, o nessun effetto).
+func _growth_once_per_round_tag(g: Dictionary) -> String:
+	for op in (g.get("effect_ops", []) as Array):
+		if String(op.get("op", "")) == "ongoing":
+			var tag := String(op.get("tag", ""))
+			if tag.begins_with("once_per_round:"):
+				return tag
+	return ""
+
+
 ## Pannello "Abilità continuative": elenca le ongoing possedute; quelle once-per-round
 ## hanno un pulsante "Usa" (disabilitato se già usate nel round).
 ## Strategic Asset del giocatore (le 2 carte speciali tenute al setup): disponibili
@@ -5204,8 +5244,7 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 		var pcard := _country_card_button({"art": art, "display_name": "Commerce"}, pcsz, false)
 		pcard.focus_mode = Control.FOCUS_NONE
 		var used: bool = i in flipped
-		if used:
-			_apply_exhausted(pcard, pcsz)
+		_apply_exhausted(pcard, pcsz, "commerce:%s:%d" % [p.power, i], used)
 		var prods := []
 		for res in (cards[i] as Dictionary):
 			var qy := int((cards[i] as Dictionary)[res])
@@ -5225,10 +5264,19 @@ func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(col)
 	var cw: float = clampf(_plancia_height() * 0.78, 120.0, 200.0)
+	var gsz := Vector2(cw, cw / 2.4)
 	for g in p.growth_cards:
-		var card := _country_card_button(g, Vector2(cw, cw / 2.4), false)
+		var card := _country_card_button(g, gsz, false)
 		card.disabled = true
-		card.tooltip_text = "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), _card_text(g)]
+		var tip := "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), _card_text(g)]
+		# Le abilità "once per round" mostrano la carta girata/grigia (come le Nazioni esaurite
+		# e le Commerce) quando già usate in questo round; tornano normali al round successivo.
+		var tag := _growth_once_per_round_tag(g)
+		if tag != "":
+			var used := _ongoing_used(p.power, tag)
+			_apply_exhausted(card, gsz, "growth:%s:%s" % [p.power, tag], used)
+			tip += "\n(%s in questo round)" % ("Già usata" if used else "Usabile 1 volta")
+		card.tooltip_text = tip
 		col.add_child(card)
 
 
