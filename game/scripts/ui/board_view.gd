@@ -70,6 +70,7 @@ var log_toggle: Button
 var log_title: Label
 var _log_collapsed := true
 var _log_lines: Array = []
+var _log_bold_font: FontVariation   # creato pigramente: NERETTO delle righe-azione nel Registro
 # AVVISO (banner) prominente: per esempio quando un'azione non e' eseguibile. Sincronizzato
 # (msg + contatore) cosi' lo vede anche il client che ha tentato l'azione.
 var notify_banner: Panel
@@ -1163,8 +1164,9 @@ func _on_allied_pressed(country: Dictionary) -> void:
 			_advance_play()
 		elif name == "build_base":
 			# Build a Base: muovi da 1 fino al valore del Country (pag. 15), non 1 fisso.
+			var allow_repeat: bool = active_mods.has("base_repeat_once")
 			_pick_base_armies(country, func(n_armies):
-				var bvp := Actions.execute_build_base(gs, p.power, country, n_armies, slot)
+				var bvp := Actions.execute_build_base(gs, p.power, country, n_armies, slot, allow_repeat)
 				if bvp < 0:
 					if _action_failed("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?")):
 						return
@@ -2793,7 +2795,13 @@ func _action_failed(reason: String) -> bool:
 	if _play_ops_started <= 1 and not _playing_asset and not _playing_eo:
 		_abort_play(reason)
 		return true
-	_status(reason)
+	# Un op PRECEDENTE della stessa carta ha già avuto effetto (es. "Produci, poi Get a Growth":
+	# la Produce è già avvenuta) - non si può restituire la carta, ma il giocatore deve capire
+	# CHIARAMENTE cosa e' successo (banner prominente, non solo la riga di stato silenziosa: si
+	# rischiava di pensare che il turno fosse finito da solo senza motivo, segnalato).
+	var full := reason + " Il resto della carta è già stato applicato; questa parte non ha avuto effetto."
+	_notify(full)
+	_log(full)
 	return false
 
 
@@ -3507,6 +3515,36 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 	# (_show_produce_bar), come le altre azioni a quantità libera (Trade, Move).
 
 
+## Aumento Produzione (Choose Focus): EVIDENZIA sulla plancia la/le caselle di Produzione
+## aumentabili (quella subito a destra del cubo attuale sulla SUA track), invece di un elenco
+## di bottoni testuali nella barra in alto - così si vede DOVE andrebbe il cubo, come per
+## Commercio/Produce. Diplomatico/Militare: una sola casella (la propria); Domestico: tutte e
+## 7 (scelta libera fra qualunque Produzione, regolamento pag. 11).
+func _add_increase_overlays(area: Control, p: PlayerState, _pw: float, ph: float) -> void:
+	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
+	var d := ph * 0.135
+	for o in opts:
+		var res := String(o["type"])
+		if not PROD_TRACKS.has(res):
+			continue
+		var t: Array = PROD_TRACKS[res]
+		var lvl := int(p.production.get(res, 0))
+		var x0: float = RAW_MATERIALS_X.get(p.power, t[0]) if res == "raw_materials" else t[0]
+		var x: float = x0 + lvl * PROD_PITCH
+		var y: float = t[1]
+		var b := Button.new()
+		b.flat = true
+		b.anchor_left = x; b.anchor_right = x; b.anchor_top = y; b.anchor_bottom = y
+		b.offset_left = -d * 0.55; b.offset_right = d * 0.55; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
+		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d * 0.28))
+		sb.bg_color = Color(0.95, 0.85, 0.4, 0.22)
+		sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4, 0.95)
+		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
+		b.tooltip_text = "Aumenta Produzione %s (-%d money)" % [String(RES_NAME_IT.get(res, res)), int(o["cost"])]
+		b.pressed.connect(_cmd_increase_production.bind(res))
+		area.add_child(b)
+
+
 ## Armate da produrre (ognuna consuma Cibo + Materie Prime come le altre secondarie, vedi
 ## Actions.SECONDARY_REQ), regolate con ± nella barra scelte.
 func _produce_armies_adjust(delta: int) -> void:
@@ -3522,6 +3560,11 @@ func _show_produce_bar(p: PlayerState) -> void:
 	info.text = "PRODUCE: trascina il segnalino sulla track fino allo slot desiderato (o toccalo)."
 	if _produce_max_types > 0:
 		info.text += " Fino a %d tipi (scelti %d/%d)." % [_produce_max_types, _produce_sel.size(), _produce_max_types]
+	elif _produce_allowed.size() > 1:
+		# Nessun limite di CONTEGGIO (es. Focus Domestico: Beni di consumo + Servizi), ma la
+		# lista e' ristretta: si puo' produrre OGNUNO di questi tipi, non solo il primo scelto.
+		info.text += " Puoi produrre ognuno di questi tipi: %s." % ", ".join(
+			_produce_allowed.map(func(t): return String(RES_NAME_IT.get(t, t))))
 	info.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
 	info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(info)
@@ -3560,11 +3603,18 @@ func _show_produce_bar(p: PlayerState) -> void:
 		plus.pressed.connect(_produce_armies_adjust.bind(1))
 		choice_flow.add_child(plus)
 	var ok := Button.new()
+	var missing_named: Array = (_produce_allowed.filter(func(t): return not _produce_sel.has(t))
+		.map(func(t): return String(RES_NAME_IT.get(t, t)))) if (_produce_max_types <= 0 and _produce_allowed.size() > 1) else []
 	if _produce_max_types > 0 and _produce_sel.size() < _produce_max_types:
 		# Bottone stesso col conto residuo: senza, si confermava dopo il 1° tipo pensando di
 		# aver finito ("Produci 3 tipi" ne produceva solo 1) - il testo del bottone che si preme
 		# per davvero e' il posto giusto per l'avviso, non solo l'etichetta in alto.
 		ok.text = "Conferma (solo %d/%d tipi)" % [_produce_sel.size(), _produce_max_types]
+		ok.add_theme_color_override("font_color", Color(0.95, 0.5, 0.3))
+	elif not missing_named.is_empty():
+		# Stesso avviso quando il CONTEGGIO e' libero ma la lista e' ristretta (Focus Domestico:
+		# Beni di consumo + Servizi) - segnalato: si produceva solo 1 dei 2 tipi possibili.
+		ok.text = "Conferma (manca: %s)" % ", ".join(missing_named)
 		ok.add_theme_color_override("font_color", Color(0.95, 0.5, 0.3))
 	else:
 		ok.text = "Conferma"
@@ -3667,7 +3717,10 @@ func _apply_produce() -> void:
 		_advance_play()
 
 
-## Etichette italiane leggibili per le opzioni di una scelta (choice/choose_n).
+## Etichette italiane leggibili per le opzioni di una scelta (choice/choose_n). COMPLETO su
+## tutti gli "op" che possono comparire dentro un'opzione (data/*.json) - senza una voce qui,
+## il bottone mostrava il nome tecnico inglese grezzo ("discard", "trash", ecc: uno dei "codici
+## che non si vedono bene" segnalati, non un simbolo mancante dal font ma una traduzione mancante).
 const OP_IT := {
 	"trade": "Commercia", "produce": "Produci", "invest": "Investi",
 	"build_base": "Costruisci Base", "engage": "Impegnati", "move": "Sposta Armate",
@@ -3675,15 +3728,25 @@ const OP_IT := {
 	"increase_prosperity": "Aumenta Prosperità", "get_growth": "Carta Crescita",
 	"draw": "Pesca", "spend": "Spendi", "noop": "Niente",
 	"gain_money": "+money", "gain_resource": "+risorsa", "gain_armies": "+Armate",
+	"gain_vp": "+VP", "increase_production": "Aumenta Produzione",
+	"play_another": "Gioca un'altra carta", "spend_then": "Spendi",
+	"discard": "Scarta", "trash": "Elimina (trash)",
 }
 
-## Etichetta di un'opzione (lista di op) per le barre di scelta.
+## Etichetta di un'opzione (lista di op) per le barre di scelta. Per "discard"/"trash" con un
+## conteggio (n) lo mostra ("Scarta 2 carte"), non solo il verbo: era poco chiaro che l'opzione
+## comportasse scegliere PIÙ carte da scartare, non una soltanto (segnalato).
 func _option_label(opt: Variant) -> String:
 	var flat: Array = opt if opt is Array else [opt]
 	var parts := []
 	for o in flat:
-		var nm := String((o as Dictionary).get("op", ""))
-		parts.append(OP_IT.get(nm, nm))
+		var od := o as Dictionary
+		var nm := String(od.get("op", ""))
+		var lbl: String = OP_IT.get(nm, nm)
+		if nm == "discard" and od.has("n"):
+			var n := int(od["n"])
+			lbl = "%s %d cart%s" % [lbl, n, "a" if n == 1 else "e"]
+		parts.append(lbl)
 	return " + ".join(parts) if parts.size() > 0 else "?"
 
 
@@ -3796,11 +3859,16 @@ func _board_countries() -> Array:
 	return all_countries
 
 
-## Country alleate idonee per l'op data (invest = tutte; build_base = con base).
+## Country alleate idonee per l'op data (invest = tutte; build_base = con base, non ancora al
+## limite di Basi in quella Country - 1 normalmente, 2 con una carta col modifier
+## "base_repeat_once" come Strengthen Alliance, che permette di rinforzarla una 2a volta).
 func _eligible_allied(op_name: String) -> Array:
 	var p := _active()
 	if op_name == "build_base":
-		return p.allied_countries.filter(func(c): return c.get("has_base_symbol", false) and p.power in c.get("base_allowed_powers", []))
+		var cap := 2 if active_mods.has("base_repeat_once") else 1
+		return p.allied_countries.filter(func(c):
+			return c.get("has_base_symbol", false) and p.power in c.get("base_allowed_powers", []) \
+				and p.bases.count(String(c.get("id", ""))) < cap)
 	return p.allied_countries
 
 
@@ -4049,6 +4117,24 @@ func _event(msg: String) -> void:
 	_log(msg)
 
 
+## Marcatore INTERNO (mai mostrato cosi' com'e') di inizio Preparazione/Azione/Aftermath: usato
+## SOLO per riconoscere in _render_log dove disegnare un'intestazione di turno ben visibile,
+## invece del vecchio testo con simboli "══" (poco leggibile, sostituito da un widget vero).
+func _log_turn(msg: String) -> void:
+	_log("══%s══" % msg)
+
+
+## Potenza che ha compiuto l'azione descritta dalla riga (se comincia col suo nome in
+## MAIUSCOLO, come generano _event/_op_*: "USA: ...", "USA gioca: ...") - per colorarla nel
+## Registro. "" se la riga non è attribuibile a una potenza specifica.
+func _log_line_power(m: String) -> String:
+	for code in ["usa", "eu", "china", "russia"]:
+		var up: String = String(code).to_upper()
+		if m.begins_with(up) and m.length() > up.length() and (m[up.length()] == ":" or m[up.length()] == " "):
+			return String(code)
+	return ""
+
+
 func _render_log() -> void:
 	if log_content == null:
 		return
@@ -4056,23 +4142,53 @@ func _render_log() -> void:
 		c.queue_free()
 	if _log_collapsed:
 		return
-	# Le piu' recenti in fondo (come una chat); lo scroll in basso e' differito (dopo il layout).
+	if _log_bold_font == null:
+		_log_bold_font = FontVariation.new()
+		_log_bold_font.base_font = get_theme_default_font()
+		_log_bold_font.variation_embolden = 0.9
+	# Le più RECENTI IN ALTO (non più in fondo come una chat): si legge subito l'ultima cosa
+	# successa senza dover scrollare.
 	var start := maxi(0, _log_lines.size() - 60)
-	for i in range(start, _log_lines.size()):
+	for i in range(_log_lines.size() - 1, start - 1, -1):
+		var m := String(_log_lines[i])
+		if m.begins_with("══") and m.ends_with("══"):
+			log_content.add_child(_make_log_turn_header(m.trim_prefix("══").trim_suffix("══").strip_edges()))
+			continue
 		var l := Label.new()
-		l.text = String(_log_lines[i])
+		l.text = m
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 4))
-		l.add_theme_color_override("font_color", Color(0.82, 0.86, 0.92) if i % 2 == 0 else Color(0.72, 0.78, 0.88))
+		l.add_theme_font_size_override("font_size", maxi(9, _base_fs() - 6))
+		var pw := _log_line_power(m)
+		if pw != "":
+			# Azione di una potenza: colore della Nazione + NERETTO (si distingue a colpo
+			# d'occhio dalle righe informative generiche, es. riepiloghi di scoring).
+			l.add_theme_color_override("font_color", POWER_COLORS.get(pw, Color(0.82, 0.86, 0.92)))
+			l.add_theme_font_override("font", _log_bold_font)
+		else:
+			l.add_theme_color_override("font_color", Color(0.6, 0.64, 0.72))
 		log_content.add_child(l)
-	_scroll_log_bottom.call_deferred()
 
 
-func _scroll_log_bottom() -> void:
-	if is_instance_valid(log_scroll):
-		var sb := log_scroll.get_v_scroll_bar()
-		if sb:
-			log_scroll.scroll_vertical = int(sb.max_value)
+## Intestazione ben visibile per i cambi di turno/round nel Registro (barra colorata +
+## etichetta in grassetto), al posto del vecchio testo con simboli "══ ... ══" (debole/poco
+## leggibile secondo il font - cfr. segnalazione "codici che non si vedono bene").
+func _make_log_turn_header(text: String) -> Control:
+	var pnl := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.22, 0.3, 0.46, 0.9)
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 6; sb.content_margin_right = 6
+	sb.content_margin_top = 3; sb.content_margin_bottom = 3
+	pnl.add_theme_stylebox_override("panel", sb)
+	var lab := Label.new()
+	lab.text = text
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lab.add_theme_font_size_override("font_size", maxi(10, _base_fs() - 4))
+	lab.add_theme_color_override("font_color", Color(1, 1, 1))
+	if _log_bold_font:
+		lab.add_theme_font_override("font", _log_bold_font)
+	pnl.add_child(lab)
+	return pnl
 
 
 func _toggle_log() -> void:
@@ -4153,10 +4269,16 @@ func _layout_ui() -> void:
 	drawer.visible = true
 	drawer.position = Vector2(0, content_top)
 	drawer.size = Vector2(board_w, content_h)
-	map_viewport.position = Vector2(board_w, content_top)
-	map_viewport.size = Vector2(maxf(1.0, w - board_w), content_h)
-	# "Board mercato" (Research): occupa l'area della mappa; la board resta a sinistra.
+	# REGISTRO: colonna VERA (riserva spazio, non sovrappone la mappa) - calcolata PRIMA di
+	# posizionare la mappa così map_viewport si restringe di conseguenza. Nascosta in Research
+	# (la mappa lascia il posto alla board mercato).
 	var in_research: bool = _ui_phase == "Research"
+	var log_w := 0.0
+	if log_panel and not in_research:
+		log_w = clampf((w - board_w) * 0.42, 190.0, 340.0) if not _log_collapsed else (_base_fs() + 18.0)
+	map_viewport.position = Vector2(board_w, content_top)
+	map_viewport.size = Vector2(maxf(1.0, w - board_w - log_w), content_h)
+	# "Board mercato" (Research): occupa l'area della mappa; la board resta a sinistra.
 	if market_panel:
 		market_panel.visible = in_research
 		if in_research:
@@ -4173,14 +4295,14 @@ func _layout_ui() -> void:
 		hand_top = h - tab_h - hand_h
 		hand_panel.position = Vector2(0, hand_top)
 		hand_panel.size = Vector2(w, hand_h)
-	# REGISTRO: colonna sul bordo DESTRO della mappa, sopra la barra MANO. Collassata = solo una
-	# linguetta col tasto per espanderla; espansa = colonna con la storia. Nascosta in Research.
+	# REGISTRO: colonna VERA (log_w già riservato prima, restringendo map_viewport) sul bordo
+	# DESTRO, sopra la barra MANO. Collassata = solo una linguetta col tasto per espanderla;
+	# espansa = colonna con la storia. Nascosta in Research.
 	if log_panel:
 		log_panel.visible = not in_research
 		var log_top := content_top
 		var log_bottom := minf(content_top + content_h, hand_top - 2.0)
 		var log_h := maxf(40.0, log_bottom - log_top)
-		var log_w := clampf((w - board_w) * 0.42, 190.0, 340.0) if not _log_collapsed else (_base_fs() + 18.0)
 		log_panel.position = Vector2(w - log_w, log_top)
 		log_panel.size = Vector2(log_w, log_h)
 		log_toggle.text = "≡" if _log_collapsed else "▶"
@@ -4661,6 +4783,8 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 		_add_trade_overlays(area, p, pw, ph)
 	elif producing:
 		_add_produce_overlays(area, p, pw, ph)
+	elif interactive and _prep_awaiting_increase:
+		_add_increase_overlays(area, p, pw, ph)
 	return view
 
 
@@ -5314,13 +5438,15 @@ func _build_commerce_section(p: PlayerState, is_active: bool, parent: Control) -
 		prow.add_child(pcard)
 
 
-## Colonna Growth: le Growth card acquisite dal giocatore, mostrate come carte
-## (stessa arte wide_aux del mazzo) impilate, accanto agli Strategic Asset.
+## Riga Growth (con wrap): le Growth card acquisite dal giocatore, mostrate come carte (stessa
+## arte wide_aux del mazzo) IN FILA una dopo l'altra (non impilate verticalmente, cosi' occupano
+## meno spazio) - va a capo da sola se non entrano tutte sulla stessa riga.
 func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> void:
 	if p.growth_cards.is_empty():
 		return
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 5)
+	var col := HFlowContainer.new()
+	col.add_theme_constant_override("h_separation", 6)
+	col.add_theme_constant_override("v_separation", 6)
 	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(col)
 	var cw: float = clampf(_plancia_height() * 0.78, 120.0, 200.0)
@@ -5333,6 +5459,10 @@ func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		var usable: bool = is_active and tag != "" and not used and playing_card.is_empty()
 		var card := _country_card_button(g, gsz, usable)
 		card.disabled = not usable
+		# SHRINK: senza, il bottone si allarga a tutta la riga del contenitore e l'evidenziazione
+		# "usabile" (bordo verde) finisce per abbracciare un rettangolo enorme pieno di spazio
+		# vuoto invece della sola carta (segnalato con screenshot).
+		card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		if usable:
 			card.pressed.connect(_cmd_use_ongoing.bind(tag))
 		var tip := "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), _card_text(g)]
@@ -5623,6 +5753,11 @@ func _draw_highest_value(p: PlayerState) -> void:
 func _pick_hand_card(prompt: String, cb: Callable) -> void:
 	var items := []
 	for c in _active().hand:
+		# La carta IN RISOLUZIONE (playing_card) resta in mano finché non finisce di risolversi
+		# (_finish_card la sposta poi tra le giocate): esclusa qui, altrimenti si potrebbe
+		# scartarla mentre e' ancora "in gioco" e finire duplicata sia in discard che in played.
+		if not playing_card.is_empty() and c == playing_card:
+			continue
 		items.append({"label": String(c.get("display_name", "?")), "value": c})
 	if items.is_empty():
 		_refresh()
@@ -5672,7 +5807,10 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	# Durante una SCELTA (dopo aver giocato una carta: nazione alleata, ecc.) o durante
 	# il Commercio, la mano si COLLASSA da sola così non copre la plancia/le scelte.
 	# Per le scelte sulla MAPPA è già tutta la plancia a chiudersi (_update_drawer_state).
-	var auto_hide: bool = awaiting != "" or _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() or _aftermath_choice_p != null or _ui_phase == "Preparazione"
+	# NIENTE piu' "tutta la Preparazione" qui: la si VEDEVA scegliendo il Focus, ma serve
+	# proprio in quel momento (sapere cosa hai in mano aiuta a decidere quale Focus scegliere,
+	# segnalato) - resta nascosta SOLO nella Produzione del Focus (_produce_mode, gia' sotto).
+	var auto_hide: bool = awaiting != "" or _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() or _aftermath_choice_p != null
 	var bar := Button.new()
 	bar.flat = true
 	bar.add_theme_color_override("font_color", Color(0.85, 0.85, 0.6))
@@ -6624,15 +6762,17 @@ func _apply_focus(p: PlayerState, f: int) -> String:
 
 
 ## Tipi di Produzione aumentabili dal Focus corrente di `p` + il costo (Choose Focus,
-## passo "Increase Production"): Diplomatic -> Diplomazia, Military -> Armate, Domestic
-## -> una primaria (Energia/Materie/Cibo). Ritorna [{type, cost}].
+## passo "Increase Production"): Diplomatic -> SOLO Diplomazia, Military -> SOLO Armate (la
+## loro Player Board indica una Produzione specifica); Domestic -> QUALSIASI delle 7 Produzioni
+## a scelta (la sua Player Board non ne indica una fissa - regolamento pag. 11/15: "Produce"
+## comprende tutti e 7 i tipi, e l'Aumento del Domestico segue la stessa scelta libera).
+## Ritorna [{type, cost}].
 func _increase_prod_options(p: PlayerState) -> Array:
 	var key: String = ["domestic", "diplomatic", "military"][p.focus]
 	var fb: Dictionary = focus_bonuses.get(key, {})
 	# Costo del PROSSIMO aumento (per-potenza; per la Cina il 2° aumento Domestic costa di piu').
 	var cost := _focus_increase_cost_n(p.power, p.focus, _prep_increases_done)
-	var types: Array = [String(fb["increase_production"])] if fb.has("increase_production") \
-		else ["energy", "raw_materials", "food"]
+	var types: Array = [String(fb["increase_production"])] if fb.has("increase_production") else RES
 	var out := []
 	for t in types:
 		if String(t) in _prep_increased_types:
@@ -6786,26 +6926,21 @@ func _show_ready_bar() -> void:
 
 ## Barra "Aumento Produzione" ricostruita dallo STATO sincronizzato: la disegna _refresh per
 ## il giocatore di turno (in rete: il client), così la scelta non resta intrappolata sull'host.
+## Niente elenco di bottoni per tipo: le caselle aumentabili sono EVIDENZIATE direttamente
+## sulla plancia (_add_increase_overlays) - qui resta solo l'istruzione e "Salta".
 func _show_increase_bar() -> void:
 	_clear_choice_bar()
 	var p := _active()
-	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
-	var head := Label.new()
 	var maxinc := _max_focus_increases(p.power, p.focus)
-	head.text = "Aumento Produzione (opzionale) - %s:" % p.power.to_upper()
+	var head := Label.new()
+	head.text = "Aumento Produzione (opzionale) - %s: tocca la casella EVIDENZIATA sulla plancia." % p.power.to_upper()
 	if maxinc > 1:
-		head.text = "Aumento Produzione (opzionale) - %s [%d/%d, puoi aumentarne 2]:" % [
+		head.text = "Aumento Produzione (opzionale) - %s [%d/%d, puoi aumentarne 2]: tocca la casella EVIDENZIATA sulla plancia." % [
 			p.power.to_upper(), _prep_increases_done + 1, maxinc]
 	head.add_theme_font_size_override("font_size", _base_fs() + 1)
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(head)
-	for o in opts:
-		var b := Button.new()
-		b.text = "+1 %s (-%d money)" % [RES_LABEL.get(o["type"], o["type"]), int(o["cost"])]
-		b.add_theme_font_size_override("font_size", _base_fs() + 1)
-		b.pressed.connect(_cmd_increase_production.bind(String(o["type"])))
-		choice_flow.add_child(b)
 	var skip := Button.new()
 	skip.text = "Salta"
 	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
@@ -7132,7 +7267,7 @@ func _begin_action_phase() -> void:
 	round_turn_count = 0
 	active_seat = gs.turn_order[0]
 	_reset_plays()
-	_log("══ Round %d · Azione ══" % gs.round)
+	_log_turn(" Round %d · Azione " % gs.round)
 	_log("— Tocca a %s —" % _active().power.to_upper())
 	_status("Round %d - Azione. %s" % [gs.round, _turn_hint()])
 	_after_change()
@@ -7445,7 +7580,7 @@ func _run_aftermath() -> void:
 	gs.phase = WO.Phase.AFTERMATH
 	_ui_phase = "Aftermath"
 	_aftermath_lines = ["- Aftermath round %d -" % gs.round]
-	_log("══ Aftermath round %d ══" % gs.round)
+	_log_turn(" Aftermath round %d " % gs.round)
 	_threat_defense = {}
 	# Auto-Influence delle potenze neutrali PRIMA di THREAT/Scoring (così contano).
 	_aftermath_ai_art = _apply_auto_influence(_aftermath_lines)
@@ -7646,19 +7781,29 @@ func _aftermath_resolve() -> void:
 			gs.add_vp(power, int(mt[power]))
 			_vp_dbg_add(power, "token", int(mt[power]))
 		_aftermath_lines.append("Token Maggioranza: " + _vp_summary(mt))
-		# Obiettivi Superpotenze: soglie round 3 (ri=0) o round 6 (ri=1).
+		# Obiettivi Superpotenze: soglie round 3 (ri=0) o round 6 (ri=1). Si SOMMANO i VP di
+		# TUTTI gli Obiettivi assegnati (2 a testa, regolamento) - NESSUNO viene scartato: allo
+		# stesso modo si contano di nuovo ENTRAMBI al round 6 (con soglie più alte). Riga
+		# DETTAGLIATA per Obiettivo (non un solo totale): senza, il riepilogo mostrava un unico
+		# numero già sommato e sembrava che ne contasse solo uno (segnalato).
 		var obj_ri := 0 if gs.round == 3 else 1
 		var obj_vp := {}
+		var obj_detail := []
 		for p in gs.players:
 			var got := 0
+			var per_obj := []
 			for obj in p.objectives:
-				got += Objectives.objective_score(gs, p.power, obj, obj_ri)
+				var v := Objectives.objective_score(gs, p.power, obj, obj_ri)
+				got += v
+				if v > 0:
+					per_obj.append("%s +%d" % [String(obj.get("name", "?")), v])
 			if got > 0:
 				gs.add_vp(p.power, got)
 				_vp_dbg_add(p.power, "obiettivi", got)
 				obj_vp[p.power] = got
-		if not obj_vp.is_empty():
-			_aftermath_lines.append("Obiettivi: " + _vp_summary(obj_vp))
+				obj_detail.append("%s: %s (tot +%d VP)" % [p.power.to_upper(), ", ".join(per_obj), got])
+		if not obj_detail.is_empty():
+			_aftermath_lines.append("Obiettivi: " + "; ".join(obj_detail))
 
 	# Riepilogo SINCRONIZZATO: lo stato (righe + art) va a entrambi; il "Continua" passa
 	# dall'host (_next_round). Senza questo il client non vedeva le conseguenze del round.
@@ -7696,6 +7841,7 @@ func _next_round() -> void:
 		p.draw_cards(6 + _ongoing_count(p, "extra_draw_per_round"))
 	_used_ongoing = {}   # abilità once-per-round di nuovo disponibili
 	_commerce_flipped = {}  # Commerce card di nuovo disponibili
+	_log_turn(" Round %d · Preparazione " % gs.round)
 	_status("Round %d - Preparazione: ogni potenza sceglie il Focus." % gs.round)
 	_begin_preparation()   # scelta GUIDATA del Focus (niente più automatismo)
 

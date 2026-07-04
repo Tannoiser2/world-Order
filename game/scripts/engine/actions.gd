@@ -205,15 +205,19 @@ static func build_base_cost(num_armies_moved: int) -> int:
 
 
 static func execute_build_base(gs: GameState, owner: String, country: Dictionary,
-		armies_to_move: int, slot_type: String = "") -> int:
+		armies_to_move: int, slot_type: String = "", allow_repeat: bool = false) -> int:
 	var p := gs.player_by_power(owner)
 	if p == null:
 		return -1
 	var cid: String = country.get("id", "")
 	if p.exhausted.get(cid, false):
 		return -1
-	if cid != "" and cid in p.bases:
-		return -1  # regolamento pag. 15: si può costruire una sola Base per Country
+	# regolamento pag. 15: si può costruire una sola Base per Country. Alcune carte (es.
+	# "Strengthen Alliance") permettono di rinforzarla una seconda volta nella stessa Country,
+	# ma non oltre (`allow_repeat` consente il 2° tentativo, mai un 3°).
+	var existing: int = (p.bases.count(cid) if cid != "" else 0)
+	if existing > 0 and not (allow_repeat and existing < 2):
+		return -1
 	if not bool(country.get("has_base_symbol", false)):
 		return -1
 	if owner not in country.get("base_allowed_powers", []):
@@ -225,8 +229,9 @@ static func execute_build_base(gs: GameState, owner: String, country: Dictionary
 	p.exhausted[cid] = true
 	if gs.supply.get("bases", 0) > 0:
 		gs.supply["bases"] -= 1
-	if cid != "" and cid not in p.bases:
-		p.bases.append(cid)                             # Base sul Paese (rendering + Move)
+	if cid != "":
+		p.bases.append(cid)                             # Base sul Paese (rendering + Move); un
+		                                                 # rinforzo aggiunge un 2° ingresso (count=2)
 	var region: String = country.get("region", "")
 	p.armies_available -= armies_to_move
 	var vp := 0
