@@ -3501,57 +3501,22 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 			var drag_source := _produce_drag_begin.bind(rt) if i == staged else Callable()
 			b.set_drag_forwarding(drag_source, _produce_can_drop.bind(rt), _produce_do_drop.bind(rt, cur, i))
 			area.add_child(b)
-	# Armate: stessa logica di drag&drop, ma su una striscia dedicata (vanno in RISERVA, non
-	# hanno una casella sulla resource track 0..10).
-	if _produce_type_allowed("armies"):
-		var acap := int(p.production.get("armies", 0))
-		if acap > 0:
-			_add_army_produce_overlay(area, p, ph, acap)
+	# Armate: NON hanno una casella sulla resource track 0..10 ne' un segnalino gia' disegnato
+	# sulla plancia da trascinare (vanno dritte in RISERVA) - un'area di trascinamento inventata
+	# lì sopra non si vedeva/non si capiva. Restano regolate con ± nella barra scelte
+	# (_show_produce_bar), come le altre azioni a quantità libera (Trade, Move).
 
 
-const ARMY_PRODUCE_POS := Vector2(0.40, 0.155)   # striscia dedicata Produce Armate, sotto la riserva
-const ARMY_PRODUCE_STEP := 0.045
-
-func _army_produce_slot(v: int) -> Vector2:
-	return Vector2(ARMY_PRODUCE_POS.x + v * ARMY_PRODUCE_STEP, ARMY_PRODUCE_POS.y)
-
-
-## Overlay Produce delle Armate: stessa logica di drag&drop delle altre risorse (segnalino
-## trascinabile + slot bersaglio), su una striscia dedicata invece della resource track 0..10.
-func _add_army_produce_overlay(area: Control, p: PlayerState, ph: float, acap: int) -> void:
-	var staged := int(_produce_sel.get("armies", 0))
-	var d := ph * 0.1
-	for i in range(0, acap + 1):
-		var slot := _army_produce_slot(i)
-		var b := Button.new()
-		b.flat = true
-		b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
-		b.offset_left = -d * 0.5; b.offset_right = d * 0.5; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
-		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d * 0.3))
-		if i == staged:
-			sb.bg_color = Color(0.95, 0.85, 0.4, 0.0)
-			sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4, 0.95)
-		else:
-			sb.bg_color = Color(0.3, 0.6, 0.35, 0.4)
-		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
-		b.tooltip_text = _produce_slot_tooltip("armies", i)
-		b.pressed.connect(_produce_set.bind("armies", i))
-		var drag_source := _produce_drag_begin.bind("armies") if i == staged else Callable()
-		b.set_drag_forwarding(drag_source, _produce_can_drop.bind("armies"), _produce_do_drop.bind("armies", 0, i))
-		area.add_child(b)
-		if i == staged:
-			var tok := TextureRect.new()
-			tok.texture = load("res://assets/armies/%s.png" % p.power)
-			tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			tok.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tok.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tok.anchor_left = slot.x; tok.anchor_right = slot.x; tok.anchor_top = slot.y; tok.anchor_bottom = slot.y
-			tok.offset_left = -d * 0.45; tok.offset_right = d * 0.45; tok.offset_top = -d * 0.35; tok.offset_bottom = d * 0.35
-			area.add_child(tok)
+## Armate da produrre (ognuna consuma Cibo + Materie Prime come le altre secondarie, vedi
+## Actions.SECONDARY_REQ), regolate con ± nella barra scelte.
+func _produce_armies_adjust(delta: int) -> void:
+	var cap := int(_active().production.get("armies", 0))
+	var nq := clampi(int(_produce_sel.get("armies", 0)) + delta, 0, cap)
+	_produce_set("armies", nq)
 
 
 ## Controlli del Produce nella BARRA SCELTE in alto: riepilogo + Armate (±) + Conferma/Annulla.
-func _show_produce_bar(_p: PlayerState) -> void:
+func _show_produce_bar(p: PlayerState) -> void:
 	_clear_choice_bar()
 	var info := Label.new()
 	info.text = "PRODUCE: trascina il segnalino sulla track fino allo slot desiderato (o toccalo)."
@@ -3568,7 +3533,42 @@ func _show_produce_bar(_p: PlayerState) -> void:
 		sl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
 		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(sl)
-	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_produce)
+	# Armate: NON hanno una casella sulla resource track (vanno in riserva) - regolate con ±
+	# qui nella barra, invece di un segnalino da trascinare sulla plancia (poco chiaro: non
+	# c'e' una casella stampata sul tabellone per l'Armata da produrre).
+	var arm_cap := int(p.production.get("armies", 0))
+	if arm_cap > 0 and _produce_type_allowed("armies"):
+		var al := Label.new(); al.text = "Armate:"
+		al.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(al)
+		var minus := Button.new(); minus.text = "-"; minus.custom_minimum_size = Vector2(34, 0)
+		minus.disabled = int(_produce_sel.get("armies", 0)) <= 0
+		minus.pressed.connect(_produce_armies_adjust.bind(-1))
+		choice_flow.add_child(minus)
+		var cnt := Label.new(); cnt.text = "%d/%d" % [int(_produce_sel.get("armies", 0)), arm_cap]
+		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cnt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		choice_flow.add_child(cnt)
+		var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(34, 0)
+		var req_a: Dictionary = Actions.SECONDARY_REQ.get("armies", {})
+		var can_afford := true
+		for ck in req_a:
+			var have := (_active().money if ck == "money" else int(_active().resources.get(ck, 0)))
+			if have < int(req_a[ck]) * (int(_produce_sel.get("armies", 0)) + 1):
+				can_afford = false
+		plus.disabled = int(_produce_sel.get("armies", 0)) >= arm_cap or _produce_type_limit_reached("armies") or not can_afford
+		plus.pressed.connect(_produce_armies_adjust.bind(1))
+		choice_flow.add_child(plus)
+	var ok := Button.new()
+	if _produce_max_types > 0 and _produce_sel.size() < _produce_max_types:
+		# Bottone stesso col conto residuo: senza, si confermava dopo il 1° tipo pensando di
+		# aver finito ("Produci 3 tipi" ne produceva solo 1) - il testo del bottone che si preme
+		# per davvero e' il posto giusto per l'avviso, non solo l'etichetta in alto.
+		ok.text = "Conferma (solo %d/%d tipi)" % [_produce_sel.size(), _produce_max_types]
+		ok.add_theme_color_override("font_color", Color(0.95, 0.5, 0.3))
+	else:
+		ok.text = "Conferma"
+	ok.pressed.connect(_cmd_produce)
 	choice_flow.add_child(ok)
 	# In Preparazione (produzione del Focus) niente "Annulla": il Focus e' gia' scelto e la
 	# produzione ne fa parte. Nell'azione Produce delle carte l'Annulla ridа la carta.

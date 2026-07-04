@@ -1,10 +1,12 @@
 extends SceneTree
-## Produce: rifatta la UI per non scrivere piu' "+N -N" sulle caselle e non usare i bottoni +/-
-## per le Armate. Ora si trascina (drag&drop nativo di Godot, come il Commercio) il segnalino
-## della risorsa lungo la SUA track fino allo slot desiderato (o lo si tocca, come fallback); le
-## primarie necessarie si vedono scalare in diretta sulla LORO track. Ricetta corretta delle
-## risorse derivate: Beni di consumo = Materie Prime + Energia, Servizi = Cibo + Energia, Armate
-## = Cibo + Materie Prime, Diplomazia = denaro (non piu' una risorsa primaria).
+## Produce: rifatta la UI per non scrivere piu' "+N -N" sulle caselle della resource track. Per
+## le risorse SULLA track (secondarie normali) si trascina (drag&drop nativo di Godot, come il
+## Commercio) il segnalino lungo la SUA track fino allo slot desiderato (o lo si tocca, come
+## fallback); le primarie necessarie si vedono scalare in diretta sulla LORO track. Le Armate
+## NON hanno una casella sulla track (vanno in riserva, niente segnalino da trascinare sulla
+## plancia) - restano regolate con ± nella barra scelte. Ricetta corretta delle risorse
+## derivate: Beni di consumo = Materie Prime + Energia, Servizi = Cibo + Energia, Armate =
+## Cibo + Materie Prime, Diplomazia = denaro (non piu' una risorsa primaria).
 ##
 ## Uso: godot --headless --path game --script res://scripts/tests/verify_produce_drag.gd
 
