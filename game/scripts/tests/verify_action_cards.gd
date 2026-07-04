@@ -94,7 +94,9 @@ func _test_invest_foreign(b: Variant) -> void:
 	var usa = b.gs.players[0]
 	var china = b.gs.players[3]
 	usa.money = 100
-	china.allied_countries = [{"id": "cn1", "display_name": "Paese Cinese", "invest_cost": 5, "region": "east_asia_pacific"}]
+	usa.fdi_values = []
+	usa.fdi_countries = []
+	china.allied_countries = [{"id": "cn1", "display_name": "Paese Cinese", "invest_cost": 5, "region": "east_asia_pacific", "value": 3}]
 	china.fdi_countries = ["cn1"]
 	china.exhausted = {}
 	b.gs.supply["fdi"] = 5
@@ -107,6 +109,21 @@ func _test_invest_foreign(b: Variant) -> void:
 	await process_frame
 	_check(usa.money == 90 and bool(china.exhausted.get("cn1", false)),
 		"Nuovi Accordi: pagati 5+5 (money 100->%d) e Nazione cinese esaurita (=%s)" % [usa.money, str(bool(china.exhausted.get("cn1", false)))])
+
+	# Segnalato "non funziona molto bene": mancava che contasse come un VERO Invest per chi lo
+	# gioca - senza, non si vedeva mai il Return on Investments (2 x valore ogni round) ne' i
+	# bonus/Obiettivi che contano le Country con IDE, nonostante il costo pagato per averlo.
+	_check(int(usa.fdi_values.count(3)) == 1 and ("cn1" in usa.fdi_countries),
+		"Nuovi Accordi: l'IDE conta DAVVERO per te (fdi_values=%s, fdi_countries=%s)" % [str(usa.fdi_values), str(usa.fdi_countries)])
+
+	# Una 2a copia della carta non ripropone la STESSA Country (nessun'altra idonea in questo
+	# fixture): un solo tuo IDE per Country, come per l'Invest normale - altrimenti Return on
+	# Investments infinito sulla stessa Country. Niente popup = nessuna opzione idonea trovata.
+	china.exhausted = {}
+	_prime(b)
+	b._op_invest_foreign({"extra_cost": 5})
+	await process_frame
+	_check(not b._popup_active(), "Nuovi Accordi: una Country dove hai già un tuo IDE non si ripropone (niente popup)")
 
 
 func _test_copy_card(b: Variant) -> void:
