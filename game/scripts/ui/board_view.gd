@@ -2393,7 +2393,8 @@ func _pick_exhaust_discount(region: String, title: String, cb: Callable) -> void
 	_show_exhaust_choice_bar()
 
 
-## Barra scelte per lo sconto: testo con lo sconto corrente + Conferma/Salta.
+## Barra scelte per lo sconto: testo con lo sconto corrente + un solo "Conferma" (girare 0
+## carte = nessuno sconto: non serve un bottone "Salta" separato, la carta girata lo dice già).
 func _show_exhaust_choice_bar() -> void:
 	_clear_choice_bar()
 	if _exhaust_ctx.is_empty():
@@ -2408,14 +2409,10 @@ func _show_exhaust_choice_bar() -> void:
 	lab.add_theme_color_override("font_color", Color(0.95, 0.9, 0.6))
 	lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(lab)
-	var ok := Button.new(); ok.text = "Conferma sconto"
+	var ok := Button.new(); ok.text = "Conferma"
 	ok.add_theme_font_size_override("font_size", _base_fs() + 1)
 	ok.pressed.connect(_cmd_exhaust_confirm)
 	choice_flow.add_child(ok)
-	var skip := Button.new(); skip.text = "Salta (nessuno sconto)"
-	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
-	skip.pressed.connect(_cmd_exhaust_skip)
-	choice_flow.add_child(skip)
 	choice_bar.visible = true
 	_layout_ui()
 
@@ -3609,10 +3606,11 @@ func _apply_produce() -> void:
 	_clear_choice_bar()
 	_event("%s: Produzione %s" % [_active().power.to_upper(), (", ".join(summary) if summary.size() > 0 else "niente")])
 	_refresh()
-	# Contesto: in Preparazione (produzione del Focus) si prosegue con l'aumento Produzione;
-	# nell'azione Produce delle carte si avanza la giocata come sempre.
+	# Contesto: in Preparazione la Produzione del Focus e' l'ultimo passo (dopo Pronte e
+	# Aumento Produzione), quindi si passa al giocatore successivo; nell'azione Produce
+	# delle carte si avanza la giocata come sempre.
 	if after == "prep":
-		_prep_offer_increase()
+		_prep_advance()
 	else:
 		_advance_play()
 
@@ -5030,11 +5028,12 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		var cid := String(cn.get("id", ""))
 		var spent := bool(p.exhausted.get(cid, false))
 		var ex_this: bool = ex_active and (cn in ex_elig)
+		var ex_sel: bool = ex_this and bool(_exhaust_sel.get(cid, false))
 		# READY (Choose Focus): le Nazioni ESAURITE si toccano per riattivarle.
 		var ready_active: bool = _prep_ready_remaining > 0 and is_active and _ui_phase == "Preparazione"
 		var ready_this: bool = ready_active and spent
 		var highlight: bool = (is_active and awaiting == "allied_country" and (cn in elig)) \
-			or (ex_this and bool(_exhaust_sel.get(cid, false))) \
+			or ex_sel \
 			or ready_this
 		var dim: bool = (is_active and awaiting == "allied_country" and not (cn in elig)) \
 			or (ex_active and not ex_this) \
@@ -5046,7 +5045,9 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 			on_press = _cmd_prep_ready_pick.bind(cn)
 		var clickable: bool = (is_active and not dim) or ex_this or ready_this
 		var sz := Vector2(cw, ch)
-		var stack := _ally_stack(cn, cards.size(), sz, highlight, clickable, spent, on_press)
+		# Selezionata per lo sconto: si "gira" già in anteprima (grigia), come se fosse esaurita -
+		# così è evidente che verrà scontata (girare 0 carte = nessuno sconto, niente altro da capire).
+		var stack := _ally_stack(cn, cards.size(), sz, highlight, clickable, spent or ex_sel, on_press)
 		_overlay_country_markers(stack, sz, cid in p.fdi_countries, cid in p.bases)
 		grid.add_child(stack)
 
@@ -5266,16 +5267,19 @@ func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	var cw: float = clampf(_plancia_height() * 0.78, 120.0, 200.0)
 	var gsz := Vector2(cw, cw / 2.4)
 	for g in p.growth_cards:
-		var card := _country_card_button(g, gsz, false)
-		card.disabled = true
-		var tip := "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), _card_text(g)]
-		# Le abilità "once per round" mostrano la carta girata/grigia (come le Nazioni esaurite
-		# e le Commerce) quando già usate in questo round; tornano normali al round successivo.
 		var tag := _growth_once_per_round_tag(g)
+		var used := tag != "" and _ongoing_used(p.power, tag)
+		# Usabile: click DIRETTO sulla carta (bordo acceso), come le Nazioni/Commerce - niente
+		# più bottone "Usa" separato. Si gira/ingrigisce quando usata, torna normale al round dopo.
+		var usable: bool = is_active and tag != "" and not used and playing_card.is_empty()
+		var card := _country_card_button(g, gsz, usable)
+		card.disabled = not usable
+		if usable:
+			card.pressed.connect(_cmd_use_ongoing.bind(tag))
+		var tip := "%s (Growth Lv%d)\n%s" % [g.get("display_name", ""), int(g.get("level", 0)), _card_text(g)]
 		if tag != "":
-			var used := _ongoing_used(p.power, tag)
 			_apply_exhausted(card, gsz, "growth:%s:%s" % [p.power, tag], used)
-			tip += "\n(%s in questo round)" % ("Già usata" if used else "Usabile 1 volta")
+			tip += "\n(%s in questo round)" % ("Già usata" if used else "Tocca la carta per usarla")
 		card.tooltip_text = tip
 		col.add_child(card)
 
@@ -5295,12 +5299,14 @@ func _build_ongoing_section(p: PlayerState, is_active: bool) -> void:
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.custom_minimum_size = Vector2(260, 0)
 		row.add_child(lbl)
+		# Le "once per round" si usano toccando la carta Growth stessa (sezione sopra): qui resta
+		# solo un'etichetta di stato, non un bottone duplicato.
 		if is_active and tag.begins_with("once_per_round:"):
-			var b := Button.new()
-			b.text = "Usata" if _ongoing_used(p.power, tag) else "Usa"
-			b.disabled = _ongoing_used(p.power, tag) or not playing_card.is_empty()
-			b.pressed.connect(_cmd_use_ongoing.bind(tag))
-			row.add_child(b)
+			var st := Label.new()
+			st.text = "Usata" if _ongoing_used(p.power, tag) else "Usabile (tocca la carta)"
+			st.add_theme_font_size_override("font_size", maxi(11, _base_fs() - 2))
+			st.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6) if not _ongoing_used(p.power, tag) else Color(0.6, 0.6, 0.6))
+			row.add_child(st)
 		drawer_content.add_child(row)
 
 
@@ -5799,7 +5805,8 @@ func apply_command(cmd: Dictionary) -> bool:
 			if t != "" and _prep_increases_done < _max_focus_increases(pinc.power, pinc.focus):
 				_prep_offer_increase()   # ri-offre (o avanza se non resta nulla di abbordabile)
 			else:
-				_prep_advance()
+				_prep_awaiting_increase = false
+				_open_focus_produce()   # infine la Produzione del Focus vera e propria
 		"pick_region":
 			_on_region_pressed(String(a["region"]))
 		"pick_influence_cell":
@@ -6504,14 +6511,14 @@ func _do_focus(f: int) -> void:
 	if _prep_awaiting_increase:
 		return  # Focus già scelto: si attende la scelta di aumento Produzione
 	# In PREPARAZIONE la scelta del Focus si fa toccando una colonna sulla plancia: applica
-	# le azioni del Focus (ready + produce), poi OFFRE l'aumento Produzione opzionale e
-	# infine passa al giocatore successivo.
+	# prima il ready delle Country card, poi OFFRE l'aumento Produzione opzionale, poi la
+	# Produzione del Focus vera e propria, infine passa al giocatore successivo.
 	if _ui_phase == "Preparazione" and _prep_idx < gs.players.size():
 		_event(_apply_focus(_active(), f))
 		if _prep_ready_remaining > 0:
 			_after_change()   # scelta interattiva: quali Nazioni esaurite riattivare
 		else:
-			_open_focus_produce()   # il giocatore sceglie quanto produrre (stessa UI delle carte)
+			_prep_offer_increase()   # poi la Produzione del Focus (_open_focus_produce)
 		return
 	var p := _active()
 	# Choose Focus è un passo della PREPARATION: è GRATIS (non costa un'azione) e
@@ -6654,7 +6661,7 @@ func _prep_ready_pick(country_id: String) -> void:
 	_prep_ready_remaining -= 1
 	_event("%s: riattivata 1 Nazione." % p.power.to_upper())
 	if _prep_ready_remaining <= 0:
-		_open_focus_produce()
+		_prep_offer_increase()
 	else:
 		_after_change()
 
@@ -6662,7 +6669,7 @@ func _prep_ready_pick(country_id: String) -> void:
 ## "Continua": termina la scelta del ready (anche se non si sono riattivate tutte le possibili).
 func _prep_ready_skip() -> void:
 	_prep_ready_remaining = 0
-	_open_focus_produce()
+	_prep_offer_increase()
 
 
 func _cmd_prep_ready_pick(cn: Dictionary) -> void:
@@ -6675,23 +6682,27 @@ func _cmd_prep_ready_skip() -> void:
 
 ## Apre la produzione del Focus (Preparazione) usando la STESSA Produce UI delle carte, limitata
 ## ai tipi prodotti dal Focus (Domestic: Beni/Servizi · Diplomatic: Diplomazia · Military: Armate).
-## Il giocatore sceglie quanto produrre e conferma; poi si prosegue con l'aumento Produzione.
+## E' l'ULTIMO passo della sequenza (dopo Pronte e Aumento Produzione); il giocatore sceglie
+## quanto produrre e conferma, poi si passa al giocatore successivo della Preparazione.
 func _open_focus_produce() -> void:
 	var p := _active()
 	var key: String = ["domestic", "diplomatic", "military"][p.focus]
 	var types: Array = (focus_bonuses.get(key, {}) as Dictionary).get("produce", [])
 	if types.is_empty():
-		_prep_offer_increase()
+		_prep_advance()
 		return
 	_open_produce_ui(0, types, "prep")
 	_after_change()
 
 
+## Offre l'aumento Produzione opzionale del Focus (2° passo, dopo il ready delle Country
+## card); se nessuna opzione e' abbordabile, si passa direttamente alla Produzione del Focus.
 func _prep_offer_increase() -> void:
 	var p := _active()
 	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
 	if opts.is_empty():
-		_prep_advance()
+		_prep_awaiting_increase = false
+		_open_focus_produce()
 		return
 	_prep_awaiting_increase = true
 	_after_change()   # la barra la (ri)costruisce _refresh per il giocatore di turno

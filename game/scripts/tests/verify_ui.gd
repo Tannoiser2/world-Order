@@ -800,8 +800,8 @@ func _init() -> void:
 		board._plays_left = 9
 		board._play_card(card_mod)
 		board._on_region_pressed(mreg)
-		var skip_b: Button = _find_button(board, "Salta (nessuno sconto)")
-		if skip_b: skip_b.pressed.emit()   # popup sconto: non esaurisco alleati
+		var skip_b: Button = _find_button(board, "Conferma")
+		if skip_b: skip_b.pressed.emit()   # popup sconto: confermo senza selezioni (nessuno sconto)
 		board._on_influence_cell(mreg, "temporary")  # scelta slot SULLA MAPPA
 		var spent: int = dip_pre - pmod2.resources["diplomacy"]
 		var mod_ok: bool = spent == expected_cost and (card_mod in pmod2.played)

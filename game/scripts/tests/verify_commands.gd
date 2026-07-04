@@ -135,11 +135,18 @@ func _init() -> void:
 	board.apply_command(GameCommands.choose_focus(seatp, board._next_seq(), 1))
 	for _i in range(2): await process_frame
 	check.call("choose_focus in prep: offre aumento, non avanza", board._prep_idx == idxp0)
-	# Aumenta la Produzione di Diplomazia: +1 alla traccia e avanza la preparazione.
+	# Aumenta la Produzione di Diplomazia: +1 alla traccia, poi si apre la Produzione del
+	# Focus (ultimo passo della sequenza, non ancora l'avanzamento della preparazione).
 	board.apply_command(GameCommands.increase_production(seatp, board._next_seq(), "diplomacy"))
 	for _i in range(2): await process_frame
 	check.call("increase_production: +1 traccia Diplomazia", int(pp.production.get("diplomacy", 0)) == dipl0 + 1)
-	check.call("increase_production: avanza la preparazione", board._prep_idx == idxp0 + 1)
+	check.call("increase_production: apre la Produzione del Focus (Diplomazia)",
+		board._produce_mode and board._produce_allowed == ["diplomacy"])
+	# Confermando la Produzione (anche a 0) si avanza infine la preparazione.
+	board._produce_sel = {}
+	board._apply_produce()
+	for _i in range(2): await process_frame
+	check.call("dopo la Produzione del Focus: avanza la preparazione", board._prep_idx == idxp0 + 1)
 
 	# 9) Effetti carte: 'repeat' esegue il body `times` volte (espansione nella coda).
 	board.playing_card = {"display_name": "TestRepeat", "effect_ops": []}

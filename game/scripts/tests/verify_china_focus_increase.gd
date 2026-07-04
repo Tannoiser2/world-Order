@@ -70,17 +70,18 @@ func _init() -> void:
 		"OK" if s3 else "FAIL", str(excl_ok)])
 	if not s3: fails += 1
 
-	# 4) Secondo aumento: cibo (costo 9). Totale -15; poi passa al giocatore successivo.
+	# 4) Secondo aumento: cibo (costo 9). Totale -15; poi si apre la Produce del Focus (ultimo
+	#    passo della sequenza), non si avanza ancora al giocatore successivo.
 	b.apply_command(GameCommands.increase_production(cs, 2, "food"))
 	await process_frame
-	# Dopo il 2° aumento la Cina ha finito: nessuna 3ª offerta (avanzato al prossimo).
+	# Dopo il 2° aumento la Cina ha finito: nessuna 3ª offerta, si apre la Produce del Focus.
 	var s4: bool = int(p.production.get("food", 0)) == 2 and p.money == 5 \
-		and not b._prep_awaiting_increase
-	print("[%s] dopo 2° aumento: cibo=%d, money=%d (-15 tot atteso 5), niente 3ª offerta (await=%s)" % [
-		"OK" if s4 else "FAIL", int(p.production.get("food", 0)), p.money, str(b._prep_awaiting_increase)])
+		and not b._prep_awaiting_increase and b._produce_mode
+	print("[%s] dopo 2° aumento: cibo=%d, money=%d (-15 tot atteso 5), niente 3ª offerta, Produce aperta (await=%s produce=%s)" % [
+		"OK" if s4 else "FAIL", int(p.production.get("food", 0)), p.money, str(b._prep_awaiting_increase), str(b._produce_mode)])
 	if not s4: fails += 1
 
-	# 5) USA: un solo aumento, poi avanza subito (niente 2ª offerta).
+	# 5) USA: un solo aumento, poi si apre subito la Produce del Focus (niente 2ª offerta).
 	var us := _seat_of(b, "usa")
 	_setup_prep(b, us)
 	var pu = b.gs.players[us]
@@ -88,11 +89,11 @@ func _init() -> void:
 	pu.production = {"energy": 1, "raw_materials": 1, "food": 1, "consumer_goods": 1, "services": 1, "diplomacy": 1, "armies": 1}
 	b.apply_command(GameCommands.increase_production(us, 1, "energy"))
 	await process_frame
-	# USA: costo 8, un solo aumento, nessuna 2ª offerta -> avanzato.
+	# USA: costo 8, un solo aumento, nessuna 2ª offerta -> Produce del Focus aperta.
 	var s5: bool = int(pu.production.get("energy", 0)) == 2 and pu.money == 22 \
-		and not b._prep_awaiting_increase
-	print("[%s] USA: un solo aumento (energia=%d, money=%d, await=%s) — atteso energia=2 money=22 await=false" % [
-		"OK" if s5 else "FAIL", int(pu.production.get("energy", 0)), pu.money, str(b._prep_awaiting_increase)])
+		and not b._prep_awaiting_increase and b._produce_mode
+	print("[%s] USA: un solo aumento (energia=%d, money=%d, await=%s produce=%s) — atteso energia=2 money=22 await=false produce=true" % [
+		"OK" if s5 else "FAIL", int(pu.production.get("energy", 0)), pu.money, str(b._prep_awaiting_increase), str(b._produce_mode)])
 	if not s5: fails += 1
 
 	b.queue_free()
