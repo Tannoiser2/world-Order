@@ -100,14 +100,20 @@ var hand_panel: Panel            # pannello MANO a tutta larghezza (overlay su m
 var market_panel: Panel          # "board mercato" (Research): appare al posto della mappa
 var market_content: VBoxContainer  # contenuto scrollabile del pannello mercato
 var hand_collapsed := false      # mano collassabile (per non coprire la plancia)
+# Barra divisoria TRASCINABILE sul bordo superiore della mano (come board_splitter, ma
+# orizzontale): l'utente sceglie quanto e' alta la mano quando aperta, invece di un'altezza
+# fissa calcolata dalla dimensione delle carte. Si nasconde da sola insieme alla mano
+# (auto_hide in _build_hand_section) quando la mano non serve.
+var hand_splitter: Control
+var _hand_h_frac := -1.0        # -1 = automatico; altrimenti frazione 0..1 di `size.y` scelta dall'utente
+var _hand_splitter_dragging := false
 var _selected_hand_card: Dictionary = {}  # carta evidenziata nella mano (1° tap); 2° tap = gioca
 var card_preview: TextureRect    # anteprima ingrandita della carta (flyover)
 var card_preview_text: Label     # traduzione IT sovrapposta alla parte bassa della carta
 var card_preview_timer: Timer    # ritardo (~1s) prima di mostrare il flyover
 var _pending_preview: Dictionary = {}   # {tex, text} in attesa del ritardo
-var tab_bar: HBoxContainer          # una scheda per ogni potenza in gioco
+var tab_bar: HBoxContainer          # una scheda (bandiera) per potenza, IN CIMA al pannello board
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
-var tab_bg: Panel                   # sfondo solido della barra linguette
 var _net_debug: Label = null        # riquadro diagnostico (solo in rete): stato di sync vivo
 var _last_snapshot_sig := 0         # client: hash dell'ultimo snapshot APPLICATO (dedup anti-flicker)
 var _net_heartbeat: Timer = null    # host: ribroadcast periodico per recuperare snapshot persi
@@ -303,6 +309,7 @@ func _ready() -> void:
 	_build_hud()
 	_build_drawer()
 	_build_splitter()
+	_build_hand_splitter()
 	_build_log_panel()
 	_build_notify_banner()
 	popup_layer = Control.new()
@@ -3936,11 +3943,18 @@ func _build_drawer() -> void:
 	for m in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(m, 10)
 	drawer.add_child(margin)
-	# Colonna: in alto la plancia+alleati (scrollabile), in basso la MANO fissa
-	# (sempre visibile, non scrolla mai via).
+	# Colonna: in CIMA le linguette (bandiere) delle potenze, poi la plancia+alleati
+	# (scrollabile), in basso la MANO fissa (sempre visibile, non scrolla mai via).
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	margin.add_child(col)
+	# Linguette delle potenze DENTRO il pannello board (non più una barra a sé in fondo allo
+	# schermo): sempre visibili e ispezionabili qui, qualunque board sia mostrata o quanto sia
+	# stato ridimensionato lo splitter board/mappa.
+	tab_bar = HBoxContainer.new()
+	tab_bar.add_theme_constant_override("separation", 4)
+	tab_bar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	col.add_child(tab_bar)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -3949,19 +3963,8 @@ func _build_drawer() -> void:
 	drawer_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	drawer_content.add_theme_constant_override("separation", 8)
 	scroll.add_child(drawer_content)
-	# La MANO è un pannello a TUTTA LARGHEZZA in basso (sopra le linguette), creato a parte
-	# (vedi sotto): aperta si SOVRAPPONE a mappa+board, così non comprime le carte della board.
-
-	# Barra delle linguette (bandiere) con sfondo solido, così non si sovrappone
-	# alla mappa: è una barra a sé in fondo.
-	tab_bg = Panel.new()
-	var tbst := StyleBoxFlat.new()
-	tbst.bg_color = Color(0.04, 0.05, 0.08, 1.0)
-	tab_bg.add_theme_stylebox_override("panel", tbst)
-	add_child(tab_bg)
-	tab_bar = HBoxContainer.new()
-	tab_bar.add_theme_constant_override("separation", 4)
-	add_child(tab_bar)
+	# La MANO è un pannello a TUTTA LARGHEZZA in basso, creato a parte (vedi sotto): aperta si
+	# SOVRAPPONE a mappa+board, così non comprime le carte della board.
 	for pl in gs.players:
 		var b := Button.new()
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4071,6 +4074,44 @@ func _on_splitter_input(event: InputEvent) -> void:
 		if size.x > 0.0:
 			var cur_frac: float = _board_w_frac if _board_w_frac >= 0.0 else (_board_w() / size.x)
 			_board_w_frac = clampf(cur_frac + event.relative.x / size.x, 0.2, 0.8)
+			_layout_ui()
+		get_viewport().set_input_as_handled()
+
+
+## Barra divisoria TRASCINABILE sul bordo superiore del pannello MANO (quando aperta): come
+## board_splitter ma orizzontale, per scegliere quanto spazio dare alla mano invece di
+## un'altezza fissa calcolata dalla dimensione delle carte. Nascosta quando la mano e' chiusa
+## o auto-nascosta (niente da ridimensionare) - vedi _layout_ui.
+func _build_hand_splitter() -> void:
+	hand_splitter = Control.new()
+	hand_splitter.mouse_filter = Control.MOUSE_FILTER_STOP
+	hand_splitter.mouse_default_cursor_shape = Control.CURSOR_VSPLIT
+	hand_splitter.z_index = 55
+	hand_splitter.tooltip_text = "Trascina per ridimensionare la mano"
+	var handle := Panel.new()
+	handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	handle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.4, 0.48, 0.62, 0.55)
+	sb.set_corner_radius_all(3)
+	handle.add_theme_stylebox_override("panel", sb)
+	hand_splitter.add_child(handle)
+	hand_splitter.gui_input.connect(_on_hand_splitter_input)
+	add_child(hand_splitter)
+
+
+## Trascinamento dello splitter della mano: come _on_splitter_input ma verticale. Trascinare
+## verso l'ALTO allontana il bordo superiore verso l'alto (dy negativo) e la mano diventa più
+## ALTA: la frazione si aggiorna SOTTRAENDO lo spostamento relativo (non sommandolo, a
+## differenza dello splitter board/mappa: qui il bordo che si sposta e' quello in ALTO).
+func _on_hand_splitter_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_hand_splitter_dragging = event.pressed
+		get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _hand_splitter_dragging:
+		if size.y > 0.0 and hand_panel:
+			var cur_frac: float = _hand_h_frac if _hand_h_frac >= 0.0 else (hand_panel.size.y / size.y)
+			_hand_h_frac = clampf(cur_frac - event.relative.y / size.y, 0.05, 0.8)
 			_layout_ui()
 		get_viewport().set_input_as_handled()
 
@@ -4294,15 +4335,15 @@ func _layout_ui() -> void:
 		choice_bar.position = Vector2(0, hud_h)
 		choice_bar.size = Vector2(w, choice_h)
 	var tab_h := clampf(h * 0.08, 34, 64)
-	tab_bg.position = Vector2(0, h - tab_h)
-	tab_bg.size = Vector2(w, tab_h)
-	# 'Fine turno' FISSO in basso a destra (comodo); le linguette occupano lo spazio a sinistra.
+	# 'Fine turno' FISSO in basso a destra (comodo, sopra un fondo scuro dedicato).
 	var et_w := clampf(w * 0.15, 96.0, 180.0)
 	if end_turn_btn:
 		end_turn_btn.position = Vector2(w - et_w - 4, h - tab_h + 3)
 		end_turn_btn.size = Vector2(et_w, tab_h - 6)
-	tab_bar.position = Vector2(4, h - tab_h + 2)
-	tab_bar.size = Vector2(w - et_w - 16, tab_h - 4)
+	# Linguette (bandiere): altezza minima dentro il pannello board (col la auto-posiziona in
+	# cima, vedi _build_drawer) - non più una barra a parte in fondo allo schermo.
+	if tab_bar:
+		tab_bar.custom_minimum_size = Vector2(0, clampf(tab_h * 0.85, 30.0, 56.0))
 	# NUOVO LAYOUT: pannello BOARD a SINISTRA, mappa a DESTRA (finestra separata, sempre
 	# visibile). Così zoomando la mappa la board non si ingrandisce e non serve collassarla.
 	# In basso si riserva una barra MANO (sopra le linguette); aperta, la mano si espande
@@ -4310,19 +4351,40 @@ func _layout_ui() -> void:
 	var content_top := hud_h + choice_h
 	var bar_h := _base_fs() * 2.4
 	var content_h := maxf(1.0, h - content_top - tab_h - bar_h)
+	var in_research: bool = _ui_phase == "Research"
+	# Altezza/posizione della MANO calcolate PRIMA di board_splitter: aperta, la mano si espande
+	# verso l'alto SOVRAPPONENDOSI a mappa+board (overlay, senza comprimerle - board/mappa restano
+	# della STESSA dimensione a prescindere, cfr. content_h sopra) - ma gli elementi con z_index
+	# più alto della mano (board_splitter, Registro) devono fermarsi al SUO bordo superiore reale,
+	# altrimenti disegnano sopra le carte invece di restarne sotto (bug visto in screenshot).
+	var hand_open: bool = hand_box != null and is_instance_valid(hand_box)
+	var hand_top := h - tab_h
+	var hand_h := bar_h
+	if hand_panel:
+		var hand_max := h - content_top - tab_h
+		if hand_open and _hand_h_frac >= 0.0:
+			# Altezza scelta dall'utente trascinando hand_splitter (sostituisce il calcolo
+			# automatico dalla dimensione delle carte).
+			hand_h = clampf(h * _hand_h_frac, bar_h, hand_max)
+		else:
+			hand_h = (_hand_card_height() + bar_h + 18.0) if hand_open else bar_h
+			hand_h = clampf(hand_h, bar_h, hand_max)
+		hand_top = h - tab_h - hand_h
 	var board_w := _board_w()
 	drawer.visible = true
 	drawer.position = Vector2(0, content_top)
 	drawer.size = Vector2(board_w, content_h)
-	# Splitter TRASCINABILE fra board e mappa, centrato esattamente sul confine board_w.
+	# Splitter TRASCINABILE fra board e mappa, centrato esattamente sul confine board_w. Si
+	# ferma al bordo superiore REALE della mano (come il Registro sotto), non a content_h: se
+	# la mano e' espansa oltre bar_h, altrimenti lo splitter le disegnerebbe sopra (z_index alto).
 	if board_splitter:
 		var splitter_w := clampf(w * 0.01, 4.0, 8.0)
+		var splitter_bottom := minf(content_top + content_h, hand_top - 2.0)
 		board_splitter.position = Vector2(board_w - splitter_w * 0.5, content_top)
-		board_splitter.size = Vector2(splitter_w, content_h)
+		board_splitter.size = Vector2(splitter_w, maxf(1.0, splitter_bottom - content_top))
 	# REGISTRO: colonna VERA (riserva spazio, non sovrappone la mappa) - calcolata PRIMA di
 	# posizionare la mappa così map_viewport si restringe di conseguenza. Nascosta in Research
 	# (la mappa lascia il posto alla board mercato).
-	var in_research: bool = _ui_phase == "Research"
 	var log_w := 0.0
 	if log_panel and not in_research:
 		log_w = clampf((w - board_w) * 0.42, 190.0, 340.0) if not _log_collapsed else (_base_fs() + 18.0)
@@ -4336,15 +4398,18 @@ func _layout_ui() -> void:
 			market_panel.size = Vector2(maxf(1.0, w - board_w), h - content_top - tab_h)
 	# Pannello MANO a tutta larghezza, ancorato in basso (sopra le linguette). Durante la
 	# Research è nascosto (non si giocano carte: c'è la board mercato).
-	var hand_top := h - tab_h
 	if hand_panel:
 		hand_panel.visible = not in_research
-		var hand_open: bool = hand_box != null and is_instance_valid(hand_box)
-		var hand_h := (_hand_card_height() + bar_h + 18.0) if hand_open else bar_h
-		hand_h = clampf(hand_h, bar_h, h - content_top - tab_h)
-		hand_top = h - tab_h - hand_h
 		hand_panel.position = Vector2(0, hand_top)
 		hand_panel.size = Vector2(w, hand_h)
+		# Lo splitter compare SOLO quando la mano e' davvero aperta (collassata/auto-nascosta
+		# non c'e' nulla da ridimensionare).
+		if hand_splitter:
+			hand_splitter.visible = hand_open and not in_research
+			if hand_splitter.visible:
+				var hsw := clampf(h * 0.01, 4.0, 8.0)
+				hand_splitter.position = Vector2(0, hand_top - hsw * 0.5)
+				hand_splitter.size = Vector2(w, hsw)
 	# REGISTRO: colonna VERA (log_w già riservato prima, restringendo map_viewport) sul bordo
 	# DESTRO, sopra la barra MANO. Collassata = solo una linguetta col tasto per espanderla;
 	# espansa = colonna con la storia. Nascosta in Research.
