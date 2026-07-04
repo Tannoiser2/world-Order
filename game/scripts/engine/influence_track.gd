@@ -8,6 +8,11 @@ var perm_values: Array[int] = []     # VP di ciascuno slot permanente
 var temp_values: Array[int] = []     # VP di ciascuno slot temporaneo
 var perm: Array = []                 # owner (String) oppure null
 var temp: Array = []                 # owner (String) oppure null, FIFO da sinistra
+var starting: Array = []             # owner (String) dei cubetti INIZIALI di setup (riga
+                                      # colorata SOPRA la riga permanente sul tabellone stampato):
+                                      # contano per la maggioranza e per 1 VP di presenza, ma NON
+                                      # occupano uno slot di `perm` — non completano da soli la
+                                      # riga permanente vera (che fa scattare i PV di maggioranza).
 
 
 func _init(permanent_values: Array, temporary_values: Array) -> void:
@@ -17,6 +22,14 @@ func _init(permanent_values: Array, temporary_values: Array) -> void:
 	for v in temporary_values:
 		temp_values.append(int(v))
 		temp.append(null)
+
+
+## Aggiunge un cubetto INIZIALE di setup (riga colorata sopra la riga permanente sul
+## tabellone stampato): conta per la maggioranza e per 1 VP di presenza (vedi count()),
+## ma NON occupa uno slot di `perm` — la riga permanente vera si completa SOLO con
+## Influenza piazzata davvero in gioco.
+func add_starting(owner: String) -> void:
+	starting.append(owner)
 
 
 ## Aggiunge 1 Influenza. slot_type: "permanent", "temporary" o "" (auto).
@@ -107,7 +120,7 @@ func all_permanent_filled() -> bool:
 	return true
 
 
-## Conta l'Influenza totale (permanente + temporanea) di un owner.
+## Conta l'Influenza totale (permanente + temporanea + cubetti iniziali di setup) di un owner.
 func count(owner: String) -> int:
 	var n := 0
 	for o in perm:
@@ -116,10 +129,13 @@ func count(owner: String) -> int:
 	for o in temp:
 		if o == owner:
 			n += 1
+	for o in starting:
+		if o == owner:
+			n += 1
 	return n
 
 
-## Insieme di tutti gli owner presenti (inclusi i "local").
+## Insieme di tutti gli owner presenti (inclusi i "local" e i soli cubetti iniziali di setup).
 func owners() -> Array:
 	var s := {}
 	for o in perm:
@@ -128,6 +144,8 @@ func owners() -> Array:
 	for o in temp:
 		if o != null:
 			s[o] = true
+	for o in starting:
+		s[o] = true
 	return s.keys()
 
 
@@ -138,6 +156,7 @@ func to_dict() -> Dictionary:
 		"temp_values": temp_values.duplicate(),
 		"perm": perm.duplicate(),
 		"temp": temp.duplicate(),
+		"starting": starting.duplicate(),
 	}
 
 
@@ -147,4 +166,5 @@ static func from_dict(d: Dictionary) -> InfluenceTrack:
 	var t := InfluenceTrack.new(d.get("perm_values", []), d.get("temp_values", []))
 	t.perm = (d.get("perm", []) as Array).duplicate()
 	t.temp = (d.get("temp", []) as Array).duplicate()
+	t.starting = (d.get("starting", []) as Array).duplicate()
 	return t

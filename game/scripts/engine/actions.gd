@@ -18,12 +18,15 @@ const IMPORT_COST := {
 const MOVE_COST := 5
 const BASE_COST := 5
 
-# Requisiti di produzione delle risorse secondarie (cosa spendi per produrne 1).
+# Requisiti di produzione delle risorse secondarie (cosa spendi per produrne 1): Materie Prime
+# + Energia per Beni di consumo, Cibo + Energia per Servizi, Cibo + Materie Prime per le Armate.
+# La Diplomazia si paga in denaro, non con risorse primarie (has_resources/spend gestiscono
+# nativamente la chiave speciale "money").
 const SECONDARY_REQ := {
-	"consumer_goods": {"energy": 1, "raw_materials": 1},
-	"services": {"food": 1, "raw_materials": 1},
-	"diplomacy": {"food": 1},
-	"armies": {"raw_materials": 1},
+	"consumer_goods": {"raw_materials": 1, "energy": 1},
+	"services": {"food": 1, "energy": 1},
+	"diplomacy": {"money": 3},
+	"armies": {"food": 1, "raw_materials": 1},
 }
 
 # ---------------------------------------------------------------------------

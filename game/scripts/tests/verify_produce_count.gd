@@ -37,7 +37,7 @@ func _init() -> void:
 	if not s2: fails += 1
 
 	# 3) Anche le Armate contano come un TIPO: col limite gia' raggiunto vengono rifiutate.
-	b._produce_armies_adjust(1)
+	b._produce_set("armies", 1)
 	var s3: bool = not b._produce_sel.has("armies") and b._produce_sel.size() == 2
 	print("[%s] Armate come tipo: rifiutate oltre il limite (armi in sel=%s)" % [
 		"OK" if s3 else "FAIL", str(b._produce_sel.has("armies"))])

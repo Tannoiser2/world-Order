@@ -1,8 +1,9 @@
 extends SceneTree
-## Executive Order in RETE: il client usa la sua Executive Order (al posto di una carta),
-## sceglie un'azione dalla scelta a 8 opzioni e la risolve. Copre: use_executive_order ->
-## scelta sincronizzata (popup_choice) -> azione concatenata (Produce) -> risoluzione su
-## host e client; e lo stato "usata" sincronizzato.
+## Executive Order in RETE: il client usa la sua Executive Order (al posto di una carta,
+## spendendo una carta di mano come costo — come uno Strategic Asset), sceglie un'azione dalla
+## scelta a 8 opzioni e la risolve. Copre: use_executive_order (con hand_index) -> carta di mano
+## spesa sincronizzata -> scelta sincronizzata (popup_choice) -> azione concatenata (Produce) ->
+## risoluzione su host e client; e lo stato "usata" sincronizzato.
 ##
 ## Uso: godot --headless --path game --script res://scripts/tests/verify_net_executive_order.gd
 
@@ -28,16 +29,20 @@ func _init() -> void:
 	host.gs.players[1].executive_order_used = false
 	host.gs.players[1].production = {"energy": 2, "raw_materials": 0, "food": 0, "consumer_goods": 0, "services": 0, "diplomacy": 0, "armies": 0}
 	host.gs.players[1].resources = {"energy": 0, "raw_materials": 0, "food": 0, "consumer_goods": 0, "services": 0, "diplomacy": 0}
+	host.gs.players[1].hand = [{"id": "hx", "display_name": "TestX"}]
 	host._net_sync()
 	await process_frame
 
-	# 1) Il client usa la Executive Order: appare la scelta a 8 opzioni e l'EO risulta usata.
-	client.apply_command(GameCommands.use_executive_order(1, 1))
+	# 1) Il client usa la Executive Order spendendo la carta di mano all'indice 0 come costo:
+	#    quella carta sparisce dalla mano, appare la scelta a 8 opzioni, l'EO risulta usata.
+	var hand_before: int = host.gs.players[1].hand.size()
+	client.apply_command(GameCommands.use_executive_order(1, 1, 0))
 	await process_frame
 	var s1: bool = client._popup_active() and client._popup_items.size() == 8 \
-		and host.gs.players[1].executive_order_used and client.gs.players[1].executive_order_used
-	print("[%s] client usa EO: scelta a %d opzioni, usata sincronizzata" % [
-		"OK" if s1 else "FAIL", client._popup_items.size()])
+		and host.gs.players[1].executive_order_used and client.gs.players[1].executive_order_used \
+		and host.gs.players[1].hand.size() == hand_before - 1 and client.gs.players[1].hand.size() == hand_before - 1
+	print("[%s] client usa EO: carta di mano spesa (mano %d->%d), scelta a %d opzioni, usata sincronizzata" % [
+		"OK" if s1 else "FAIL", hand_before, host.gs.players[1].hand.size(), client._popup_items.size()])
 	if not s1: fails += 1
 
 	# 2) Sceglie 'Produci 3 tipi' (indice 7): Produce attivo e limite sincronizzato.

@@ -36,12 +36,15 @@ static func new_game(powers: Array) -> GameState:
 		for si in region.get("starting_influence", []):
 			var owner := String(si["owner"])
 			var slot := String(si.get("slot", "permanent"))
-			# I cubetti iniziali (incluso il NEUTRALE "local", nero) vanno nello slot indicato
-			# dai dati: occupano la casella iniziale e contano nelle maggioranze come forze
-			# locali. NON devono pero' completare da soli la riga permanente (i PV di maggioranza
-			# scattano solo a riga piena): per questo le Regioni hanno in board.json piu' slot
-			# permanenti delle sole caselle iniziali (le caselle "fill" restano vuote al setup).
-			track.add(owner, slot)
+			if slot == "permanent":
+				# I cubetti iniziali (incluso il NEUTRALE "local", nero) vanno nella riga
+				# colorata SOPRA la riga permanente vera (InfluenceTrack.starting): contano
+				# nelle maggioranze e danno 1 VP di presenza come forze locali, ma NON occupano
+				# uno slot di `perm` — non completano da soli la riga permanente vera (i PV di
+				# maggioranza scattano solo quando i giocatori la riempiono davvero in gioco).
+				track.add_starting(owner)
+			else:
+				track.add(owner, slot)
 		gs.regions[rid] = {
 			"track": track,
 			"armies": {},

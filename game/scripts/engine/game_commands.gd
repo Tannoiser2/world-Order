@@ -81,8 +81,9 @@ static func end_turn(seat: int, seq: int) -> Dictionary:
 
 
 ## Executive Order: una volta per partita, invece di giocare una carta, esegue una delle azioni.
-static func use_executive_order(seat: int, seq: int) -> Dictionary:
-	return make("use_executive_order", seat, seq, {})
+## La carta di mano all'indice `hand_index` è il costo (faccia in giù), come uno Strategic Asset.
+static func use_executive_order(seat: int, seq: int, hand_index: int) -> Dictionary:
+	return make("use_executive_order", seat, seq, {"hand_index": hand_index})
 
 
 ## Carta di mano (per INDICE) giocata a faccia in giù per +10 money.
@@ -245,7 +246,7 @@ static func valid_shape(cmd: Variant) -> bool:
 		"end_turn":
 			return true
 		"use_executive_order":
-			return true
+			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0
 		"play_money_token":
 			return typeof(args.get("hand_index")) == TYPE_INT and int(args["hand_index"]) >= 0
 		"play_strategic_asset":
