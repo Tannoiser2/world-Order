@@ -90,6 +90,11 @@ var choice_flow: HFlowContainer   # contenuto della barra scelte (prompt + botto
 var drawer: Panel                   # foglio in basso, mostrato a richiesta
 var drawer_veil: ColorRect
 var drawer_content: VBoxContainer
+# Barra divisoria TRASCINABILE fra la board (plancia) e la mappa: senza, la proporzione fra le
+# due era fissa (auto-calcolata da _board_w); l'utente può ridimensionarle a piacere trascinando.
+var board_splitter: Control
+var _board_w_frac := -1.0     # -1 = automatico (_board_w calcola da solo); altrimenti 0..1 scelto dall'utente
+var _splitter_dragging := false
 var hand_pinned: VBoxContainer   # mano del giocatore, in un pannello full-width in basso
 var hand_panel: Panel            # pannello MANO a tutta larghezza (overlay su mappa+board)
 var market_panel: Panel          # "board mercato" (Research): appare al posto della mappa
@@ -297,6 +302,7 @@ func _ready() -> void:
 
 	_build_hud()
 	_build_drawer()
+	_build_splitter()
 	_build_log_panel()
 	_build_notify_banner()
 	popup_layer = Control.new()
@@ -4030,6 +4036,45 @@ func _build_drawer() -> void:
 	mkscroll.add_child(market_content)
 
 
+## Barra divisoria TRASCINABILE fra la board (plancia) e la mappa: senza, la larghezza delle
+## due colonne era fissa (calcolata da _board_w in base al rapporto della mappa) - trascinando
+## questa barra l'utente sceglie la proporzione che preferisce (_board_w_frac), e il contenuto
+## (mappa/plancia/Registro) si adatta di conseguenza ad ogni _layout_ui.
+func _build_splitter() -> void:
+	board_splitter = Control.new()
+	board_splitter.mouse_filter = Control.MOUSE_FILTER_STOP
+	board_splitter.mouse_default_cursor_shape = Control.CURSOR_HSPLIT
+	board_splitter.z_index = 55
+	board_splitter.tooltip_text = "Trascina per ridimensionare board/mappa"
+	var handle := Panel.new()
+	handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	handle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.4, 0.48, 0.62, 0.55)
+	sb.set_corner_radius_all(3)
+	handle.add_theme_stylebox_override("panel", sb)
+	board_splitter.add_child(handle)
+	board_splitter.gui_input.connect(_on_splitter_input)
+	add_child(board_splitter)
+
+
+## Trascinamento dello splitter board/mappa: preme -> inizia il drag; muove col bottone premuto
+## -> sposta la frazione di larghezza scelta dall'utente (sostituisce il calcolo automatico di
+## _board_w) dello stesso spostamento RELATIVO del mouse (event.relative, non una posizione
+## assoluta: cosi' segue il gesto 1:1 indipendentemente da dove parte) e rilayouta subito, cosi'
+## il contenuto si adatta DINAMICAMENTE mentre si trascina; rilascia -> fine drag.
+func _on_splitter_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_splitter_dragging = event.pressed
+		get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _splitter_dragging:
+		if size.x > 0.0:
+			var cur_frac: float = _board_w_frac if _board_w_frac >= 0.0 else (_board_w() / size.x)
+			_board_w_frac = clampf(cur_frac + event.relative.x / size.x, 0.2, 0.8)
+			_layout_ui()
+		get_viewport().set_input_as_handled()
+
+
 ## REGISTRO: colonna sul bordo destro della mappa con la storia delle azioni. Collassabile in
 ## orizzontale (un tasto la riduce a una linguetta). Posizione/dimensione in _layout_ui.
 func _build_log_panel() -> void:
@@ -4269,6 +4314,11 @@ func _layout_ui() -> void:
 	drawer.visible = true
 	drawer.position = Vector2(0, content_top)
 	drawer.size = Vector2(board_w, content_h)
+	# Splitter TRASCINABILE fra board e mappa, centrato esattamente sul confine board_w.
+	if board_splitter:
+		var splitter_w := clampf(w * 0.01, 4.0, 8.0)
+		board_splitter.position = Vector2(board_w - splitter_w * 0.5, content_top)
+		board_splitter.size = Vector2(splitter_w, content_h)
 	# REGISTRO: colonna VERA (riserva spazio, non sovrappone la mappa) - calcolata PRIMA di
 	# posizionare la mappa così map_viewport si restringe di conseguenza. Nascosta in Research
 	# (la mappa lascia il posto alla board mercato).
@@ -4337,11 +4387,14 @@ func _choice_fs() -> int:
 ## Larghezza della colonna BOARD (a sinistra). La mappa è "letterboxed": a parità d'altezza
 ## occupa solo board_native.x/board_native.y dello spazio orizzontale e lascia del "grigio"
 ## ai lati. Quel grigio lo RECUPERIAMO per la board (e le sue carte, che si adattano),
-## tenendo la mappa grande e allineata a destra. Funzione PURA di `size`, così _layout_ui,
-## _plancia_height e _build_allies_section restano sincronizzati.
+## tenendo la mappa grande e allineata a destra. Se l'utente ha trascinato lo splitter
+## (_board_w_frac >= 0), quella scelta ha SEMPRE la precedenza sul calcolo automatico.
+## _layout_ui, _plancia_height e _build_allies_section restano sincronizzati chiamando questa.
 func _board_w() -> float:
 	var w := size.x
 	var h := size.y
+	if _board_w_frac >= 0.0:
+		return clampf(w * _board_w_frac, w * 0.2, w * 0.8)
 	if w <= 0.0 or h <= 0.0 or board_native.y <= 0.0:
 		return clampf(w * 0.42, 300.0, w * 0.56)
 	# Altezza STABILE riservata alla mappa (ignora la barra scelte, che va e viene: così la
