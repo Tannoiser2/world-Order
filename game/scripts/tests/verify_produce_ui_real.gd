@@ -1,7 +1,7 @@
 extends SceneTree
 ## Verifica la Produce UI passando per il VERO percorso di rendering (_build_plancia_view/
 ## _add_produce_overlays/_show_produce_bar), non solo chiamando _produce_set a mano: cosi' si
-## scoprono bug di collegamento che i test "diretti" non vedono. Copre 3 segnalazioni:
+## scoprono bug di collegamento che i test "diretti" non vedono. Copre 4 segnalazioni:
 ##  1) "Produci 3 tipi" (Executive Order/carte): dopo aver scelto 1 tipo, i bersagli delle
 ##     ALTRE risorse devono restare presenti/attivi per scegliere il 2° e il 3° tipo.
 ##  2) Stesso bug: il bottone "Conferma" deve avvisare se non sono stati ancora scelti tutti i
@@ -9,6 +9,9 @@ extends SceneTree
 ##  3) Focus Militare: le Armate non hanno una casella sulla resource track (vanno in riserva,
 ##     nessun segnalino da trascinare sulla plancia) - devono restare regolabili con un ± CHIARO
 ##     nella barra scelte in alto (_show_produce_bar), generato dal vero rendering.
+##  4) Focus Domestico: la Produce e' limitata a Beni di consumo + Servizi ma SENZA un "count"
+##     (illimitato) - prima non c'era alcun avviso se si confermava dopo un solo tipo, quindi si
+##     produceva "solo un tipo tra Beni di Consumo e Servizi" pur potendo fare entrambi.
 ##
 ## Uso: godot --headless --path game --script res://scripts/tests/verify_produce_ui_real.gd
 
@@ -122,6 +125,34 @@ func _init() -> void:
 	print("[%s] premere '-' nella barra reale decrementa la quantita' (sel=%d, atteso 2)" % [
 		"OK" if s5 else "FAIL", int(b._produce_sel.get("armies", 0))])
 	if not s5: fails += 1
+
+	# 6) Focus Domestico: allowed=[consumer_goods, services] SENZA count (illimitato). Scelto un
+	#    solo tipo, il bottone Conferma deve avvisare che manca l'altro; scelti entrambi, deve
+	#    tornare a "Conferma" semplice - e ENTRAMBI vanno davvero prodotti alla conferma.
+	b._produce_sel = {}
+	p.resources["consumer_goods"] = 0; p.resources["services"] = 0
+	b._open_produce_ui(0, ["consumer_goods", "services"], "prep")
+	b._produce_set("consumer_goods", 1)
+	await process_frame
+	var ok_dom: Button = _find_button_text(b.choice_flow, "Conferma (manca: Servizi)")
+	var s6: bool = ok_dom != null
+	print("[%s] Focus Domestico: Conferma avvisa 'manca: Servizi' con un solo tipo scelto" % ["OK" if s6 else "FAIL"])
+	if not s6: fails += 1
+
+	b._produce_set("services", 1)
+	await process_frame
+	var ok_dom2: Button = _find_button_text(b.choice_flow, "Conferma")
+	var s7: bool = ok_dom2 != null and b._produce_sel.size() == 2
+	print("[%s] Focus Domestico: scelti entrambi (Beni di consumo + Servizi), Conferma torna semplice (sel=%s)" % [
+		"OK" if s7 else "FAIL", str(b._produce_sel)])
+	if not s7: fails += 1
+
+	b._apply_produce()
+	await process_frame
+	var s8: bool = int(p.resources.get("consumer_goods", 0)) == 1 and int(p.resources.get("services", 0)) == 1
+	print("[%s] Confermando si producono DAVVERO entrambi (CG=%d Servizi=%d)" % [
+		"OK" if s8 else "FAIL", int(p.resources.get("consumer_goods", 0)), int(p.resources.get("services", 0))])
+	if not s8: fails += 1
 
 	b.queue_free()
 	await process_frame

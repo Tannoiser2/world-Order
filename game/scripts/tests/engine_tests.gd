@@ -412,6 +412,14 @@ static func run_all() -> Dictionary:
 	ufix.exhausted["country_base"] = false
 	check.call("Build a Base: seconda volta sullo stesso Country fallisce",
 		Actions.execute_build_base(gfix, "usa", base_c, 1, "temporary") == -1)
+	# Strengthen Alliance (allow_repeat=true): puo' rinforzare la STESSA Country una 2a volta,
+	# ma non una 3a (nemmeno con allow_repeat di nuovo attivo).
+	ufix.exhausted["country_base"] = false
+	check.call("Build a Base con allow_repeat: la 2a volta sullo stesso Country riesce",
+		Actions.execute_build_base(gfix, "usa", base_c, 1, "temporary", true) >= 0)
+	ufix.exhausted["country_base"] = false
+	check.call("Build a Base con allow_repeat: la 3a volta sullo stesso Country fallisce comunque",
+		Actions.execute_build_base(gfix, "usa", base_c, 1, "temporary", true) == -1)
 	# Item 18 — Move: destinazione valida solo in zona di interesse o con Base.
 	var gmov := GameSetup.new_game(["russia", "usa"])
 	var rmov := gmov.player_by_power("russia")

@@ -49,6 +49,19 @@ func _init() -> void:
 	print("[%s] _increase_prod_options UE Diplomatic: %s" % ["OK" if s3 else "FAIL", str(opts)])
 	if not s3: fails += 1
 
+	# 3b) Segnalazione: l'Aumento Produzione del Focus DOMESTICO vale per QUALSIASI delle 7
+	# Produzioni (non solo le 3 primarie Energia/Materie/Cibo) - la sua Player Board, a
+	# differenza di Diplomatico/Militare, non ne indica una fissa (regolamento pag. 11/15).
+	var usa_seat2 := _seat_of(b, "usa")
+	b.gs.players[usa_seat2].focus = WO.Focus.DOMESTIC
+	var opts_dom: Array = b._increase_prod_options(b.gs.players[usa_seat2])
+	var dom_types: Array = opts_dom.map(func(o): return String(o["type"]))
+	var s3b: bool = dom_types.size() == 7 and "diplomacy" in dom_types and "armies" in dom_types \
+		and "consumer_goods" in dom_types and "services" in dom_types \
+		and "energy" in dom_types and "raw_materials" in dom_types and "food" in dom_types
+	print("[%s] _increase_prod_options USA Domestic: tutte e 7 le Produzioni (%s)" % ["OK" if s3b else "FAIL", str(dom_types)])
+	if not s3b: fails += 1
+
 	# 4) Integrazione _apply_focus: l'UE con Diplomatic prepara 5 carte Nazione esaurite
 	#    (esattamente 5 esaurite <= 5 riattivabili -> auto-ready, niente scelta interattiva).
 	var p = b.gs.players[eu_seat]
