@@ -15,6 +15,9 @@ extends RefCounted
 const KNOWN := [
 	# Azione (turno del giocatore attivo) e Preparazione
 	"choose_focus", "play_card", "end_turn", "use_ongoing", "increase_production",
+	# Aumento Produzione GRATUITO da una carta (Growth/Asset/Market: "Aumenta N Produzioni") -
+	# stessa interfaccia del Focus (caselle evidenziate), ma senza costo e in qualunque fase.
+	"free_increase_pick",
 	# Giocare una carta a faccia in giù: +10 money, oppure come costo di una Carta Strategica
 	"play_money_token", "play_strategic_asset",
 	# Executive Order (modulo): una volta per partita, invece di una carta, esegue un'azione
@@ -104,6 +107,12 @@ static func use_ongoing(seat: int, seq: int, tag: String) -> Dictionary:
 ## = il giocatore SALTA l'aumento. Se `type` è una primaria, l'effetto dà +1 risorsa.
 static func increase_production(seat: int, seq: int, type: String) -> Dictionary:
 	return make("increase_production", seat, seq, {"type": type})
+
+
+## Aumento Produzione GRATUITO da una carta (Growth/Asset/Market): tocca la casella
+## evidenziata sulla plancia per il tipo scelto (vedi board_view._free_increase_pick).
+static func free_increase_pick(seat: int, seq: int, type: String) -> Dictionary:
+	return make("free_increase_pick", seat, seq, {"type": type})
 
 
 ## Sotto-scelte (risolvono uno stato `awaiting` durante la risoluzione di una carta).
@@ -256,6 +265,8 @@ static func valid_shape(cmd: Variant) -> bool:
 			return typeof(args.get("tag")) == TYPE_STRING and String(args["tag"]) != ""
 		"increase_production":
 			return typeof(args.get("type")) == TYPE_STRING   # "" ammesso = salta
+		"free_increase_pick":
+			return typeof(args.get("type")) == TYPE_STRING and String(args["type"]) != ""
 		"pick_region":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != ""
 		"pick_influence_cell":

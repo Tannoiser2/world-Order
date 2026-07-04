@@ -3381,7 +3381,15 @@ func _pick_resource(prompt: String, cb: Callable) -> void:
 ## già pagato giocando la carta, nessun costo qui). Tocca la casella EVIDENZIATA sulla plancia
 ## (_add_increase_overlays, stessa interfaccia del Focus) per il tipo scelto; ripete finché non
 ## sono state scelte N Produzioni DISTINTE (FAQ: "must choose N DIFFERENT Productions").
+## Elemento CONDIVISO (caselle sulla plancia, visibili a entrambi in rete): come _cmd_pick_region
+## & co., passa dal command bus (apply_command), non muta lo stato in locale - altrimenti in rete
+## il client vedrebbe l'aumento solo sul proprio schermo, mai applicato/ribroadcast dall'host.
 func _free_increase_pick(rt: String) -> void:
+	if not _i_acting(): return
+	apply_command(GameCommands.free_increase_pick(active_seat, _next_seq(), rt))
+
+
+func _apply_free_increase_pick(rt: String) -> void:
 	if _free_increase_remaining <= 0 or rt in _free_increase_done:
 		return
 	var pp := _active()
@@ -6160,6 +6168,12 @@ func apply_command(cmd: Dictionary) -> bool:
 			else:
 				_prep_awaiting_increase = false
 				_open_focus_produce()   # infine la Produzione del Focus vera e propria
+		"free_increase_pick":
+			# Aumento Produzione GRATUITO da una carta (Growth/Asset/Market): come
+			# "increase_production" ma senza costo e senza limitarsi alla Preparazione.
+			if _free_increase_remaining <= 0:
+				return false
+			_apply_free_increase_pick(String(a["type"]))
 		"pick_region":
 			_on_region_pressed(String(a["region"]))
 		"pick_influence_cell":
