@@ -599,16 +599,20 @@ func _init() -> void:
 		print("[%s] op increase_prosperity: livello 0→1" % ["OK" if pr_ok else "FAIL"])
 		if not pr_ok: fails += 1
 
-		# op increase_production (popup scelta risorsa): +count alla traccia scelta.
+		# op increase_production (Aumento Produzione GRATUITO da una carta): count=2 significa 2
+		# Produzioni DISTINTE, ognuna +1 (FAQ), con la stessa interfaccia del Focus (caselle
+		# evidenziate sulla plancia, board._free_increase_pick) - non più un popup a bottoni.
 		var pip: PlayerState = board._active()
 		pip.production["energy"] = 1
+		pip.production["diplomacy"] = 1
 		var card_ip := {"display_name": "IP", "effect_ops": [{"op": "increase_production", "count": 2}]}
 		pip.hand.append(card_ip); board._plays_left = 9
 		board._play_card(card_ip)
-		var eb: Button = _find_button(board, board.RES_LABEL["energy"])
-		if eb: eb.pressed.emit()
-		var ip_ok: bool = pip.production["energy"] == 3 and board.playing_card.is_empty()
-		print("[%s] op increase_production: Energia 1→3 (+2)" % ["OK" if ip_ok else "FAIL"])
+		var ip_mid_ok: bool = board._free_increase_remaining == 2
+		board._free_increase_pick("energy")
+		board._free_increase_pick("diplomacy")
+		var ip_ok: bool = ip_mid_ok and pip.production["energy"] == 2 and pip.production["diplomacy"] == 2 and board.playing_card.is_empty()
+		print("[%s] op increase_production: 2 Produzioni distinte +1 (Energia 1→2, Diplomazia 1→2)" % ["OK" if ip_ok else "FAIL"])
 		if not ip_ok: fails += 1
 
 		# op trash (popup mano): la carta scelta è rimossa dal gioco (non negli scarti).

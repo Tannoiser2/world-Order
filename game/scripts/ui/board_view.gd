@@ -165,6 +165,11 @@ var _prep_ready_remaining := 0           # Country esaurite ancora da RIATTIVARE
 var _prep_awaiting_increase := false     # in attesa della scelta "Increase Production" (post-Focus)
 var _prep_increases_done := 0            # quanti aumenti Produzione gia' fatti in questo passo Focus
 var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in questo passo (Cina: 2 distinti)
+# Aumento Produzione GRATUITO da una carta (Growth/Asset/Market, es. "Aumenta 2 Produzioni"):
+# stessa interfaccia del Focus (caselle evidenziate sulla plancia, _add_increase_overlays), ma
+# senza costo in money (già pagato giocando la carta) e senza restrizione al Focus corrente.
+var _free_increase_remaining := 0        # quante Produzioni DISTINTE restano da aumentare (0 = nessun aumento in corso)
+var _free_increase_done: Array = []      # tipi già aumentati in questa risoluzione (esclusi dalle scelte successive)
 var _exhausted_seen: Dictionary = {}     # country_id -> pronta/esaurita all'ultimo render (per animare il "giro" solo alla transizione)
 var _automa_busy := false                # guardia anti-rientro del driver bot (Automa)
 var _automa_pending := false             # un passo bot e' "armato" (lo esegue _process dopo un breve ritardo)
@@ -1501,8 +1506,13 @@ func _advance_play() -> void:
 			# `count` = quante Produzioni DISTINTE aumentare, ognuna di +1 (regolamento: "Increase
 			# N of your Productions by 1" / FAQ "must choose N DIFFERENT Productions"). Con count=1
 			# coincide col vecchio +1 a una sola risorsa; con count>1 (es. Industrial Development,
-			# Rapid Industrialization) va scelta una risorsa DIVERSA per ciascun aumento.
-			_pick_increase_production(int(op.get("count", 1)), [])
+			# Rapid Industrialization) va scelta una risorsa DIVERSA per ciascun aumento. STESSA
+			# interfaccia del passo Aumento Produzione del Focus (caselle evidenziate sulla
+			# plancia, _add_increase_overlays): niente più elenco di bottoni nella barra scelte -
+			# omogeneo e senza duplicare la logica di scelta.
+			_free_increase_remaining = int(op.get("count", 1))
+			_free_increase_done = []
+			_after_change()
 		"ready_country":
 			var n := int(op.get("n", 1))
 			var pr2 := _active()
@@ -1636,7 +1646,11 @@ func _op_deploy_force(op: Dictionary) -> void:
 
 
 ## Nuovi Accordi Finanziari: investi in una Nazione Alleata di un ALTRO giocatore che ha un IDE,
-## pagando il suo costo di Invest + 5 money; guadagni Influenza nella sua Regione ed esaurisci la Nazione.
+## pagando il suo costo di Invest + 5 money; guadagni Influenza nella sua Regione ed esaurisci la
+## Nazione. E' un Invest a tutti gli effetti per CHI lo gioca (non solo VP/Influenza una tantum):
+## deve contare per il tuo Return on Investments di ogni round e per i tuoi bonus/Obiettivi "IDE"
+## (segnalato "non funziona molto bene" - mancava proprio questa parte, l'unica che rende
+## l'Invest utile oltre il turno in cui lo fai).
 func _op_invest_foreign(op: Dictionary) -> void:
 	var p := _active()
 	var extra := int(op.get("extra_cost", 5))
@@ -1646,10 +1660,14 @@ func _op_invest_foreign(op: Dictionary) -> void:
 			continue
 		for c in op2.allied_countries:
 			var cid := String(c.get("id", ""))
-			if cid in op2.fdi_countries:
+			# Anche se TU hai gia' investito qui con una copia precedente di questa carta, non la
+			# riproponiamo: un solo tuo IDE per Country, come per l'Invest normale (altrimenti si
+			# accumulerebbe un Return on Investments infinito sulla stessa Country).
+			if cid in op2.fdi_countries and cid not in p.fdi_countries:
 				var cost := int(c.get("invest_cost", 0)) + extra
 				items.append({"label": "%s di %s (costo %d)" % [c.get("display_name", "?"), String(op2.power).to_upper(), cost],
-					"value": {"owner": String(op2.power), "cid": cid, "region": String(c.get("region", "")), "name": String(c.get("display_name", "?")), "cost": cost}})
+					"value": {"owner": String(op2.power), "cid": cid, "region": String(c.get("region", "")),
+						"name": String(c.get("display_name", "?")), "cost": cost, "value": int(c.get("value", 0))}})
 	if items.size() == 1:
 		_status("Nuovi Accordi Finanziari: nessuna Nazione Alleata altrui con IDE.")
 		_advance_play()
@@ -1669,9 +1687,15 @@ func _op_invest_foreign(op: Dictionary) -> void:
 			p.victory_points += vp
 		if int(gs.supply.get("fdi", 0)) > 0:
 			gs.supply["fdi"] = int(gs.supply["fdi"]) - 1
+		var cid := String(sel["cid"])
+		# IDE tuo a tutti gli effetti (come Actions.execute_invest): conta per il Return on
+		# Investments di ogni round e per i bonus/Obiettivi che contano le tue Country con IDE.
+		p.fdi_values.append(int(sel.get("value", 0)))
+		if cid not in p.fdi_countries:
+			p.fdi_countries.append(cid)
 		var ep := gs.player_by_power(String(sel["owner"]))
 		if ep != null:
-			ep.exhausted[String(sel["cid"])] = true   # esaurisci la Nazione altrui
+			ep.exhausted[cid] = true   # esaurisci la Nazione altrui
 		_status("Nuovi Accordi Finanziari: investito in %s (+Influenza in %s)." % [sel["name"], region.replace("_", " ")])
 		_layout_overlays()
 		_advance_play())
@@ -3353,30 +3377,32 @@ func _pick_resource(prompt: String, cb: Callable) -> void:
 	_show_popup(prompt, items, cb)
 
 
-## "Increase N Productions by 1": sceglie N tipi DISTINTI (uno alla volta), ognuno +1.
-## `done` accumula i tipi già scelti in questa risoluzione (esclusi dalle scelte successive).
-func _pick_increase_production(remaining: int, done: Array) -> void:
-	if remaining <= 0:
-		_advance_play()
+## Aumento Produzione GRATUITO da una carta ("Increase N Productions by 1": Growth/Asset/Market -
+## già pagato giocando la carta, nessun costo qui). Tocca la casella EVIDENZIATA sulla plancia
+## (_add_increase_overlays, stessa interfaccia del Focus) per il tipo scelto; ripete finché non
+## sono state scelte N Produzioni DISTINTE (FAQ: "must choose N DIFFERENT Productions").
+## Elemento CONDIVISO (caselle sulla plancia, visibili a entrambi in rete): come _cmd_pick_region
+## & co., passa dal command bus (apply_command), non muta lo stato in locale - altrimenti in rete
+## il client vedrebbe l'aumento solo sul proprio schermo, mai applicato/ribroadcast dall'host.
+func _free_increase_pick(rt: String) -> void:
+	if not _i_acting(): return
+	apply_command(GameCommands.free_increase_pick(active_seat, _next_seq(), rt))
+
+
+func _apply_free_increase_pick(rt: String) -> void:
+	if _free_increase_remaining <= 0 or rt in _free_increase_done:
 		return
-	var items := []
-	for rt in RES:
-		if rt in done:
-			continue
-		items.append({"label": RES_LABEL[rt], "value": rt})
-	if items.is_empty():
-		_advance_play()
-		return
-	var ord := done.size() + 1
-	var prompt := "Aumenta quale Produzione (+1)?" if remaining == 1 and ord == 1 \
-		else "Aumenta quale Produzione (+1) — %d di %d?" % [ord, ord + remaining - 1]
-	_show_popup(prompt, items, func(rt):
-		var pp := _active()
-		pp.production[rt] = int(pp.production.get(rt, 0)) + 1
-		_status("Produzione %s +1." % RES_LABEL.get(rt, rt))
+	var pp := _active()
+	pp.production[rt] = int(pp.production.get(rt, 0)) + 1
+	_free_increase_done.append(rt)
+	_free_increase_remaining -= 1
+	_status("Produzione %s +1." % RES_LABEL.get(rt, rt))
+	if _free_increase_remaining <= 0:
+		_free_increase_done = []
 		_after_change()
-		done.append(rt)
-		_pick_increase_production(remaining - 1, done))
+		_advance_play()
+	else:
+		_after_change()
 
 
 # --- Produce: azione domestica multi-traccia con quantità a scelta ---
@@ -3534,7 +3560,19 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 ## Commercio/Produce. Diplomatico/Militare: una sola casella (la propria); Domestico: tutte e
 ## 7 (scelta libera fra qualunque Produzione, regolamento pag. 11).
 func _add_increase_overlays(area: Control, p: PlayerState, _pw: float, ph: float) -> void:
-	var opts: Array = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
+	# Due possibili "modalità" per lo stesso overlay: il passo Aumento Produzione del Focus
+	# (a pagamento, limitato alla risorsa del Focus) o un aumento GRATUITO da una carta
+	# (Growth/Asset/Market: "Aumenta N Produzioni", qualsiasi risorsa, già pagato con la carta).
+	var free_mode: bool = _free_increase_remaining > 0
+	var opts: Array
+	if free_mode:
+		opts = []
+		for rt in RES:
+			if rt in _free_increase_done:
+				continue
+			opts.append({"type": rt, "cost": 0})
+	else:
+		opts = _increase_prod_options(p).filter(func(o): return p.money >= int(o["cost"]))
 	var d := ph * 0.135
 	for o in opts:
 		var res := String(o["type"])
@@ -3553,8 +3591,12 @@ func _add_increase_overlays(area: Control, p: PlayerState, _pw: float, ph: float
 		sb.bg_color = Color(0.95, 0.85, 0.4, 0.22)
 		sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4, 0.95)
 		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
-		b.tooltip_text = "Aumenta Produzione %s (-%d money)" % [String(RES_NAME_IT.get(res, res)), int(o["cost"])]
-		b.pressed.connect(_cmd_increase_production.bind(res))
+		if free_mode:
+			b.tooltip_text = "Aumenta Produzione %s" % String(RES_NAME_IT.get(res, res))
+			b.pressed.connect(_free_increase_pick.bind(res))
+		else:
+			b.tooltip_text = "Aumenta Produzione %s (-%d money)" % [String(RES_NAME_IT.get(res, res)), int(o["cost"])]
+			b.pressed.connect(_cmd_increase_production.bind(res))
 		area.add_child(b)
 
 
@@ -4335,11 +4377,15 @@ func _layout_ui() -> void:
 		choice_bar.position = Vector2(0, hud_h)
 		choice_bar.size = Vector2(w, choice_h)
 	var tab_h := clampf(h * 0.08, 34, 64)
-	# 'Fine turno' FISSO in basso a destra (comodo, sopra un fondo scuro dedicato).
+	# 'Fine turno': nella TOP BAR (riga round/turno/money), più coerente ora che le linguette
+	# delle potenze sono anch'esse dentro il pannello board invece che in fondo allo schermo. In
+	# basso a destra poteva finire sotto gli splitter trascinabili (board/mappa o mano) e non si
+	# riusciva più a premere (segnalato) - qui in alto non c'è nulla con cui possa sovrapporsi.
 	var et_w := clampf(w * 0.15, 96.0, 180.0)
+	var hud_row_h := _base_fs() + 14.0
 	if end_turn_btn:
-		end_turn_btn.position = Vector2(w - et_w - 4, h - tab_h + 3)
-		end_turn_btn.size = Vector2(et_w, tab_h - 6)
+		end_turn_btn.position = Vector2(w - et_w - 8.0, 4.0)
+		end_turn_btn.size = Vector2(et_w, hud_row_h - 8.0)
 	# Linguette (bandiere): altezza minima dentro il pannello board (col la auto-posiziona in
 	# cima, vedi _build_drawer) - non più una barra a parte in fondo allo schermo.
 	if tab_bar:
@@ -4542,6 +4588,10 @@ func _refresh() -> void:
 		_show_trade_bar(p)
 	elif i_acting and _produce_mode:
 		_show_produce_bar(p)
+	elif i_acting and _free_increase_remaining > 0:
+		# Aumento Produzione GRATUITO da una carta: stessa interfaccia del Focus (istruzione qui,
+		# caselle evidenziate sulla plancia in _build_plancia_view -> _add_increase_overlays).
+		_show_free_increase_bar()
 	elif i_acting and _aftermath_choice_p != null and not _aftermath_subchoice:
 		# AFTERMATH: ricostruisce la barra delle scelte dallo stato (come Commercio/Produce),
 		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
@@ -4642,8 +4692,8 @@ func _refresh_hud(p: PlayerState) -> void:
 	turn.add_theme_constant_override("outline_size", 3)
 	hud_box.add_child(turn)
 	hud_box.add_child(_money_widget(p.money))
-	# Il tasto 'Fine turno' NON sta più nell'HUD (angolo alto-destra scomodo): è un tasto
-	# fisso in BASSO a destra (vedi end_turn_btn in _layout_ui). Qui ne aggiorno lo stato.
+	# Il tasto 'Fine turno' è nella TOP BAR (vedi end_turn_btn in _layout_ui, riga round/turno/
+	# money). Qui ne aggiorno solo lo stato (abilitato/disabilitato).
 	if end_turn_btn:
 		# 'Fine turno' bloccato finché non hai GIOCATO (o passato) una carta nel turno.
 		# Eccezione: mano vuota (non puoi più agire) -> puoi comunque finire. In rete è
@@ -4901,7 +4951,7 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 		_add_trade_overlays(area, p, pw, ph)
 	elif producing:
 		_add_produce_overlays(area, p, pw, ph)
-	elif interactive and _prep_awaiting_increase:
+	elif interactive and (_prep_awaiting_increase or _free_increase_remaining > 0):
 		_add_increase_overlays(area, p, pw, ph)
 	return view
 
@@ -6118,6 +6168,12 @@ func apply_command(cmd: Dictionary) -> bool:
 			else:
 				_prep_awaiting_increase = false
 				_open_focus_produce()   # infine la Produzione del Focus vera e propria
+		"free_increase_pick":
+			# Aumento Produzione GRATUITO da una carta (Growth/Asset/Market): come
+			# "increase_production" ma senza costo e senza limitarsi alla Preparazione.
+			if _free_increase_remaining <= 0:
+				return false
+			_apply_free_increase_pick(String(a["type"]))
 		"pick_region":
 			_on_region_pressed(String(a["region"]))
 		"pick_influence_cell":
@@ -6355,6 +6411,11 @@ func _ui_snapshot() -> Dictionary:
 		"prep_ready_remaining": _prep_ready_remaining,
 		"prep_increases_done": _prep_increases_done,
 		"prep_increased_types": _prep_increased_types.duplicate(),
+		# Aumento Produzione GRATUITO da una carta (Growth/Asset/Market): quante Produzioni
+		# distinte restano da scegliere e quali già scelte, cosi' il client vede le stesse
+		# caselle evidenziate sulla plancia.
+		"free_increase_remaining": _free_increase_remaining,
+		"free_increase_done": _free_increase_done.duplicate(),
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
@@ -6453,6 +6514,8 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_prep_ready_remaining = int(ui.get("prep_ready_remaining", 0))
 	_prep_increases_done = int(ui.get("prep_increases_done", 0))
 	_prep_increased_types = (ui.get("prep_increased_types", []) as Array).duplicate()
+	_free_increase_remaining = int(ui.get("free_increase_remaining", 0))
+	_free_increase_done = (ui.get("free_increase_done", []) as Array).duplicate()
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
@@ -7064,6 +7127,26 @@ func _show_increase_bar() -> void:
 	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
 	skip.pressed.connect(_cmd_increase_production.bind(""))
 	choice_flow.add_child(skip)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Barra "Aumento Produzione" GRATUITO da una carta (Growth/Asset/Market: "Aumenta N
+## Produzioni"): stessa interfaccia del passo Aumento Produzione del Focus (istruzione qui,
+## caselle evidenziate sulla plancia in _add_increase_overlays) - niente "Salta", e' un
+## aumento OBBLIGATORIO di N Produzioni distinte (nessuna carta attuale lo rende opzionale).
+func _show_free_increase_bar() -> void:
+	_clear_choice_bar()
+	var p := _active()
+	var done := _free_increase_done.size()
+	var total := done + _free_increase_remaining
+	var head := Label.new()
+	head.text = "Aumento Produzione - %s: tocca la casella EVIDENZIATA sulla plancia (%d di %d)." % [
+		p.power.to_upper(), done + 1, total]
+	head.add_theme_font_size_override("font_size", _base_fs() + 1)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(head)
 	choice_bar.visible = true
 	_layout_ui()
 
