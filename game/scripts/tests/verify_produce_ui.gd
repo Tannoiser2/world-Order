@@ -29,10 +29,10 @@ func _init() -> void:
 	print("[%s] derivata CG: '%s'" % ["OK" if s2 else "FAIL", s2text])
 	if not s2: fails += 1
 
-	# 3) Derivata Servizi (costa Cibo + Materie Prime), x2.
+	# 3) Derivata Servizi (costa Cibo + Energia), x2.
 	b._produce_sel = {"services": 2}
 	var s3text: String = b._produce_summary_text()
-	var s3: bool = "Servizi +2" in s3text and "2 Cibo" in s3text and "2 Materie Prime" in s3text
+	var s3: bool = "Servizi +2" in s3text and "2 Cibo" in s3text and "2 Energia" in s3text
 	print("[%s] derivata Servizi: '%s'" % ["OK" if s3 else "FAIL", s3text])
 	if not s3: fails += 1
 

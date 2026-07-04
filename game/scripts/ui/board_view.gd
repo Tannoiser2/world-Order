@@ -534,37 +534,12 @@ func _layout_influence_cubes() -> void:
 		var track: InfluenceTrack = gs.regions[region].get("track")
 		if track == null:
 			continue
-		# Influenza permanente: i primi K cubi (quelli INIZIALI di setup) restano sulle
-		# caselle colorate in alto (conf.permanent); quelli AGGIUNTI in gioco vanno sulle
-		# caselle permanenti vere sotto (conf.permanent_fill). K = influenze iniziali permanenti.
-		var k := _starting_perm_count(region)
-		_place_perm_cubes(track.perm, conf.get("permanent", []), conf.get("permanent_fill", []), k, s)
+		# Cubi INIZIALI di setup: riga colorata SOPRA (conf.permanent) - non sono slot
+		# permanenti veri (vedi InfluenceTrack.starting). Influenza permanente vera aggiunta
+		# in gioco: riga vera sotto (conf.permanent_fill).
+		_place_slot_cubes(track.starting, conf.get("permanent", []), s)
+		_place_slot_cubes(track.perm, conf.get("permanent_fill", []), s)
 		_place_slot_cubes(track.temp, conf.get("temporary", []), s)
-
-
-## Numero di Influenze INIZIALI permanenti (di setup) della Regione (dai dati board).
-func _starting_perm_count(region: String) -> int:
-	for r in gs.board_data.get("regions", []):
-		if String(r.get("region", "")) == region:
-			var k := 0
-			for si in r.get("starting_influence", []):
-				if String(si.get("slot", "permanent")) == "permanent":
-					k += 1
-			return k
-	return 0
-
-
-## Posa i cubi permanenti: i primi `k` (iniziali) su `initial_coords` (riga colorata),
-## i successivi (aggiunti in gioco) su `fill_coords` (riga permanente sotto).
-func _place_perm_cubes(owners: Array, initial_coords: Array, fill_coords: Array, k: int, s: float) -> void:
-	for i in owners.size():
-		var owner: Variant = owners[i]
-		if owner == null:
-			continue
-		var coords: Array = initial_coords if i < k else fill_coords
-		var idx: int = i if i < k else i - k
-		if idx < coords.size():
-			_draw_cube(coords[idx], owner, s)
 
 
 func _place_slot_cubes(owners: Array, coords: Array, s: float) -> void:
@@ -1345,9 +1320,10 @@ func _play_card(card: Dictionary) -> void:
 	_advance_play()
 
 
-## Usa l'Executive Order (modulo): UNA volta per partita, al posto di una carta, esegue una
-## delle 8 azioni (scelta). Consuma una giocata; se non usata vale +3 VP a fine partita.
-func _play_executive_order() -> void:
+## Usa l'Executive Order (modulo): UNA volta per partita, spendendo una carta di mano come
+## costo (faccia in giù) — esattamente come uno Strategic Asset — esegue una delle 8 azioni
+## (scelta). Consuma una giocata; se non usata vale +3 VP a fine partita.
+func _play_executive_order(hand_card: Dictionary) -> void:
 	if not playing_card.is_empty():
 		return
 	if _plays_left <= 0:
@@ -1359,6 +1335,10 @@ func _play_executive_order() -> void:
 		return
 	if _eo_ops.is_empty():
 		return
+	if not (hand_card in p.hand):
+		return
+	p.hand.erase(hand_card)
+	p.discard.append(hand_card)              # la carta di mano è il costo (faccia in giù)
 	p.executive_order_used = true
 	_playing_eo = true
 	playing_card = {"display_name": "Executive Order", "effect_ops": _eo_ops}
@@ -1369,8 +1349,19 @@ func _play_executive_order() -> void:
 	_advance_play()
 
 
+## Ordine Esecutivo nella mano: con una carta selezionata, la usa come costo (faccia in giù)
+## per attivarlo — stessa logica del gettone 10 monete e delle carte Strategiche.
 func _cmd_use_executive_order() -> void:
-	apply_command(GameCommands.use_executive_order(active_seat, _next_seq()))
+	if not playing_card.is_empty() or _plays_left <= 0:
+		return
+	if _selected_hand_card.is_empty():
+		_status("Prima seleziona una carta dalla mano, poi tocca l'Ordine Esecutivo per attivarlo (la carta è il costo).")
+		return
+	var idx := _active().hand.find(_selected_hand_card)
+	_selected_hand_card = {}
+	if idx < 0:
+		return
+	apply_command(GameCommands.use_executive_order(active_seat, _next_seq(), idx))
 
 
 ## Breve descrizione degli sconti attivi della carta (per la status bar).
@@ -2190,18 +2181,17 @@ func _pick_slot(region: String, cb: Callable) -> void:
 
 
 ## Coordinata normalizzata della PROSSIMA casella Influenza permanente libera della
-## Regione (riga "permanent_fill" per quelle aggiunte in gioco); [] se nessuna libera.
+## Regione (riga "permanent_fill", quella vera: i cubi iniziali non sono in `perm`); [] se
+## nessuna libera.
 func _next_free_perm_pos(region: String) -> Array:
 	var conf: Dictionary = layout.get("influence_slots", {}).get(region, {})
 	var track: InfluenceTrack = gs.regions[region].get("track")
 	if track == null:
 		return []
-	var k := _starting_perm_count(region)
+	var coords: Array = conf.get("permanent_fill", [])
 	for i in track.perm.size():
-		if track.perm[i] == null:
-			var coords: Array = conf.get("permanent_fill", []) if i >= k else conf.get("permanent", [])
-			var idx: int = i - k if i >= k else i
-			return coords[idx] if idx < coords.size() else []
+		if track.perm[i] == null and i < coords.size():
+			return coords[i]
 	return []
 
 
@@ -2769,12 +2759,9 @@ func _finish_card() -> void:
 ## L'azione in corso NON è eseguibile (risorse insufficienti) ed è la PRIMA della carta: la
 ## carta non ha ancora fatto nulla, quindi la RESTITUISCE (resta in mano) e NON consuma il
 ## turno. Il giocatore può rigiocarla o sceglierne un'altra. Niente carta/turno sprecati.
+## (Le carte Strategiche e l'Ordine Esecutivo NON passano di qui: hanno già speso la loro
+## carta di mano come costo all'attivazione, vedi _action_failed.)
 func _abort_play(reason: String) -> void:
-	# Se era l'Executive Order e non ha ancora fatto nulla, la si "restituisce": non risulta usata
-	# e il turno non viene consumato (come per le carte non eseguibili).
-	if _playing_eo:
-		_active().executive_order_used = false
-		_playing_eo = false
 	playing_card = {}
 	play_queue = []
 	_play_ops_started = 0
@@ -2799,9 +2786,11 @@ func _abort_play(reason: String) -> void:
 ## Un'azione della carta è fallita per risorse insufficienti. Se è la PRIMA cosa che la carta
 ## fa, restituisce la carta (_abort_play); altrimenti un op precedente ha già avuto effetto, e
 ## allora si prosegue saltando l'azione fallita (la carta resta giocata). Ritorna true se ha
-## restituito la carta (il chiamante deve fermarsi), false se si deve proseguire.
+## restituito la carta (il chiamante deve fermarsi), false se si deve proseguire. Le carte
+## Strategiche e l'Ordine Esecutivo hanno già speso la loro carta di mano come costo
+## all'attivazione: non si restituiscono mai, anche se la prima azione fallisce.
 func _action_failed(reason: String) -> bool:
-	if _play_ops_started <= 1 and not _playing_asset:
+	if _play_ops_started <= 1 and not _playing_asset and not _playing_eo:
 		_abort_play(reason)
 		return true
 	_status(reason)
@@ -3413,6 +3402,17 @@ func _produce_rerender() -> void:
 	_refresh()
 
 
+## Quanta `primary` (Energia/Materie/Cibo) verrebbe spesa dalla selezione Produce corrente
+## (tutte le secondarie/Armate scelte insieme, via Actions.SECONDARY_REQ): usato per
+## l'anteprima "auto-scalata" del token primario sulla sua track, senza scrivere nulla.
+func _produce_primary_spend(primary: String) -> int:
+	var spend := 0
+	for rt in _produce_sel:
+		var req: Dictionary = Actions.SECONDARY_REQ.get(String(rt), {})
+		spend += int(req.get(primary, 0)) * int(_produce_sel[rt])
+	return spend
+
+
 ## Imposta quante unità di `rt` produrre (0..Produzione) toccando la casella sulla track.
 func _produce_set(rt: String, q: int) -> void:
 	var cap := int(_active().production.get(rt, 0))
@@ -3427,23 +3427,50 @@ func _produce_set(rt: String, q: int) -> void:
 	_produce_rerender()
 
 
-## Armate da produrre (ognuna consuma 1 Materia Prima), regolate con ±.
-func _produce_armies_adjust(delta: int) -> void:
-	var p := _active()
-	var cap := int(p.production.get("armies", 0))
-	var nq := clampi(int(_produce_sel.get("armies", 0)) + delta, 0, cap)
-	if nq <= 0:
-		_produce_sel.erase("armies")
-	elif _produce_type_limit_reached("armies"):
-		_status("Puoi produrre al massimo %d tipi di risorsa con questa carta." % _produce_max_types)
-		return
-	else:
-		_produce_sel["armies"] = nq
-	_produce_rerender()
+## Tooltip (SOLO al passaggio del mouse - il tabellone resta pulito) per uno slot Produce:
+## quanto produce e cosa costa.
+func _produce_slot_tooltip(rt: String, k: int) -> String:
+	if k <= 0:
+		return "Nessuna produzione di %s" % String(RES_NAME_IT.get(rt, rt))
+	var s := "%s +%d" % [String(RES_NAME_IT.get(rt, rt)), k]
+	var req: Dictionary = Actions.SECONDARY_REQ.get(rt, {})
+	if not req.is_empty():
+		var bits := []
+		for ck in req:
+			bits.append("%d %s" % [int(req[ck]) * k, String(RES_NAME_IT.get(ck, ck))])
+		s += " (costa %s)" % ", ".join(bits)
+	return s
 
 
-## Overlay Produce sulla resource track: per ogni risorsa con Produzione, caselle dal
-## valore attuale fino a +Produzione (verso 10), col guadagno e l'eventuale costo.
+## Inizio trascinamento del segnalino Produce: anteprima sotto il dito (drag&drop nativo di
+## Godot, come il Commercio - niente calcolo manuale del puntatore, vedi _add_trade_overlays).
+func _produce_drag_begin(_at_position: Vector2, rt: String) -> Variant:
+	var prev := TextureRect.new()
+	var d := board_native.y * 0.06
+	prev.texture = load("res://assets/armies/%s.png" % _active().power) if rt == "armies" \
+		else load("res://assets/tokens/%s.png" % rt)
+	prev.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	prev.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	prev.custom_minimum_size = Vector2(d, d); prev.size = Vector2(d, d)
+	set_drag_preview(prev)
+	return {"produce_res": rt}
+
+
+## Si può rilasciare su una casella solo il segnalino dello stesso tipo di risorsa.
+func _produce_can_drop(_at_position: Vector2, data: Variant, rt: String) -> bool:
+	return data is Dictionary and String((data as Dictionary).get("produce_res", "")) == rt
+
+
+## Rilascio su una casella: imposta la quantità da produrre per raggiungere quello slot.
+func _produce_do_drop(_at_position: Vector2, _data: Variant, rt: String, cur: int, i: int) -> void:
+	_produce_set(rt, i - cur)
+
+
+## Overlay Produce sulla resource track: il segnalino di ogni risorsa (già disegnato dal loop
+## dei token, alla quantità "staged") si TRASCINA lungo la SUA track fino allo slot desiderato -
+## nessun testo/bottone +/- stampato sul tabellone (solo un bordo dorato sullo slot scelto e un
+## tooltip al passaggio del mouse). Le primarie consumate si vedono scalare in diretta sulla
+## LORO track (vedi il loop dei token in _build_plancia_view).
 func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float) -> void:
 	for rt in RES_TOKENS:
 		if not _produce_type_allowed(rt):
@@ -3454,41 +3481,80 @@ func _add_produce_overlays(area: Control, p: PlayerState, _pw: float, ph: float)
 		var cur := int(p.resources.get(rt, 0))
 		var hi := mini(10, cur + cap)
 		var staged := cur + int(_produce_sel.get(rt, 0))
-		var req: Dictionary = Actions.SECONDARY_REQ.get(rt, {})
+		var d := ph * 0.135
 		for i in range(cur, hi + 1):
 			var slot := _resource_slot(i)
-			var d := ph * 0.135
 			var b := Button.new()
+			b.flat = true
 			b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
-			b.offset_left = -d * 0.78; b.offset_right = d * 0.78; b.offset_top = -d * 0.55; b.offset_bottom = d * 0.55
-			b.add_theme_font_size_override("font_size", maxi(8, int(ph * 0.05)))
-			var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(3)
-			var k := i - cur
-			if i == cur:
-				sb.bg_color = Color(0.30, 0.30, 0.36, 0.92); b.text = "-"
+			b.offset_left = -d * 0.55; b.offset_right = d * 0.55; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
+			var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d * 0.28))
+			if i == staged:
+				sb.bg_color = Color(0.95, 0.85, 0.4, 0.0)
+				sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4, 0.95)
 			else:
-				sb.bg_color = Color(0.16, 0.5, 0.28, 0.92)
-				# Riga 1: quante ne PRODUCI (+N). Riga 2 (derivate): COSTO in primarie, con
-				# l'iniziale della risorsa (es. "-2En -2RM"), cosi' si capisce cosa si spende.
-				b.text = "+%d" % k
-				b.autowrap_mode = TextServer.AUTOWRAP_OFF
-				if not req.is_empty():
-					var bits := []
-					for ck in req:
-						bits.append("-%d%s" % [int(req[ck]) * k, RES_LABEL.get(ck, ck)])
-					b.text += "\n" + " ".join(bits)
-			if i == staged and i != cur:
-				sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4)
+				sb.bg_color = Color(0.3, 0.6, 0.35, 0.4)
 			b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
+			var k := i - cur
+			b.tooltip_text = _produce_slot_tooltip(rt, k)
 			b.pressed.connect(_produce_set.bind(rt, k))
+			var drag_source := _produce_drag_begin.bind(rt) if i == staged else Callable()
+			b.set_drag_forwarding(drag_source, _produce_can_drop.bind(rt), _produce_do_drop.bind(rt, cur, i))
 			area.add_child(b)
+	# Armate: stessa logica di drag&drop, ma su una striscia dedicata (vanno in RISERVA, non
+	# hanno una casella sulla resource track 0..10).
+	if _produce_type_allowed("armies"):
+		var acap := int(p.production.get("armies", 0))
+		if acap > 0:
+			_add_army_produce_overlay(area, p, ph, acap)
+
+
+const ARMY_PRODUCE_POS := Vector2(0.40, 0.155)   # striscia dedicata Produce Armate, sotto la riserva
+const ARMY_PRODUCE_STEP := 0.045
+
+func _army_produce_slot(v: int) -> Vector2:
+	return Vector2(ARMY_PRODUCE_POS.x + v * ARMY_PRODUCE_STEP, ARMY_PRODUCE_POS.y)
+
+
+## Overlay Produce delle Armate: stessa logica di drag&drop delle altre risorse (segnalino
+## trascinabile + slot bersaglio), su una striscia dedicata invece della resource track 0..10.
+func _add_army_produce_overlay(area: Control, p: PlayerState, ph: float, acap: int) -> void:
+	var staged := int(_produce_sel.get("armies", 0))
+	var d := ph * 0.1
+	for i in range(0, acap + 1):
+		var slot := _army_produce_slot(i)
+		var b := Button.new()
+		b.flat = true
+		b.anchor_left = slot.x; b.anchor_right = slot.x; b.anchor_top = slot.y; b.anchor_bottom = slot.y
+		b.offset_left = -d * 0.5; b.offset_right = d * 0.5; b.offset_top = -d * 0.5; b.offset_bottom = d * 0.5
+		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(int(d * 0.3))
+		if i == staged:
+			sb.bg_color = Color(0.95, 0.85, 0.4, 0.0)
+			sb.set_border_width_all(2); sb.border_color = Color(0.95, 0.85, 0.4, 0.95)
+		else:
+			sb.bg_color = Color(0.3, 0.6, 0.35, 0.4)
+		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
+		b.tooltip_text = _produce_slot_tooltip("armies", i)
+		b.pressed.connect(_produce_set.bind("armies", i))
+		var drag_source := _produce_drag_begin.bind("armies") if i == staged else Callable()
+		b.set_drag_forwarding(drag_source, _produce_can_drop.bind("armies"), _produce_do_drop.bind("armies", 0, i))
+		area.add_child(b)
+		if i == staged:
+			var tok := TextureRect.new()
+			tok.texture = load("res://assets/armies/%s.png" % p.power)
+			tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tok.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tok.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tok.anchor_left = slot.x; tok.anchor_right = slot.x; tok.anchor_top = slot.y; tok.anchor_bottom = slot.y
+			tok.offset_left = -d * 0.45; tok.offset_right = d * 0.45; tok.offset_top = -d * 0.35; tok.offset_bottom = d * 0.35
+			area.add_child(tok)
 
 
 ## Controlli del Produce nella BARRA SCELTE in alto: riepilogo + Armate (±) + Conferma/Annulla.
-func _show_produce_bar(p: PlayerState) -> void:
+func _show_produce_bar(_p: PlayerState) -> void:
 	_clear_choice_bar()
 	var info := Label.new()
-	info.text = "PRODUCE: tocca le caselle VERDI sulla track. +N = quante ne PRODUCI · -N = costo in primarie (per le risorse derivate)."
+	info.text = "PRODUCE: trascina il segnalino sulla track fino allo slot desiderato (o toccalo)."
 	if _produce_max_types > 0:
 		info.text += " Fino a %d tipi (scelti %d/%d)." % [_produce_max_types, _produce_sel.size(), _produce_max_types]
 	info.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6))
@@ -3502,23 +3568,6 @@ func _show_produce_bar(p: PlayerState) -> void:
 		sl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
 		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		choice_flow.add_child(sl)
-	var arm_cap := int(p.production.get("armies", 0))
-	if arm_cap > 0 and _produce_type_allowed("armies"):
-		var al := Label.new(); al.text = "Armate (-1 Materia cad.):"
-		al.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		choice_flow.add_child(al)
-		var minus := Button.new(); minus.text = "-"; minus.custom_minimum_size = Vector2(34, 0)
-		minus.disabled = int(_produce_sel.get("armies", 0)) <= 0
-		minus.pressed.connect(_produce_armies_adjust.bind(-1))
-		choice_flow.add_child(minus)
-		var cnt := Label.new(); cnt.text = "%d/%d" % [int(_produce_sel.get("armies", 0)), arm_cap]
-		cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cnt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		choice_flow.add_child(cnt)
-		var plus := Button.new(); plus.text = "+"; plus.custom_minimum_size = Vector2(34, 0)
-		plus.disabled = int(_produce_sel.get("armies", 0)) >= mini(arm_cap, int(p.resources.get("raw_materials", 0)))
-		plus.pressed.connect(_produce_armies_adjust.bind(1))
-		choice_flow.add_child(plus)
 	var ok := Button.new(); ok.text = "Conferma"; ok.pressed.connect(_cmd_produce)
 	choice_flow.add_child(ok)
 	# In Preparazione (produzione del Focus) niente "Annulla": il Focus e' gia' scelto e la
@@ -3587,14 +3636,17 @@ func _apply_produce() -> void:
 		if q > 0:
 			var made := Actions.execute_produce(p, rt, q)
 			if made > 0: summary.append("%s +%d" % [RES_LABEL.get(rt, rt), made])
-	# Armate: consumano Materie Prime e vanno nella RISERVA (armies_available).
+	# Armate: stesso motore delle altre secondarie (Actions.SECONDARY_REQ), ma vanno nella
+	# RISERVA (armies_available) invece che nella resource track.
+	var req_a: Dictionary = Actions.SECONDARY_REQ.get("armies", {})
 	var qa := int(_produce_sel.get("armies", 0))
 	var made_a := 0
 	for _i in qa:
-		if int(p.resources.get("raw_materials", 0)) >= 1:
-			p.resources["raw_materials"] = int(p.resources.get("raw_materials", 0)) - 1
-			p.armies_available += 1
-			made_a += 1
+		if not p.has_resources(req_a):
+			break
+		p.spend(req_a)
+		p.armies_available += 1
+		made_a += 1
 	if made_a > 0: summary.append("Armate +%d (riserva)" % made_a)
 	# Produrre un tipo elencato sulle Commerce card le rigira a faccia in su (surplus per il Trade).
 	_flip_commerce_faceup_on_produce(p.power, _produce_sel.keys())
@@ -4592,7 +4644,12 @@ func _build_plancia_view(p: PlayerState, is_active: bool) -> Control:
 			continue
 		var amt := int(p.resources.get(res, 0))
 		if producing:
-			amt = mini(10, amt + int(_produce_sel.get(res, 0)))   # token mostrato alla quantità prodotta
+			if res in Actions.PRIMARY:
+				# Anteprima "auto-scalata": la primaria si vede scendere sulla SUA track in base
+				# a quanto le secondarie/Armate selezionate ne consumerebbero (niente testo).
+				amt = maxi(0, amt - _produce_primary_spend(res))
+			else:
+				amt = mini(10, amt + int(_produce_sel.get(res, 0)))   # token mostrato alla quantità prodotta
 		var slot := _resource_slot(amt)
 		var n := int(stack.get(amt, 0))
 		stack[amt] = n + 1
@@ -4948,8 +5005,9 @@ func _add_cube(parent: Control, nx: float, ny: float, pw: float, ph: float, col:
 
 
 ## Token-immagine di una risorsa sulla traccia RESOURCES (impilati con offset se
-## più risorse condividono lo stesso numero).
-func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, ph: float, stack_index: int) -> void:
+## più risorse condividono lo stesso numero). Ritorna il nodo (per poterlo
+## ri-posizionare in diretta durante il trascinamento Produce, senza ricostruire tutto).
+func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, ph: float, stack_index: int) -> TextureRect:
 	var s := ph * 0.095
 	var off := stack_index * s * 0.5
 	var tr := TextureRect.new()
@@ -4962,6 +5020,7 @@ func _add_token(parent: Control, res: String, nx: float, ny: float, pw: float, p
 	tr.offset_left = -s * 0.5 + off; tr.offset_right = s * 0.5 + off
 	tr.offset_top = -s * 0.5; tr.offset_bottom = s * 0.5
 	parent.add_child(tr)
+	return tr
 
 
 func _prosperity_strip(p: PlayerState) -> Control:
@@ -5628,14 +5687,6 @@ func _build_hand_section(p: PlayerState, is_active: bool) -> void:
 	bar.text = "%s  La tua mano (%d)%s" % ["[+]" if hand_collapsed else "[-]", p.hand.size(), plays_txt]
 	bar.pressed.connect(func(): hand_collapsed = not hand_collapsed; _refresh())
 	hand_pinned.add_child(bar)
-	# Executive Order (modulo): una volta per partita, al posto di una carta. Bottone visibile
-	# finché non l'hai usata e hai ancora una giocata disponibile nel turno.
-	if playing_card.is_empty() and _plays_left > 0 and not p.executive_order_used:
-		var eo := Button.new()
-		eo.text = "Usa Executive Order (1 volta/partita)"
-		eo.add_theme_color_override("font_color", Color(0.95, 0.85, 0.4))
-		eo.pressed.connect(_cmd_use_executive_order)
-		hand_pinned.add_child(eo)
 	if hand_collapsed:
 		hand_box = null
 		return
@@ -5766,7 +5817,11 @@ func apply_command(cmd: Dictionary) -> bool:
 		"end_turn":
 			_end_turn()
 		"use_executive_order":
-			_play_executive_order()
+			var peo := _active()
+			var ieo := int(a["hand_index"])
+			if ieo < 0 or ieo >= peo.hand.size():
+				return false
+			_play_executive_order(peo.hand[ieo])
 		"play_money_token":
 			var pm := _active()
 			var mi := int(a["hand_index"])
@@ -7137,24 +7192,38 @@ func _research_next() -> void:
 	_research_points = GamePhases.research_step(p, p.hand, p.focus == WO.Focus.DOMESTIC)
 	# Growth "Ottimizzazione delle Entrate": ri-applica il bonus superiore delle 2 carte migliori.
 	for _i in _ongoing_count(p, "research_top_bonus_twice"):
-		_apply_top_bonus_best(p, 2)
+		var gained := _apply_top_bonus_best(p, 2)
+		if not gained.is_empty():
+			_event("%s — Ottimizzazione delle Entrate: di nuovo %s" % [p.power.to_upper(), ", ".join(gained)])
 	_after_change()
 	_show_research()
 	_automa_tick()
 
 
 ## Applica di nuovo il `top_bonus` (money/diplomazia/armata) delle `n` carte in mano con il
-## bonus più alto (Growth "Ottimizzazione delle Entrate").
-func _apply_top_bonus_best(p: PlayerState, n: int) -> void:
+## bonus più alto (Growth "Ottimizzazione delle Entrate"). Ritorna un riepilogo leggibile di
+## quanto guadagnato (es. "+5 money", "+3 diplomazia"), [] se nessuna carta aveva un bonus.
+func _apply_top_bonus_best(p: PlayerState, n: int) -> Array:
 	var cards: Array = p.hand.duplicate()
 	cards.sort_custom(func(a, b):
 		return int((a.get("top_bonus", {}) as Dictionary).get("amount", 0)) > int((b.get("top_bonus", {}) as Dictionary).get("amount", 0)))
+	var gained := []
 	for i in mini(n, cards.size()):
 		var tb: Dictionary = (cards[i] as Dictionary).get("top_bonus", {})
+		var amount := int(tb.get("amount", 0))
+		if amount <= 0:
+			continue
 		match String(tb.get("kind", "")):
-			"money": p.money += int(tb.get("amount", 0))
-			"diplomacy": p.gain_resource("diplomacy", int(tb.get("amount", 0)))
-			"army": p.armies_available += int(tb.get("amount", 0))
+			"money":
+				p.money += amount
+				gained.append("+%d money" % amount)
+			"diplomacy":
+				p.gain_resource("diplomacy", amount)
+				gained.append("+%d Diplomazia" % amount)
+			"army":
+				p.armies_available += amount
+				gained.append("+%d Armata" % amount)
+	return gained
 
 
 ## Prossima Growth card acquistabile dal giocatore (livello = possedute + 1).
@@ -7771,6 +7840,10 @@ func _render_hand() -> void:
 	# Carte Strategiche: consumano la carta selezionata per attivarsi.
 	for asset in p.strategic_assets:
 		hand_box.add_child(_hand_strategic_token(asset, ch, busy, has_sel))
+	# Ordine Esecutivo (modulo): DOPO le carte Strategiche. Una volta per partita; sparisce
+	# dalla riga una volta usata (se non la usi entro la partita, +3 VP a fine partita).
+	if not p.executive_order_used:
+		hand_box.add_child(_hand_executive_order_token(ch, busy, has_sel))
 
 
 ## Gettone Moneta da 10 nella mano: immagine della moneta + "+10"; attivo solo se c'è
@@ -7818,6 +7891,23 @@ func _hand_strategic_token(asset: Dictionary, ch: int, busy: bool, has_sel: bool
 	if not has_sel:
 		card.modulate = Color(0.6, 0.6, 0.65)
 	card.pressed.connect(_cmd_play_strategic_asset.bind(asset))
+	return card
+
+
+## Ordine Esecutivo nella mano: immagine reale (formato carta, DOPO le carte Strategiche).
+## Attivo solo con una carta selezionata: toccandola, la carta selezionata è il costo (faccia
+## in giù) — stessa logica del gettone 10 monete e delle carte Strategiche. UNA volta per
+## partita: sparisce dalla riga una volta usata (se non la usi entro la partita, +3 VP a fine).
+func _hand_executive_order_token(ch: int, busy: bool, has_sel: bool) -> Control:
+	var eo := DataLoader.load_executive_order()
+	var card := _country_card_button(eo, Vector2(int(ch * 0.71), ch), false, true)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	card.disabled = busy
+	card.tooltip_text = "Ordine Esecutivo: al posto di una carta, esegui una delle 8 azioni.\nUNA volta per partita (se non la usi, +3 VP a fine partita).\n(seleziona una carta, poi tocca qui per attivarlo)"
+	if not has_sel:
+		card.modulate = Color(0.6, 0.6, 0.65)
+	card.pressed.connect(_cmd_use_executive_order)
 	return card
 
 
