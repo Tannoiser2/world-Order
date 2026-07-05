@@ -170,6 +170,11 @@ var _prep_increased_types: Array = []    # tipi di Produzione gia' aumentati in 
 # senza costo in money (già pagato giocando la carta) e senza restrizione al Focus corrente.
 var _free_increase_remaining := 0        # quante Produzioni DISTINTE restano da aumentare (0 = nessun aumento in corso)
 var _free_increase_done: Array = []      # tipi già aumentati in questa risoluzione (esclusi dalle scelte successive)
+# Vantaggio Operativo (Growth Liv.4) - passo 2: attivazione GRATUITA di un Asset Strategico
+# posseduto. Si tocca la carta Asset già mostrata in mano (stessa carta dell'attivazione a
+# pagamento, _hand_strategic_token) invece di un popup a elenco testuale; "Salta" resta
+# un'opzione valida (a differenza dell'Aumento Produzione gratuito, qui non è obbligatorio).
+var _free_activate_asset := false
 var _exhausted_seen: Dictionary = {}     # country_id -> pronta/esaurita all'ultimo render (per animare il "giro" solo alla transizione)
 var _automa_busy := false                # guardia anti-rientro del driver bot (Automa)
 var _automa_pending := false             # un passo bot e' "armato" (lo esegue _process dopo un breve ritardo)
@@ -1159,42 +1164,57 @@ func _resolve_improve(country: Dictionary, region: String, chosen: Array) -> voi
 	_advance_play()
 
 
-## Click su una Country alleata (davanti al giocatore): target di Invest/Build a
-## Base. Solo durante il gioco della carta corrispondente (niente azione diretta).
+## Click su una Country alleata (davanti al giocatore): target di Invest/Build a Base, o di una
+## scelta di Nazione Alleata da esaurire (Aiuti Economici e Militari, Collaborazione) - stessa
+## interfaccia (tocco diretto sulla carta, niente popup a elenco testuale). Solo durante il gioco
+## della carta/abilità corrispondente (niente azione diretta).
 func _on_allied_pressed(country: Dictionary) -> void:
 	var p := _active()
 	if awaiting != "allied_country":
-		return  # serve giocare la carta Invest/Build a Base
+		return  # serve giocare la carta/abilità che la richiede
 	var name := String(awaiting_op.get("op", ""))
+	var op := awaiting_op
 	awaiting = ""
-	# L'Influenza di Invest/Build va nella Regione della Country: scegli lo slot.
-	var region := String(country.get("region", ""))
-	_action_region = region   # Regione dell'ultima azione (per gli op "su quella Regione")
-	_pick_slot(region, func(slot):
-		if name == "invest":
-			var ivp := Actions.execute_invest(gs, p.power, country, slot)
-			if ivp < 0:
-				if _action_failed("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))]):
-					return
-			else:
-				_event("%s: Invest in %s (+%d VP)." % [p.power.to_upper(), country.get("display_name", "?"), ivp])
-			_after_change()
-			_advance_play()
-		elif name == "build_base":
-			# Build a Base: muovi da 1 fino al valore del Country (pag. 15), non 1 fisso.
-			var allow_repeat: bool = active_mods.has("base_repeat_once")
-			_pick_base_armies(country, func(n_armies):
-				var bvp := Actions.execute_build_base(gs, p.power, country, n_armies, slot, allow_repeat)
-				if bvp < 0:
-					if _action_failed("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?")):
+	awaiting_op = {}
+	if name == "invest" or name == "build_base":
+		# L'Influenza di Invest/Build va nella Regione della Country: scegli lo slot.
+		var region := String(country.get("region", ""))
+		_action_region = region   # Regione dell'ultima azione (per gli op "su quella Regione")
+		_pick_slot(region, func(slot):
+			if name == "invest":
+				var ivp := Actions.execute_invest(gs, p.power, country, slot)
+				if ivp < 0:
+					if _action_failed("Money insufficiente per Invest in %s (serve %d)." % [country.get("display_name", "?"), int(country.get("invest_cost", 0))]):
 						return
 				else:
-					_event("%s: Base in %s, %d Armata/e (+%d VP)." % [p.power.to_upper(), country.get("display_name", "?"), n_armies, bvp])
+					_event("%s: Invest in %s (+%d VP)." % [p.power.to_upper(), country.get("display_name", "?"), ivp])
 				_after_change()
-				_advance_play())
-		else:
-			_after_change()
-			_advance_play())
+				_advance_play()
+			else:
+				# Build a Base: muovi da 1 fino al valore del Country (pag. 15), non 1 fisso.
+				var allow_repeat: bool = active_mods.has("base_repeat_once")
+				_pick_base_armies(country, func(n_armies):
+					var bvp := Actions.execute_build_base(gs, p.power, country, n_armies, slot, allow_repeat)
+					if bvp < 0:
+						if _action_failed("Impossibile costruire una Base in %s (money o requisiti)." % country.get("display_name", "?")):
+							return
+					else:
+						_event("%s: Base in %s, %d Armata/e (+%d VP)." % [p.power.to_upper(), country.get("display_name", "?"), n_armies, bvp])
+					_after_change()
+					_advance_play()))
+	elif name == "aid_first":
+		# Aiuti Economici e Militari - 1a Nazione Alleata: ora la 2a, in una Regione DIVERSA.
+		awaiting = "allied_country"
+		awaiting_op = {"op": "aid_second", "exclude_region": String(country.get("region", "")), "first_id": String(country.get("id", ""))}
+		_status("Aiuti Economici e Militari: scegli la 2a Nazione Alleata (Regione diversa).")
+		_after_change()
+	elif name == "aid_second":
+		_aid_resolve(_ally_by_id(String(op.get("first_id", ""))), country)
+	elif name == "collab_exhaust":
+		_collab_resolve(country)
+	else:
+		_after_change()
+		_advance_play()
 
 
 ## Sceglie quante Armate spostare costruendo una Base: da 1 fino al valore del
@@ -1442,7 +1462,7 @@ func _advance_play() -> void:
 			_after_change()
 		"invest", "build_base":
 			# Seleziona una Country alleata davanti al giocatore.
-			if _eligible_allied(name).is_empty():
+			if _eligible_allied(op).is_empty():
 				_status("Nessuna Country alleata idonea per %s." % name)
 				_advance_play()
 				return
@@ -1925,13 +1945,11 @@ func _swap_resolve(region: String, owner: String, cost: Dictionary, first: bool)
 
 ## Aiuti Economici e Militari (USA): esaurisci 2 Nazioni Alleate PRONTE in Regioni
 ## diverse, spendi 2 Armate (riserva) e 15 money, aggiungi 1 Influenza in ciascuna
-## delle 2 Regioni e ottieni 2 Diplomazia.
+## delle 2 Regioni e ottieni 2 Diplomazia. Scelta delle Nazioni: tocco diretto sulla
+## plancia (caselle evidenziate, awaiting=="allied_country"), non più un popup a elenco.
 func _op_aid_econ_military(_op: Dictionary) -> void:
 	var p := _active()
-	var ready := []
-	for c in p.allied_countries:
-		if not bool(p.exhausted.get(String(c.get("id", "")), false)):
-			ready.append(c)
+	var ready := p.allied_countries.filter(func(c): return not bool(p.exhausted.get(String(c.get("id", "")), false)))
 	var regions := {}
 	for c in ready:
 		regions[String(c.get("region", ""))] = true
@@ -1939,25 +1957,10 @@ func _op_aid_econ_military(_op: Dictionary) -> void:
 		_status("Aiuti Economici e Militari: servono 2 Nazioni Alleate pronte in Regioni diverse, 2 Armate e 15 money.")
 		_advance_play()
 		return
-	_aid_pick_first(ready)
-
-
-func _aid_pick_first(ready: Array) -> void:
-	var items := []
-	for c in ready:
-		items.append({"label": "%s (%s)" % [c.get("display_name", "?"), String(c.get("region", "")).replace("_", " ")], "value": c})
-	_show_popup("Aiuti Economici e Militari: scegli la 1a Nazione Alleata da esaurire.", items, func(choice):
-		var first: Dictionary = choice
-		var rest: Array = ready.filter(func(c): return String(c.get("region", "")) != String(first.get("region", "")))
-		_aid_pick_second(first, rest))
-
-
-func _aid_pick_second(first: Dictionary, rest: Array) -> void:
-	var items := []
-	for c in rest:
-		items.append({"label": "%s (%s)" % [c.get("display_name", "?"), String(c.get("region", "")).replace("_", " ")], "value": c})
-	_show_popup("Aiuti Economici e Militari: scegli la 2a Nazione Alleata (Regione diversa).", items, func(choice):
-		_aid_resolve(first, choice))
+	awaiting = "allied_country"
+	awaiting_op = {"op": "aid_first"}
+	_status("Aiuti Economici e Militari: scegli la 1a Nazione Alleata da esaurire.")
+	_after_change()
 
 
 func _aid_resolve(first: Dictionary, second: Dictionary) -> void:
@@ -2995,28 +2998,18 @@ func _operational_advantage(p: PlayerState) -> void:
 		_operational_activate(p))
 
 
-## Vantaggio Operativo — passo 2: puoi attivare GRATIS 1 tuo Asset Strategico posseduto.
-## I suoi op vengono anteposti alla coda della carta in risoluzione (così si risolvono
-## interattivamente senza azzerare la carta che ha innescato il Get a Growth).
+## Vantaggio Operativo — passo 2: puoi attivare GRATIS 1 tuo Asset Strategico posseduto,
+## toccando la carta già mostrata in mano (stessa carta dell'attivazione a pagamento,
+## _hand_strategic_token) invece di un popup a elenco testuale. "Salta" resta disponibile
+## nella barra scelte. I suoi op vengono anteposti alla coda della carta in risoluzione
+## (così si risolvono interattivamente senza azzerare la carta che ha innescato il Get a Growth).
 func _operational_activate(p: PlayerState) -> void:
-	var items := [{"label": "Non attivare nessun Asset", "value": null}]
-	for sa in p.strategic_assets:
-		items.append({"label": "Attiva gratis: %s" % sa.get("display_name", "?"), "value": sa})
-	if items.size() == 1:
+	if p.strategic_assets.is_empty():
 		_advance_play()   # nessun Asset attivabile: prosegui la carta
 		return
-	_show_popup("Vantaggio Operativo: attiva gratis 1 tuo Asset Strategico (girandolo a faccia in giù)?", items, func(choice):
-		if choice == null:
-			_advance_play()
-			return
-		var sa: Dictionary = choice
-		p.strategic_assets.erase(sa)
-		p.used_strategic_assets.append(sa)
-		_event("%s attiva gratis (Vantaggio Operativo) l'Asset: %s" % [p.power.to_upper(), sa.get("display_name", "?")])
-		var sa_ops: Array = (sa.get("effect_ops", []) as Array).duplicate(true)
-		for i in range(sa_ops.size() - 1, -1, -1):
-			play_queue.push_front(sa_ops[i])
-		_advance_play())
+	_free_activate_asset = true
+	_status("Vantaggio Operativo: tocca un tuo Asset Strategico in mano per attivarlo gratis (o Salta).")
+	_after_change()
 
 
 ## "Salta" del selettore Growth: chiude la scelta senza comprare e prosegue la carta.
@@ -3916,14 +3909,22 @@ func _board_countries() -> Array:
 
 ## Country alleate idonee per l'op data (invest = tutte; build_base = con base, non ancora al
 ## limite di Basi in quella Country - 1 normalmente, 2 con una carta col modifier
-## "base_repeat_once" come Strengthen Alliance, che permette di rinforzarla una 2a volta).
-func _eligible_allied(op_name: String) -> Array:
+## "base_repeat_once" come Strengthen Alliance, che permette di rinforzarla una 2a volta;
+## aid_first/collab_exhaust = solo PRONTE; aid_second = pronte in una Regione DIVERSA dalla 1a).
+func _eligible_allied(op: Dictionary) -> Array:
+	var op_name := String(op.get("op", ""))
 	var p := _active()
 	if op_name == "build_base":
 		var cap := 2 if active_mods.has("base_repeat_once") else 1
 		return p.allied_countries.filter(func(c):
 			return c.get("has_base_symbol", false) and p.power in c.get("base_allowed_powers", []) \
 				and p.bases.count(String(c.get("id", ""))) < cap)
+	if op_name == "aid_first" or op_name == "collab_exhaust":
+		return p.allied_countries.filter(func(c): return not bool(p.exhausted.get(String(c.get("id", "")), false)))
+	if op_name == "aid_second":
+		var excl := String(op.get("exclude_region", ""))
+		return p.allied_countries.filter(func(c): return not bool(p.exhausted.get(String(c.get("id", "")), false)) \
+			and String(c.get("region", "")) != excl)
 	return p.allied_countries
 
 
@@ -4592,6 +4593,9 @@ func _refresh() -> void:
 		# Aumento Produzione GRATUITO da una carta: stessa interfaccia del Focus (istruzione qui,
 		# caselle evidenziate sulla plancia in _build_plancia_view -> _add_increase_overlays).
 		_show_free_increase_bar()
+	elif i_acting and _free_activate_asset:
+		# Vantaggio Operativo: istruzione qui, la carta Asset si tocca direttamente in mano.
+		_show_free_activate_bar()
 	elif i_acting and _aftermath_choice_p != null and not _aftermath_subchoice:
 		# AFTERMATH: ricostruisce la barra delle scelte dallo stato (come Commercio/Produce),
 		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
@@ -5349,7 +5353,7 @@ func _build_allies_section(p: PlayerState, is_active: bool, parent: Control) -> 
 	col.add_theme_constant_override("separation", 4)
 	col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	parent.add_child(col)
-	var elig: Array = _eligible_allied(String(awaiting_op.get("op", ""))) if (awaiting == "allied_country" and is_active) else []
+	var elig: Array = _eligible_allied(awaiting_op) if (awaiting == "allied_country" and is_active) else []
 	# Modalità SCONTO: le nazioni alleate della Regione si toccano per attivare lo sconto.
 	var ex_active: bool = (not _exhaust_ctx.is_empty()) and is_active
 	var ex_elig: Array = _exhaustable_allies(String(_exhaust_ctx.get("region", ""))) if ex_active else []
@@ -5870,38 +5874,38 @@ func _reaction_force(p: PlayerState) -> void:
 
 ## Collaborazione con gli Alleati (Growth, Liv.2): esaurisci 1 Nazione Alleata pronta per
 ## guardare in cima al mazzo tante carte quanto il suo valore, pescarne 1 e lasciare le
-## altre in cima (restano nell'ordine in cui erano).
+## altre in cima (restano nell'ordine in cui erano). Scelta della Nazione: tocco diretto
+## sulla plancia (awaiting=="allied_country"), non più un popup a elenco.
 func _scry_ally(p: PlayerState) -> void:
-	var readies := []
-	for c in p.allied_countries:
-		if not bool(p.exhausted.get(String(c.get("id", "")), false)):
-			readies.append(c)
-	if readies.is_empty():
+	if _eligible_allied({"op": "collab_exhaust"}).is_empty():
 		_status("Collaborazione con gli Alleati: nessuna Nazione Alleata pronta.")
 		_refresh()
 		return
-	var items := []
-	for c in readies:
-		items.append({"label": "%s (valore %d)" % [c.get("display_name", "?"), int(c.get("value", 1))], "value": c})
-	_show_popup("Collaborazione: esaurisci quale Nazione Alleata?", items, func(ally):
-		var a: Dictionary = ally
-		p.exhausted[String(a.get("id", ""))] = true
-		var n: int = mini(int(a.get("value", 1)), p.deck.size())
-		if n <= 0:
-			_status("Collaborazione: mazzo vuoto, nessuna carta da guardare.")
-			_refresh()
-			return
-		var top := []
-		for i in n:
-			top.append(p.deck[i])
-		var citems := []
-		for c in top:
-			citems.append({"label": "%s (val %d)" % [c.get("display_name", "?"), int(c.get("value", 0))], "value": c})
-		_show_popup("Guardi le prime %d carte del mazzo: pescane 1 (le altre restano in cima)." % n, citems, func(chosen):
-			p.deck.erase(chosen)
-			p.hand.append(chosen)
-			_status("Collaborazione: pescata %s." % chosen.get("display_name", "?"))
-			_refresh()))
+	awaiting = "allied_country"
+	awaiting_op = {"op": "collab_exhaust"}
+	_status("Collaborazione: esaurisci quale Nazione Alleata?")
+	_after_change()
+
+
+func _collab_resolve(ally: Dictionary) -> void:
+	var p := _active()
+	p.exhausted[String(ally.get("id", ""))] = true
+	var n: int = mini(int(ally.get("value", 1)), p.deck.size())
+	if n <= 0:
+		_status("Collaborazione: mazzo vuoto, nessuna carta da guardare.")
+		_refresh()
+		return
+	var top := []
+	for i in n:
+		top.append(p.deck[i])
+	var citems := []
+	for c in top:
+		citems.append({"label": "%s (val %d)" % [c.get("display_name", "?"), int(c.get("value", 0))], "value": c})
+	_show_popup("Guardi le prime %d carte del mazzo: pescane 1 (le altre restano in cima)." % n, citems, func(chosen):
+		p.deck.erase(chosen)
+		p.hand.append(chosen)
+		_status("Collaborazione: pescata %s." % chosen.get("display_name", "?"))
+		_refresh())
 
 
 ## Pesca dal mazzo la carta col valore più alto (per "Knowledge Transfer").
@@ -6174,6 +6178,31 @@ func apply_command(cmd: Dictionary) -> bool:
 			if _free_increase_remaining <= 0:
 				return false
 			_apply_free_increase_pick(String(a["type"]))
+		"activate_free_asset":
+			# Vantaggio Operativo: tocco diretto sulla carta Asset già in mano, non più un
+			# popup a elenco testuale.
+			if not _free_activate_asset:
+				return false
+			_free_activate_asset = false
+			var afid := String(a["asset_id"])
+			var pfa := _active()
+			var afa := {}
+			if afid != "":
+				for sa in pfa.strategic_assets:
+					if String((sa as Dictionary).get("id", (sa as Dictionary).get("display_name", ""))) == afid:
+						afa = sa
+						break
+			if afa.is_empty():
+				_after_change()
+				_advance_play()
+			else:
+				pfa.strategic_assets.erase(afa)
+				pfa.used_strategic_assets.append(afa)
+				_event("%s attiva gratis (Vantaggio Operativo) l'Asset: %s" % [pfa.power.to_upper(), afa.get("display_name", "?")])
+				var sa_ops: Array = (afa.get("effect_ops", []) as Array).duplicate(true)
+				for i in range(sa_ops.size() - 1, -1, -1):
+					play_queue.push_front(sa_ops[i])
+				_advance_play()
 		"pick_region":
 			_on_region_pressed(String(a["region"]))
 		"pick_influence_cell":
@@ -6416,6 +6445,9 @@ func _ui_snapshot() -> Dictionary:
 		# caselle evidenziate sulla plancia.
 		"free_increase_remaining": _free_increase_remaining,
 		"free_increase_done": _free_increase_done.duplicate(),
+		# Vantaggio Operativo: attivazione gratuita di un Asset Strategico in corso (tocca la
+		# carta già mostrata in mano - _hand_strategic_token, free_mode).
+		"free_activate_asset": _free_activate_asset,
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
@@ -6516,6 +6548,7 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_prep_increased_types = (ui.get("prep_increased_types", []) as Array).duplicate()
 	_free_increase_remaining = int(ui.get("free_increase_remaining", 0))
 	_free_increase_done = (ui.get("free_increase_done", []) as Array).duplicate()
+	_free_activate_asset = bool(ui.get("free_activate_asset", false))
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
@@ -6669,6 +6702,16 @@ func _cmd_play_strategic_asset(asset: Dictionary) -> void:
 
 func _cmd_use_ongoing(tag: String) -> void:
 	apply_command(GameCommands.use_ongoing(active_seat, _next_seq(), tag))
+
+
+func _cmd_activate_free_asset(asset: Dictionary) -> void:
+	if not _free_activate_asset: return
+	apply_command(GameCommands.activate_free_asset(active_seat, _next_seq(), String(asset.get("id", asset.get("display_name", "")))))
+
+
+func _cmd_skip_free_asset() -> void:
+	if not _free_activate_asset: return
+	apply_command(GameCommands.activate_free_asset(active_seat, _next_seq(), ""))
 
 
 func _cmd_increase_production(type: String) -> void:
@@ -7147,6 +7190,27 @@ func _show_free_increase_bar() -> void:
 	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
 	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	choice_flow.add_child(head)
+	choice_bar.visible = true
+	_layout_ui()
+
+
+## Barra "Vantaggio Operativo" (attivazione GRATUITA di un Asset Strategico posseduto):
+## istruzione qui, la carta si tocca direttamente in mano (_hand_strategic_token, free_mode)
+## - a differenza dell'Aumento Produzione gratuito, qui "Salta" è un'opzione valida.
+func _show_free_activate_bar() -> void:
+	_clear_choice_bar()
+	var p := _active()
+	var head := Label.new()
+	head.text = "Vantaggio Operativo - %s: tocca un Asset Strategico in mano per attivarlo gratis." % p.power.to_upper()
+	head.add_theme_font_size_override("font_size", _base_fs() + 1)
+	head.add_theme_color_override("font_color", POWER_COLORS.get(p.power, Color.WHITE))
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	choice_flow.add_child(head)
+	var skip := Button.new()
+	skip.text = "Salta"
+	skip.add_theme_font_size_override("font_size", _base_fs() + 1)
+	skip.pressed.connect(_cmd_skip_free_asset)
+	choice_flow.add_child(skip)
 	choice_bar.visible = true
 	_layout_ui()
 
@@ -8227,17 +8291,24 @@ func _hand_money_token(ch: int, busy: bool, has_sel: bool) -> Control:
 ## Carta Strategica nella mano: immagine reale GRANDE (alta quanto le carte, arte
 ## ~1.4:1), senza etichetta. Attiva solo con una carta selezionata: toccandola, la
 ## carta selezionata è il costo. È l'UNICO posto dove appaiono (niente più doppione
-## sulla board).
+## sulla board). Durante Vantaggio Operativo (_free_activate_asset, solo per chi è di
+## turno) la STESSA carta si tocca per l'attivazione GRATUITA, senza bisogno di selezionare
+## prima una carta di costo.
 func _hand_strategic_token(asset: Dictionary, ch: int, busy: bool, has_sel: bool) -> Control:
 	var w := int(ch * 1.40)   # arte strategica landscape ~1.4:1: alta quanto le carte di mano
+	var free_mode: bool = _free_activate_asset and _is_my_turn()
 	var card := _country_card_button(asset, Vector2(w, ch), false, true)
 	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	card.disabled = busy
-	card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), _card_text(asset)]
-	if not has_sel:
-		card.modulate = Color(0.6, 0.6, 0.65)
-	card.pressed.connect(_cmd_play_strategic_asset.bind(asset))
+	card.disabled = busy and not free_mode
+	if free_mode:
+		card.tooltip_text = "Vantaggio Operativo: attiva GRATIS %s\n%s" % [asset.get("display_name", ""), _card_text(asset)]
+		card.pressed.connect(_cmd_activate_free_asset.bind(asset))
+	else:
+		card.tooltip_text = "Strategic Asset: %s\n%s\n(seleziona una carta, poi tocca qui per attivarlo)" % [asset.get("display_name", ""), _card_text(asset)]
+		if not has_sel:
+			card.modulate = Color(0.6, 0.6, 0.65)
+		card.pressed.connect(_cmd_play_strategic_asset.bind(asset))
 	return card
 
 

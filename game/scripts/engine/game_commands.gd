@@ -18,6 +18,9 @@ const KNOWN := [
 	# Aumento Produzione GRATUITO da una carta (Growth/Asset/Market: "Aumenta N Produzioni") -
 	# stessa interfaccia del Focus (caselle evidenziate), ma senza costo e in qualunque fase.
 	"free_increase_pick",
+	# Vantaggio Operativo (Growth Liv.4): attiva GRATIS un Asset Strategico posseduto toccando
+	# la carta in mano ("" = Salta, nessuna attivazione).
+	"activate_free_asset",
 	# Giocare una carta a faccia in giù: +10 money, oppure come costo di una Carta Strategica
 	"play_money_token", "play_strategic_asset",
 	# Executive Order (modulo): una volta per partita, invece di una carta, esegue un'azione
@@ -113,6 +116,12 @@ static func increase_production(seat: int, seq: int, type: String) -> Dictionary
 ## evidenziata sulla plancia per il tipo scelto (vedi board_view._free_increase_pick).
 static func free_increase_pick(seat: int, seq: int, type: String) -> Dictionary:
 	return make("free_increase_pick", seat, seq, {"type": type})
+
+
+## Vantaggio Operativo: attiva GRATIS un Asset Strategico posseduto (per id/display_name
+## stabile). `asset_id` vuoto = Salta, nessuna attivazione.
+static func activate_free_asset(seat: int, seq: int, asset_id: String) -> Dictionary:
+	return make("activate_free_asset", seat, seq, {"asset_id": asset_id})
 
 
 ## Sotto-scelte (risolvono uno stato `awaiting` durante la risoluzione di una carta).
@@ -267,6 +276,8 @@ static func valid_shape(cmd: Variant) -> bool:
 			return typeof(args.get("type")) == TYPE_STRING   # "" ammesso = salta
 		"free_increase_pick":
 			return typeof(args.get("type")) == TYPE_STRING and String(args["type"]) != ""
+		"activate_free_asset":
+			return typeof(args.get("asset_id")) == TYPE_STRING   # "" ammesso = salta
 		"pick_region":
 			return typeof(args.get("region")) == TYPE_STRING and String(args["region"]) != ""
 		"pick_influence_cell":
