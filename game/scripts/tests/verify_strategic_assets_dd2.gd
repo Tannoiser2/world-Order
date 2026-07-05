@@ -201,13 +201,17 @@ func _test_aid_econ_military(b: Variant) -> void:
 	_prime(b, 0)
 	b._op_aid_econ_military({})
 	await process_frame
-	var idx1 := _idx(b, "Alfa")
-	_check(b._popup_active() and idx1 >= 0, "Aiuti Econ.: popup per la 1a Nazione Alleata")
-	b.apply_command(GameCommands.popup_choice(0, b._next_seq(), idx1))
+	# Scelta delle Nazioni: tocco diretto sulla plancia (awaiting=="allied_country"), non più
+	# un popup a elenco - stessa interfaccia di Invest/Build a Base.
+	_check(b.awaiting == "allied_country" and String(b.awaiting_op.get("op", "")) == "aid_first" \
+		and b._eligible_allied(b.awaiting_op).size() == 2, "Aiuti Econ.: caselle evidenziate per la 1a Nazione Alleata")
+	b.apply_command(GameCommands.pick_allied_country(0, b._next_seq(), "a1"))
 	await process_frame
-	var idx2 := _idx(b, "Beta")
-	_check(b._popup_active() and idx2 >= 0, "Aiuti Econ.: popup per la 2a Nazione Alleata (Regione diversa)")
-	b.apply_command(GameCommands.popup_choice(0, b._next_seq(), idx2))
+	var elig2: Array = b._eligible_allied(b.awaiting_op)
+	_check(b.awaiting == "allied_country" and String(b.awaiting_op.get("op", "")) == "aid_second" \
+		and elig2.size() == 1 and String((elig2[0] as Dictionary).get("id", "")) == "a2",
+		"Aiuti Econ.: dopo la 1a, solo la 2a Nazione (Regione diversa) resta evidenziata")
+	b.apply_command(GameCommands.pick_allied_country(0, b._next_seq(), "a2"))
 	await process_frame
 	_check(usa.money == 35 and usa.armies_available == 0, "Aiuti Econ.: -15 money e -2 Armate")
 	_check(bool(usa.exhausted.get("a1", false)) and bool(usa.exhausted.get("a2", false)), "Aiuti Econ.: entrambe le Nazioni esaurite")

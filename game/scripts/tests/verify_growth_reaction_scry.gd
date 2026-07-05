@@ -83,9 +83,12 @@ func _test_scry(b: Variant, p) -> void:
 	p.hand = []
 	b._use_ongoing("once_per_round:scry_ally")
 	await process_frame
-	var ally_popup: bool = b._popup_active() and b._popup_items.size() == 1
-	_check(ally_popup, "Collaborazione: popup scelta Nazione Alleata pronta")
-	b.apply_command(GameCommands.popup_choice(0, b._next_seq(), 0))   # esaurisci l'unico alleato
+	# Scelta della Nazione Alleata: tocco diretto sulla plancia (awaiting=="allied_country"),
+	# non più un popup a elenco - stessa interfaccia di Invest/Build a Base.
+	var ally_ready: bool = b.awaiting == "allied_country" and String(b.awaiting_op.get("op", "")) == "collab_exhaust" \
+		and b._eligible_allied(b.awaiting_op).size() == 1
+	_check(ally_ready, "Collaborazione: casella evidenziata per l'unica Nazione Alleata pronta")
+	b.apply_command(GameCommands.pick_allied_country(0, b._next_seq(), "ally_x"))
 	await process_frame
 	var scry_popup: bool = b._popup_active() and b._popup_items.size() == 2
 	_check(scry_popup, "Collaborazione: guarda le prime 2 carte (valore alleato = 2)")

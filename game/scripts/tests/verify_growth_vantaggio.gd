@@ -69,15 +69,17 @@ func _test_acquire_keep(b: Variant) -> void:
 	_check(p.strategic_assets.size() == 1 and String(p.strategic_assets[0].get("id", "")) == String(keep_sa.get("id", "")),
 		"Vantaggio: tenuto 1 Asset (%s)" % keep_sa.get("display_name", "?"))
 	_check(p.victory_points == 5 + keep_vp, "Vantaggio: +VP dell'Asset tenuto (totale %d, atteso %d)" % [p.victory_points, 5 + keep_vp])
-	# Passo 2: popup attivazione ("Non attivare" + 1 Asset posseduto).
-	var act_popup: bool = b._popup_active() and b._popup_items.size() == 2
-	_check(act_popup, "Vantaggio: scelta di attivare gratis un Asset (popup 2 opzioni)")
-	b.apply_command(GameCommands.popup_choice(0, b._next_seq(), 0))   # "Non attivare"
+	# Passo 2: attivazione gratuita - tocco diretto sulla carta Asset già in mano
+	# (_hand_strategic_token, free_mode), non più un popup a elenco. "Salta" resta disponibile.
+	_check(b._free_activate_asset, "Vantaggio: in attesa dell'attivazione gratuita (tocca l'Asset o Salta)")
+	b._cmd_skip_free_asset()
 	await process_frame
-	_check(b.playing_card.is_empty(), "Vantaggio: 'Non attivare' -> carta innesco risolta")
+	_check(b.playing_card.is_empty(), "Vantaggio: 'Salta' -> carta innesco risolta")
 
 
-## Passo 2 isolato: attivazione gratuita di un Asset noto -> i suoi op si risolvono.
+## Passo 2 isolato: attivazione gratuita di un Asset noto -> i suoi op si risolvono. Verificato
+## dal VERO rendering della mano (_render_hand -> _hand_strategic_token) e dal comando reale
+## collegato al tocco della carta, non chiamando le funzioni interne direttamente.
 func _test_free_activation(b: Variant) -> void:
 	var p = b.gs.players[0]
 	p.money = 0
@@ -90,11 +92,24 @@ func _test_free_activation(b: Variant) -> void:
 
 	b._operational_activate(p)
 	await process_frame
-	var act_popup: bool = b._popup_active() and b._popup_items.size() == 2
-	_check(act_popup, "Attivazione: popup 'Non attivare' + 1 Asset")
-	b.apply_command(GameCommands.popup_choice(0, b._next_seq(), 1))   # attiva "Demo"
+	_check(b._free_activate_asset, "Attivazione: in attesa (tocca l'Asset o Salta)")
+	b._render_hand()
+	var sa_btn: Button = _find_button_tooltip(b.hand_box, "Vantaggio Operativo: attiva GRATIS Demo")
+	_check(sa_btn != null and not sa_btn.disabled, "Attivazione: la carta 'Demo' in mano è evidenziata/cliccabile per l'attivazione gratis")
+	if sa_btn: sa_btn.pressed.emit()
 	await process_frame
 	_check(p.money == 20, "Attivazione: effetto dell'Asset risolto (gain_money 20 -> money=%d)" % p.money)
 	_check("sa_demo" in p.used_strategic_assets.map(func(s): return String(s.get("id", ""))) and p.strategic_assets.is_empty(),
 		"Attivazione: Asset girato a faccia in giù (usato)")
+	_check(not b._free_activate_asset, "Attivazione: modalità gratuita conclusa")
 	_check(b.playing_card.is_empty(), "Attivazione: carta innesco risolta a fine catena")
+
+
+func _find_button_tooltip(node: Node, needle: String) -> Button:
+	if node is Button and needle in String((node as Button).tooltip_text):
+		return node
+	for c in node.get_children():
+		var f := _find_button_tooltip(c, needle)
+		if f != null:
+			return f
+	return null

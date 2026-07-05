@@ -54,7 +54,7 @@ func _init() -> void:
 	# 2) SENZA il modifier (Build a Base NORMALE): la Country con già una Base non è tra le
 	#    idonee (prima non veniva filtrata affatto: si poteva scegliere e falliva zitta zitta).
 	b.active_mods = {}
-	var elig_normal: Array = b._eligible_allied("build_base")
+	var elig_normal: Array = b._eligible_allied({"op": "build_base"})
 	var s2: bool = elig_normal.filter(func(x): return String(x.get("id", "")) == "sa_test_country").is_empty()
 	print("[%s] Build a Base NORMALE: Country con già una Base esclusa dagli idonei" % ["OK" if s2 else "FAIL"])
 	if not s2: fails += 1
@@ -72,7 +72,7 @@ func _init() -> void:
 		"OK" if s3 else "FAIL", b.awaiting])
 	if not s3: fails += 1
 
-	var elig_repeat: Array = b._eligible_allied("build_base")
+	var elig_repeat: Array = b._eligible_allied({"op": "build_base"})
 	var s4: bool = not elig_repeat.filter(func(x): return String(x.get("id", "")) == "sa_test_country").is_empty()
 	print("[%s] Con la carta giocata: la Country con già una Base ORA è tra gli idonei" % ["OK" if s4 else "FAIL"])
 	if not s4: fails += 1
@@ -92,7 +92,7 @@ func _init() -> void:
 	# 5) Anche con la carta rigiocata (modifier ancora attivo), una 3a Base nella STESSA Country
 	#    resta impossibile ("ma solo una volta" - rinforza, non rende la Country illimitata).
 	b.active_mods = {"base_repeat_once": true}
-	var elig_third: Array = b._eligible_allied("build_base")
+	var elig_third: Array = b._eligible_allied({"op": "build_base"})
 	var s6: bool = elig_third.filter(func(x): return String(x.get("id", "")) == "sa_test_country").is_empty()
 	print("[%s] Una 3a Base nella stessa Country resta esclusa (limite 'solo una volta')" % ["OK" if s6 else "FAIL"])
 	if not s6: fails += 1
