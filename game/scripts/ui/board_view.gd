@@ -70,6 +70,12 @@ var log_toggle: Button
 var log_title: Label
 var _log_collapsed := true
 var _log_lines: Array = []
+# Diagnostica di rete (solo in rete): prima un riquadro fisso sovrapposto alla plancia (fastidioso
+# durante il gioco normale) - ora una sezione COLLASSABILE dentro il Registro, con un bottone
+# "Copia" per incollarla altrove quando serve davvero (segnalazione di un blocco di sync).
+var _net_debug_row: HBoxContainer
+var _net_debug_toggle: Button
+var _net_debug_collapsed := true
 var _log_bold_font: FontVariation   # creato pigramente: NERETTO delle righe-azione nel Registro
 # AVVISO (banner) prominente: per esempio quando un'azione non e' eseguibile. Sincronizzato
 # (msg + contatore) cosi' lo vede anche il client che ha tentato l'azione.
@@ -114,7 +120,7 @@ var card_preview_timer: Timer    # ritardo (~1s) prima di mostrare il flyover
 var _pending_preview: Dictionary = {}   # {tex, text} in attesa del ritardo
 var tab_bar: HBoxContainer          # una scheda (bandiera) per potenza, IN CIMA al pannello board
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
-var _net_debug: Label = null        # riquadro diagnostico (solo in rete): stato di sync vivo
+var _net_debug: Label = null        # sezione diagnostica (solo in rete, dentro il Registro): stato di sync vivo
 var _last_snapshot_sig := 0         # client: hash dell'ultimo snapshot APPLICATO (dedup anti-flicker)
 var _net_heartbeat: Timer = null    # host: ribroadcast periodico per recuperare snapshot persi
 var drawer_open := false
@@ -382,18 +388,11 @@ func _ready() -> void:
 			_net_heartbeat.timeout.connect(_net_sync)
 			add_child(_net_heartbeat)
 			_net_heartbeat.start()
-		# DIAGNOSTICA (solo in rete): un riquadro in basso a sinistra con lo stato di sync
-		# vivo (chi agisce, cosa si attende, barre/carte pendenti). Quando il gioco "si
-		# ferma", UNA foto di questo angolo dice subito quale stato è bloccato.
-		_net_debug = Label.new()
-		_net_debug.name = "NetDebug"
-		_net_debug.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_net_debug.z_index = 400
-		_net_debug.add_theme_color_override("font_color", Color(0.6, 1.0, 0.7))
-		_net_debug.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-		_net_debug.add_theme_constant_override("outline_size", 4)
-		_net_debug.add_theme_font_size_override("font_size", 13)
-		add_child(_net_debug)
+		# DIAGNOSTICA (solo in rete): sezione collassabile dentro il Registro (creata da
+		# _build_log_panel) invece di un riquadro fisso sovrapposto alla plancia - meno
+		# invadente, e "Copia" la porta fuori (per segnalare un blocco di sync) quando serve.
+		if _net_debug_row:
+			_net_debug_row.visible = true
 
 	resized.connect(_on_resized)
 	_layout_ui()
@@ -4195,6 +4194,31 @@ func _build_log_panel() -> void:
 	log_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	log_content.add_theme_constant_override("separation", 3)
 	log_scroll.add_child(log_content)
+	# Diagnostica di rete: sezione collassata di default, sotto al Registro (non copre la
+	# board). Creata sempre, ma visibile solo in una sessione di rete (_update_net_debug).
+	_net_debug_row = HBoxContainer.new()
+	_net_debug_row.add_theme_constant_override("separation", 4)
+	_net_debug_row.visible = false
+	col.add_child(_net_debug_row)
+	_net_debug_toggle = Button.new()
+	_net_debug_toggle.focus_mode = Control.FOCUS_NONE
+	_net_debug_toggle.text = "▶ Debug rete"
+	_net_debug_toggle.tooltip_text = "Stato di sync live (per segnalare un blocco): mine/act/aw/plays/..."
+	_net_debug_toggle.pressed.connect(_toggle_net_debug)
+	_net_debug_row.add_child(_net_debug_toggle)
+	var net_debug_copy := Button.new()
+	net_debug_copy.text = "Copia"
+	net_debug_copy.focus_mode = Control.FOCUS_NONE
+	net_debug_copy.tooltip_text = "Copia lo stato diagnostico negli appunti"
+	net_debug_copy.pressed.connect(func(): DisplayServer.clipboard_set(_net_debug.text if _net_debug else ""))
+	_net_debug_row.add_child(net_debug_copy)
+	_net_debug = Label.new()
+	_net_debug.name = "NetDebug"
+	_net_debug.visible = false
+	_net_debug.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_net_debug.add_theme_font_size_override("font_size", 11)
+	_net_debug.add_theme_color_override("font_color", Color(0.6, 0.85, 0.7))
+	col.add_child(_net_debug)
 
 
 ## Banner di AVVISO prominente (es. azione non eseguibile): compare in alto al centro e si
@@ -4640,10 +4664,11 @@ func _refresh() -> void:
 	_layout_ui()
 
 
-## Aggiorna il riquadro diagnostico (solo in rete): mostra lo stato di sync VIVO così, se il
-## gioco si blocca, una sola foto dell'angolo basta a capire QUALE stato è appeso. mine = il
-## mio seggio; act = chi agisce ORA; aw = cosa si attende; le bandierine indicano se è pendente
-## una carta in gioco / popup / sconto / move / commercio / produce; end = tasto Fine turno.
+## Aggiorna la sezione diagnostica (solo in rete, dentro il Registro): mostra lo stato di sync
+## VIVO così, se il gioco si blocca, basta espanderla (o "Copia") per capire QUALE stato è
+## appeso. mine = il mio seggio; act = chi agisce ORA; aw = cosa si attende; le bandierine
+## indicano se è pendente una carta in gioco / popup / sconto / move / commercio / produce;
+## end = tasto Fine turno. Collassata di default: aggiorno il testo comunque, pronto se aperta.
 func _update_net_debug() -> void:
 	if _net_debug == null or net == null:
 		return
@@ -4669,8 +4694,12 @@ func _update_net_debug() -> void:
 		"Y" if _trade_mode else "-",
 		"Y" if _produce_mode else "-",
 		_ui_phase, _plays_left, "Y" if _played_this_turn else "-", hand_n, endable]
-	# Sul bordo SINISTRO, a metà altezza (sopra la mappa): testo con contorno, sempre leggibile.
-	_net_debug.position = Vector2(6.0, size.y * 0.40)
+
+
+func _toggle_net_debug() -> void:
+	_net_debug_collapsed = not _net_debug_collapsed
+	_net_debug.visible = not _net_debug_collapsed
+	_net_debug_toggle.text = ("▶" if _net_debug_collapsed else "▼") + " Debug rete"
 
 
 func _refresh_hud(p: PlayerState) -> void:
@@ -5076,6 +5105,20 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 		btn.pressed.connect(_trade_cycle_select.bind(group.duplicate()))
 		if front != "":
 			btn.set_drag_forwarding(_trade_drag_begin.bind(front), Callable(), Callable())
+		# "flat" toglie lo sfondo solo da fermo: senza queste override, mentre lo si tiene
+		# premuto (o al passaggio del mouse) Godot disegna comunque il suo riquadro GRIGIO di
+		# default (segnalato: "fastidioso quadratino grigio") - qui lo sostituiamo con lo
+		# stesso alone dorato usato per la risorsa selezionata, coerente col resto del Commercio.
+		var press_glow := StyleBoxFlat.new()
+		press_glow.bg_color = Color(1.0, 0.85, 0.3, 0.22)
+		press_glow.set_corner_radius_all(int(ts * 0.5))
+		press_glow.set_border_width_all(maxi(1, int(ts * 0.08)))
+		press_glow.border_color = Color(1.0, 0.85, 0.3, 0.85)
+		var no_glow := StyleBoxEmpty.new()
+		btn.add_theme_stylebox_override("normal", no_glow)
+		btn.add_theme_stylebox_override("focus", no_glow)
+		btn.add_theme_stylebox_override("hover", press_glow)
+		btn.add_theme_stylebox_override("pressed", press_glow)
 		area.add_child(btn)
 	# Con un prodotto selezionato: caselle valide col money (verso 0 vendi, verso 10 compra).
 	if _trade_active_res == "":
@@ -5097,8 +5140,15 @@ func _add_trade_overlays(area: Control, p: PlayerState, pw: float, ph: float) ->
 		var sb := StyleBoxFlat.new(); sb.set_corner_radius_all(3)
 		if i < qty:
 			sb.bg_color = Color(0.16, 0.5, 0.24, 0.92); b.text = "+%d" % (int(Actions.EXPORT_GAIN.get(R, 0)) * (qty - i))
+		elif i == qty:
+			# Casella della quantità di PARTENZA: se hai già una vendita/acquisto parziale
+			# piazzato altrove (eff != qty), qui NON è uno "-0" di costo (fuorviante, sembra
+			# un pagamento) ma il ripristino della quantità originale - nessun guadagno/costo.
+			sb.bg_color = Color(0.35, 0.37, 0.4, 0.92); b.text = "0"
 		else:
 			sb.bg_color = Color(0.55, 0.2, 0.2, 0.92); b.text = "-%d" % (int(Actions.IMPORT_COST.get(R, 0)) * (i - qty))
+		b.tooltip_text = "%s: %d -> %d%s" % [RES_NAME_IT.get(R, R), qty, i,
+			"" if i == qty else (" (vendi %d)" % (qty - i) if i < qty else " (compra %d)" % (i - qty))]
 		b.add_theme_stylebox_override("normal", sb); b.add_theme_stylebox_override("hover", sb); b.add_theme_stylebox_override("pressed", sb)
 		b.pressed.connect(_trade_set_target.bind(R, i))
 		b.set_drag_forwarding(Callable(), _trade_can_drop.bind(R), _trade_do_drop.bind(R, i))
