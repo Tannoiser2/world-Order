@@ -616,16 +616,19 @@ func _init() -> void:
 		if not ip_ok: fails += 1
 
 		# op trash (popup mano): la carta scelta è rimossa dal gioco (non negli scarti).
+		# NB: `source` era ignorato dal codice (bug d'audit, corretto in v0.7.170): questo test
+		# usava `source:"self"` aspettandosi comunque il popup della mano. Ora le due varianti
+		# sono distinte, quindi qui si usa "hand" - l'intento dichiarato dal commento sopra.
 		var ptr: PlayerState = board._active()
 		var victim := {"display_name": "Victim", "effect_ops": [{"op": "noop"}]}
 		ptr.hand.append(victim)
-		var card_tr := {"display_name": "TR", "effect_ops": [{"op": "trash", "source": "self"}]}
+		var card_tr := {"display_name": "TR", "effect_ops": [{"op": "trash", "source": "hand"}]}
 		ptr.hand.append(card_tr); board._plays_left = 9
 		board._play_card(card_tr)
 		var vb: Button = _find_button(board, "Victim")
 		if vb: vb.pressed.emit()
 		var tr_ok: bool = not (victim in ptr.hand) and not (victim in ptr.discard) and board.playing_card.is_empty()
-		print("[%s] op trash: carta eliminata dal gioco" % ["OK" if tr_ok else "FAIL"])
+		print("[%s] op trash (source=hand): carta scelta eliminata dal gioco" % ["OK" if tr_ok else "FAIL"])
 		if not tr_ok: fails += 1
 
 		# op discard (n + then): scarta 1 carta, poi esegue play_another.

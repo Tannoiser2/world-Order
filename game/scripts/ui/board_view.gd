@@ -1487,7 +1487,11 @@ func _advance_play() -> void:
 			_after_change()
 		"produce":
 			if op.has("types"):
-				for r in op["types"]: Actions.execute_produce(_active(), String(r))
+				# "produce_max:N" (The World's Factory: «Produce FINO A 2 Beni di Consumo»):
+				# senza, si produceva l'INTERA produzione del tipo (audit). -1 = nessun tetto.
+				# Modifiers.parse spezza sul ":" -> chiave "produce_max", valore int.
+				var pmax := int(active_mods.get("produce_max", -1))
+				for r in op["types"]: Actions.execute_produce(_active(), String(r), pmax)
 				_advance_play()
 			else:
 				# `count` = numero di TIPI di risorsa producibili (es. Growth Strategy = 3,
@@ -1560,11 +1564,25 @@ func _advance_play() -> void:
 			_after_change()
 			_advance_play()
 		"trash":
-			_pick_hand_card("Elimina una carta dal gioco (trash):", func(card):
-				_active().hand.erase(card)   # rimossa del tutto (non negli scarti)
-				_status("Carta eliminata: %s." % card.get("display_name", "?"))
-				_after_change()
-				_advance_play())
+			# `source` (era ignorato - audit): "self" = questa stessa carta ("Scarta
+			# definitivamente QUESTA carta quando la giochi"), "discard" = dalla pila degli
+			# scarti, "hand"/assente = dalla mano.
+			match String(op.get("source", "hand")):
+				"self":
+					_trash_playing_card()
+					_advance_play()
+				"discard":
+					_pick_discard_card("Elimina definitivamente una carta dagli SCARTI:", func(card):
+						_active().discard.erase(card)   # rimossa del tutto (fuori dal gioco)
+						_status("Carta eliminata dagli scarti: %s." % card.get("display_name", "?"))
+						_after_change()
+						_advance_play())
+				_:
+					_pick_hand_card("Elimina una carta dal gioco (trash):", func(card):
+						_active().hand.erase(card)   # rimossa del tutto (non negli scarti)
+						_status("Carta eliminata: %s." % card.get("display_name", "?"))
+						_after_change()
+						_advance_play())
 		"discard":
 			_do_discard(int(op.get("n", 1)), op.get("then", []))
 		"increase_prosperity":
@@ -1588,6 +1606,23 @@ func _advance_play() -> void:
 					expanded.append((bo as Dictionary).duplicate(true))
 			for i in range(expanded.size() - 1, -1, -1):
 				play_queue.push_front(expanded[i])
+			_advance_play()
+		"spend_then":
+			# Paga `money` e poi esegue i `then` — che vanno ESPANSI in cima alla coda come per
+			# "repeat", non passati a EffectExecutor: un {"op":"invest"} senza target verrebbe
+			# solo "differito" e perso in silenzio (Belt and Road: pagavi 10 money e l'Invest
+			# aggiuntivo non avveniva mai - audit).
+			var st_p := _active()
+			var st_cost := int(op.get("money", 0))
+			if st_cost > 0 and not st_p.spend({"money": st_cost}):
+				if _action_failed("Money insufficiente (servono %d)." % st_cost):
+					return
+				_advance_play()
+				return
+			var st_then: Array = op.get("then", [])
+			for i in range(st_then.size() - 1, -1, -1):
+				play_queue.push_front((st_then[i] as Dictionary).duplicate(true))
+			_after_change()
 			_advance_play()
 		"spend_for_gain":
 			_resolve_spend_for_gain(op)
@@ -2360,7 +2395,11 @@ func _resolve_engage_slot(region: String, chosen: Array, slot: String) -> void:
 	var values := _values_of(chosen)
 	var diplo := p.focus == WO.Focus.DIPLOMATIC
 	var cost := Actions.engage_cost(int(gs.regions[region]["engage_cost"]), values, diplo, ed)
-	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, slot, ed)
+	# "engage_without_allied" (EU Neighborhood Policy, Main UN Funding Contributor): l'Engage
+	# non richiede una Country alleata nella Regione. Il motore accettava già il parametro ma
+	# nessuno glielo passava: le due carte fallivano proprio nel caso per cui esistono (audit).
+	var no_ally: bool = active_mods.has("engage_without_allied")
+	var vp := Actions.execute_engage(gs, p.power, region, values, diplo, slot, ed, no_ally)
 	if vp < 0:
 		if _action_failed("Diplomazia insufficiente per Engage in %s (serve %d)." % [region.replace("_", " "), cost]):
 			return
@@ -3322,6 +3361,13 @@ func _apply_trade() -> void:
 	# carta da almeno un GIOCATORE reale (pag. 13).
 	if diplo_eligible:
 		p.gain_resource("diplomacy", 1, 0)
+	# "Global Currency" (USA): «Trade. Poi, guadagna 5 money per ogni TIPO di risorsa che hai
+	# Importato». Il modifier era nei dati ma non lo leggeva nessuno: la carta faceva solo un
+	# Trade normale (segnalato in audit). Conta i TIPI distinti, non le unità.
+	var import_types := (_trade_sel["import"] as Dictionary).size()
+	if active_mods.has("gain_5_money_per_import") and import_types > 0:
+		p.money += 5 * import_types
+		_event("%s: Global Currency +%d money (%d tipi importati)." % [p.power.to_upper(), 5 * import_types, import_types])
 	var sold_armies := _trade_armies
 	_trade_sel = {}
 	_trade_import_src = {}
@@ -6000,6 +6046,31 @@ func _draw_highest_value(p: PlayerState) -> void:
 
 
 ## Popup per scegliere una carta della mano (trash/discard).
+## trash con `source: "self"`: la carta IN RISOLUZIONE esce dal gioco invece di finire negli
+## scarti (es. "Minimize Bureaucracy": «Scarta definitivamente questa carta quando la giochi»).
+## Si marca come Asset così _finish_card non la sposta in `played`, e la si toglie dalla mano.
+func _trash_playing_card() -> void:
+	if playing_card.is_empty():
+		return
+	var p := _active()
+	p.hand.erase(playing_card)
+	_playing_asset = true   # _finish_card: niente hand.erase/played.append (già fuori dal gioco)
+	_status("Carta eliminata dal gioco: %s." % playing_card.get("display_name", "?"))
+	_after_change()
+
+
+## Scelta di una carta dalla pila degli SCARTI (per trash con source "discard").
+func _pick_discard_card(prompt: String, cb: Callable) -> void:
+	var items := []
+	for c in _active().discard:
+		items.append({"label": String(c.get("display_name", "?")), "value": c})
+	if items.is_empty():
+		_status("Nessuna carta negli scarti da eliminare.")
+		_advance_play()
+		return
+	_show_popup(prompt, items, cb)
+
+
 func _pick_hand_card(prompt: String, cb: Callable) -> void:
 	var items := []
 	for c in _active().hand:
