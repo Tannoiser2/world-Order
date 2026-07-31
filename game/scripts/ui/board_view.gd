@@ -120,6 +120,7 @@ var card_preview_timer: Timer    # ritardo (~1s) prima di mostrare il flyover
 var _pending_preview: Dictionary = {}   # {tex, text} in attesa del ritardo
 var tab_bar: HBoxContainer          # una scheda (bandiera) per potenza, IN CIMA al pannello board
 var end_turn_btn: Button            # "Fine turno": in basso a destra (comodo), non più in alto
+var save_btn: Button                # "Salva": accanto a Fine turno (solo in locale, non in rete)
 var _net_debug: Label = null        # sezione diagnostica (solo in rete, dentro il Registro): stato di sync vivo
 var _last_snapshot_sig := 0         # client: hash dell'ultimo snapshot APPLICATO (dedup anti-flicker)
 var _net_heartbeat: Timer = null    # host: ribroadcast periodico per recuperare snapshot persi
@@ -416,6 +417,13 @@ func _ready() -> void:
 		# Il client aspetta lo stato iniziale dall'host (non gioca la Preparazione).
 		_status("In attesa dell'host…")
 		_refresh()
+	elif GameConfig.resume_save:
+		# RIPRESA: si riparte dal salvataggio invece di iniziare una partita nuova. Il flag si
+		# consuma subito, così un eventuale ritorno al menu non "riprende" di nuovo per sbaglio.
+		GameConfig.resume_save = false
+		if not load_game():
+			_notify("Salvataggio non leggibile: iniziata una partita nuova.")
+			_begin_preparation()
 	else:
 		_begin_preparation()   # Round 1: scelta guidata del Focus prima di agire (fa lei layout/refresh)
 		if net != null and net.is_host():
@@ -4103,6 +4111,16 @@ func _build_drawer() -> void:
 	end_turn_btn.pressed.connect(_cmd_end_turn)
 	add_child(end_turn_btn)
 
+	# 'Salva': accanto a Fine turno nella top bar. Una partita dura 6 round, quindi si deve
+	# poter interrompere e riprendere (in rete è nascosto: vedi _can_save).
+	save_btn = Button.new()
+	save_btn.text = "Salva"
+	save_btn.z_index = 50
+	save_btn.tooltip_text = "Salva la partita: potrai riprenderla dal menu principale"
+	save_btn.pressed.connect(_on_save_pressed)
+	save_btn.visible = (net == null)
+	add_child(save_btn)
+
 	# Pannello MANO a tutta larghezza, in basso (sopra le linguette). Si SOVRAPPONE sia
 	# alla mappa sia alla board quando è aperto (overlay), così non comprime le carte.
 	hand_panel = Panel.new()
@@ -4473,6 +4491,11 @@ func _layout_ui() -> void:
 	if end_turn_btn:
 		end_turn_btn.position = Vector2(w - et_w - 8.0, 4.0)
 		end_turn_btn.size = Vector2(et_w, hud_row_h - 8.0)
+	# 'Salva' subito a sinistra di 'Fine turno' (più stretto: è un'azione secondaria).
+	if save_btn:
+		var sv_w := clampf(w * 0.08, 62.0, 100.0)
+		save_btn.position = Vector2(w - et_w - sv_w - 14.0, 4.0)
+		save_btn.size = Vector2(sv_w, hud_row_h - 8.0)
 	# Linguette (bandiere): altezza minima dentro il pannello board (col la auto-posiziona in
 	# cima, vedi _build_drawer) - non più una barra a parte in fondo allo schermo.
 	if tab_bar:
@@ -6658,6 +6681,142 @@ func _region_available_snapshot() -> Dictionary:
 	for rid in region_countries:
 		out[rid] = ((region_countries[rid] as Dictionary).get("available", []) as Array).duplicate(true)
 	return out
+
+
+# --- SALVATAGGIO / RIPRESA DELLA PARTITA (una partita dura 6 round) --------------------
+
+## Si può salvare solo in un punto PULITO: nessuna carta in risoluzione, nessuna scelta
+## aperta. Quelle scelte vivono come Callable (non serializzabili): salvarle a metà darebbe
+## una ripresa monca. Fuori da lì lo stato è tutto dati e il round-trip è fedele.
+## In RETE non si salva: la ripresa richiederebbe di ricostruire la lobby e i seggi.
+func _can_save() -> String:
+	if net != null:
+		return "In partita online il salvataggio non è disponibile."
+	if game_over:
+		return "La partita è finita."
+	if not playing_card.is_empty() or not play_queue.is_empty():
+		return "Finisci di risolvere la carta in corso, poi salva."
+	if _popup_active() or not _growth_pick.is_empty() or not _summary.is_empty():
+		return "Chiudi la scelta aperta, poi salva."
+	if awaiting != "" or _trade_mode or _produce_mode or not _exhaust_ctx.is_empty() \
+			or not _move_ctx.is_empty() or not _influence_pick.is_empty():
+		return "Concludi o annulla l'azione in corso, poi salva."
+	if _free_increase_remaining > 0 or _free_activate_asset or _prep_ready_remaining > 0 \
+			or _prep_awaiting_increase:
+		return "Concludi la scelta in corso, poi salva."
+	return ""
+
+
+## Stato che vive nella VISTA e non in GameState: senza, riprendendo si perderebbero i mazzi
+## Country/Market scoperti, le carte Commercio girate, le abilità 1x/round usate, il Registro
+## e lo stato dei bot.
+func _save_view_state() -> Dictionary:
+	var regions_full := {}
+	for rid in region_countries:
+		var r: Dictionary = region_countries[rid]
+		regions_full[rid] = {
+			"available": (r.get("available", []) as Array).duplicate(true),
+			"deck": (r.get("deck", []) as Array).duplicate(true),
+		}
+	var automa_d := {}
+	for power in _automa:
+		automa_d[power] = (_automa[power] as Automa).to_dict()
+	return {
+		"ui_phase": _ui_phase,
+		"active_seat": active_seat,
+		"drawer_power": drawer_power,
+		"round_turn_count": round_turn_count,
+		"plays_left": _plays_left,
+		"played_this_turn": _played_this_turn,
+		"prep_idx": _prep_idx,
+		"research_idx": _research_idx,
+		"research_points": _research_points,
+		"aftermath_idx": _aftermath_idx,
+		"focus_round": _focus_round.duplicate(true),
+		"used_ongoing": _used_ongoing.duplicate(true),
+		"commerce_flipped": _commerce_flipped.duplicate(true),
+		"threat_defense": _threat_defense.duplicate(true),
+		"market_display": market_display.duplicate(true),
+		"auto_inf_shown": _auto_inf_shown.duplicate(true),
+		"auto_inf_deck": _auto_inf_deck.duplicate(true),
+		"region_countries": regions_full,
+		"automa": automa_d,
+		"automa_decision_deck": _automa_decision_deck.duplicate(true),
+		"log": _log_lines.duplicate(),
+	}
+
+
+func _apply_save_view_state(v: Dictionary) -> void:
+	_ui_phase = String(v.get("ui_phase", "Azione"))
+	active_seat = int(v.get("active_seat", 0))
+	drawer_power = String(v.get("drawer_power", _active().power))
+	round_turn_count = int(v.get("round_turn_count", 0))
+	_plays_left = int(v.get("plays_left", 1))
+	_played_this_turn = bool(v.get("played_this_turn", false))
+	_prep_idx = int(v.get("prep_idx", 0))
+	_research_idx = int(v.get("research_idx", 0))
+	_research_points = int(v.get("research_points", 0))
+	_aftermath_idx = int(v.get("aftermath_idx", 0))
+	_focus_round = (v.get("focus_round", {}) as Dictionary).duplicate(true)
+	_used_ongoing = (v.get("used_ongoing", {}) as Dictionary).duplicate(true)
+	_commerce_flipped = (v.get("commerce_flipped", {}) as Dictionary).duplicate(true)
+	_threat_defense = (v.get("threat_defense", {}) as Dictionary).duplicate(true)
+	market_display = (v.get("market_display", []) as Array).duplicate(true)
+	_auto_inf_shown = (v.get("auto_inf_shown", []) as Array).duplicate(true)
+	_auto_inf_deck = (v.get("auto_inf_deck", []) as Array).duplicate(true)
+	_log_lines = (v.get("log", []) as Array).duplicate()
+	var rf: Dictionary = v.get("region_countries", {})
+	for rid in rf:
+		if region_countries.has(rid):
+			var r: Dictionary = rf[rid]
+			region_countries[rid]["available"] = (r.get("available", []) as Array).duplicate(true)
+			region_countries[rid]["deck"] = (r.get("deck", []) as Array).duplicate(true)
+	_automa = {}
+	for power in (v.get("automa", {}) as Dictionary):
+		_automa[power] = Automa.from_dict((v["automa"][power] as Dictionary))
+	_automa_decision_deck = (v.get("automa_decision_deck", []) as Array).duplicate(true)
+
+
+## Tocco su "Salva": salva e conferma a schermo (o spiega perché non si può ora).
+func _on_save_pressed() -> void:
+	var why := save_game()
+	if why == "":
+		_notify("Partita salvata. La riprendi dal menu principale con «Riprendi partita».")
+	else:
+		_notify(why)
+
+
+## Salva la partita. Ritorna "" se salvata, altrimenti il motivo per cui non si può.
+func save_game() -> String:
+	var why := _can_save()
+	if why != "":
+		return why
+	# La versione dell'app è una const in main_menu.gd, che non ha class_name: la si legge
+	# dallo script come risorsa (solo per scriverla nel salvataggio, a scopo diagnostico).
+	var app_ver := ""
+	var mm: GDScript = load("res://scripts/ui/main_menu.gd")
+	if mm != null:
+		app_ver = String(mm.get("VERSION"))
+	var ok := SaveGame.save(gs.to_dict(true), _save_view_state(), {
+		"powers": GameConfig.powers.duplicate(),
+		"automa_powers": GameConfig.automa_powers.duplicate(),
+		"automa_difficulty": GameConfig.automa_difficulty,
+	}, app_ver)
+	return "" if ok else "Salvataggio non riuscito (spazio o permessi)."
+
+
+## Riprende la partita dal salvataggio (chiamata da _ready quando GameConfig.resume_save è
+## attivo). Ritorna true se lo stato è stato ripristinato.
+func load_game() -> bool:
+	var d := SaveGame.load_save()
+	if d.is_empty():
+		return false
+	gs = GameState.from_dict(d.get("gs", {}), gs.board_data)
+	_apply_save_view_state(d.get("view", {}))
+	game_over = false
+	_after_change()
+	_event("Partita ripresa dal salvataggio (round %d)." % gs.round)
+	return true
 
 
 func _apply_ui_snapshot(ui: Dictionary) -> void:

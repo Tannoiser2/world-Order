@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.170"
+const VERSION := "v0.7.171"
 const CHANGELOG := [
+	"v0.7.171 - SALVA E RIPRENDI LA PARTITA (mancava del tutto: una partita dura 6 round e non si poteva interrompere). Nuovo tasto «Salva» nella barra in alto, accanto a «Fine turno»; nel menu principale compare «Riprendi partita» con round e potenze del salvataggio. Si salva TUTTO, non solo il punteggio: mano, alleati, Influenza e Armate sul tabellone, Produzione, carte Crescita, mazzi Country/Market scoperti, carte Commercio già girate, abilità 1 volta per round già usate, Registro delle azioni e lo stato dei Bot (che riprendono da dove erano, senza ripartire da zero). Il salvataggio è consentito solo in un momento PULITO (non a metà di una carta o di una scelta aperta): il tasto lo dice se non è il momento. Su iPad il salvataggio resta anche chiudendo la scheda. NOTA: in partita ONLINE il salvataggio non è disponibile (riprendere richiederebbe di ricostruire la stanza e i seggi). +1 test nuovo (verify_save_load, 22 check sul round-trip completo). Suite motore 140/140.",
 	"v0.7.170 - CARTE CHE NON FACEVANO QUELLO CHE PROMETTONO: l'audit ha trovato 5 effetti scritti nei dati che nessuna parte del codice leggeva. 1) GLOBAL CURRENCY (USA): il «guadagna 5 money per ogni tipo di risorsa importato» non è mai esistito - la carta faceva solo un Commercio normale. Ora paga il bonus (5 x tipi importati). 2) BELT AND ROAD INITIATIVE (Cina): pagavi i 10 money e l'Invest aggiuntivo NON avveniva mai (veniva scartato in silenzio) - ora si risolve davvero, scegliendo la Nazione. 3) POLITICA DI VICINATO UE e PRINCIPALE CONTRIBUTORE ONU: l'Engage senza una Nazione Alleata nella Regione falliva sempre, cioè proprio nel caso per cui esistono quelle carte. 4) THE WORLD'S FACTORY (Cina): «Produce fino a 2 Beni di Consumo» ne produceva quanti ne consentiva l'intera Produzione (anche 5). 5) MINIMIZE BUREAUCRACY chiedeva quale carta della mano eliminare invece di eliminare SE STESSA, e le due opzioni di INITIATE RESTRUCTURING (mano / scarti) erano identiche - ora la pila degli scarti è una scelta vera. +1 test nuovo (verify_card_modifiers_fix, 9 check: sul codice precedente fallisce esattamente sui 5 punti). Suite motore 140/140.",
 	"v0.7.169 - MULTIPLAYER: corretti i soft-lock e i buchi di autorizzazione trovati nell'audit. 1) AFTERMATH: sul client, dopo aver scartato un Engage token (scelta money/Difesa), la barra restava VUOTA per sempre - niente 'Continua', round bloccato: il latch della sotto-scelta ora si auto-azzera appena l'host applica la scelta. 2) RESEARCH: l'host poteva comprare carte, rimescolare, esaurire alleate o premere 'Continua' DURANTE il passo Research del client, spendendo i punti del giocatore sbagliato - aggiunte le guardie mancanti. 3) Le abilità Growth 1x/round gia' usate ora si sincronizzano al client (prima restavano 'Usabili' per sempre sul suo schermo). 4) L'host non può più consumare abilità 1x/round o riattivazioni (ready) del client aprendo la sua linguetta. 5) DISCONNESSIONI VISIBILI: prima, se un giocatore cadeva (wifi, standby del tablet, relay addormentato), l'altro vedeva solo un gioco congelato senza alcun messaggio - ora un banner PERSISTENTE lo dice subito su entrambi i lati. +1 test di rete nuovo (verify_net_softlocks, 10 check, riproduce i blocchi sul codice vecchio). Suite motore 140/140, blocco test di rete tutto verde.",
 	"v0.7.168 - TROVATO E CORRETTO il bug segnalato in partita online ('selezionando Growth Strategy non sono apparse le carte crescita da scegliere'): se qualcosa svuotava l'overlay mentre il selettore Growth era aperto (un riepilogo, una chiusura di popup di passaggio), il selettore risultava 'aperto' per lo stato di gioco ma VUOTO sullo schermo, e non tornava mai più - riprodotto in test e corretto rendendolo AUTO-RIPARANTE: se la scelta è attiva ma l'overlay non c'è, si ricostruisce al refresh successivo (in rete l'heartbeat ne garantisce uno entro ~1 secondo). +1 check nel test di rete delle Growth. Suite motore 140/140.",
@@ -448,6 +449,16 @@ func _ready() -> void:
 	play.pressed.connect(_on_play)
 	box.add_child(play)
 
+	# RIPRENDI: compare solo se esiste un salvataggio. Una partita dura 6 round, quindi
+	# raramente si finisce in una sola sessione (specie su tablet).
+	if SaveGame.has_save():
+		var resume := Button.new()
+		resume.text = "Riprendi partita  (%s)" % SaveGame.describe()
+		resume.custom_minimum_size = Vector2(0, 44)
+		resume.add_theme_font_size_override("font_size", 18)
+		resume.pressed.connect(_on_resume)
+		box.add_child(resume)
+
 	_update_selection(_count_buttons, 0)
 	_update_selection(_mode_buttons, 0)   # Locale
 	_update_selection(_diff_buttons, 0)   # Normale
@@ -628,6 +639,29 @@ func _on_mode(m: String) -> void:
 	if _diff_buttons.size() == 2:
 		_update_selection(_diff_buttons, 0 if _difficulty == "normal" else 1)
 	_validate()
+
+
+## "Riprendi partita": ricarica potenze/bot dal salvataggio (non da quanto selezionato ora nel
+## menu, che potrebbe essere diverso) e lascia che la board carichi lo stato in _ready.
+func _on_resume() -> void:
+	var d := SaveGame.load_save()
+	if d.is_empty():
+		_warn.text = "Salvataggio non leggibile."
+		return
+	var cfg: Dictionary = d.get("config", {})
+	var powers: Array = (cfg.get("powers", []) as Array).duplicate()
+	if powers.is_empty():
+		# Fallback: le potenze si deducono comunque dai giocatori salvati.
+		for p in (d.get("gs", {}) as Dictionary).get("players", []):
+			powers.append(String((p as Dictionary).get("power", "")))
+	GameConfig.mode = "hotseat"
+	GameConfig.net = null
+	GameConfig.powers = powers
+	GameConfig.player_count = powers.size()
+	GameConfig.automa_powers = (cfg.get("automa_powers", []) as Array).duplicate()
+	GameConfig.automa_difficulty = String(cfg.get("automa_difficulty", "normal"))
+	GameConfig.resume_save = true
+	get_tree().change_scene_to_file("res://scenes/board.tscn")
 
 
 func _on_play() -> void:
