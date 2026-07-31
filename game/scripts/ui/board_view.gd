@@ -193,7 +193,12 @@ const MARKET_SLOTS := 5
 # Stato dell'Aftermath interattivo (scelte per giocatore prima di THREAT/Scoring).
 var _aftermath_idx := 0                  # giocatore corrente nella fase scelte
 var _aftermath_choice_p: PlayerState = null  # giocatore in scelta Aftermath (sulla mappa/plancia)
-var _aftermath_subchoice := false        # sotto-scelta token in corso (money/Difesa): non ricostruire la barra
+# Sotto-scelta Engage token in corso in Aftermath: la REGIONE del token ("" = nessuna).
+# Non un bool: serve sapere QUALE token, così quando il token scelto non esiste più (la scelta
+# è stata applicata dall'host) il latch si auto-azzera in _refresh e la barra principale
+# («Continua»/Prosperità) torna — prima sul CLIENT restava un bool true per sempre e il
+# giocatore non poteva più chiudere il proprio Aftermath (soft-lock, trovato in audit).
+var _aftermath_subchoice := ""
 var _aftermath_lines: Array[String] = [] # righe del riepilogo di fine round
 var _aftermath_ai_art := ""             # art della carta Auto-Influence (per il riepilogo)
 # Diagnostica bilanciamento (SOLO fast_sim): VP cumulati per fonte, potenza -> {fonte -> vp}.
@@ -375,6 +380,17 @@ func _ready() -> void:
 	# e non avvia da sé la partita; l'HOST applica i comandi ricevuti dai client.
 	if net != null:
 		net.snapshot_received.connect(apply_remote_snapshot)
+		# DISCONNESSIONI VISIBILI (audit): prima peer_left non era collegato a nulla in partita -
+		# se un giocatore cadeva (wifi, standby del tablet, relay che si addormenta) l'altro
+		# vedeva solo un gioco congelato senza alcun messaggio. Banner locale su ENTRAMBI i
+		# lati (non _notify: quello appare solo a chi agisce) e PERSISTENTE (niente auto-hide:
+		# una disconnessione non va persa perché si guardava altrove).
+		net.peer_left.connect(func():
+			var m := ("CONNESSIONE PERSA (host o relay non raggiungibile). Controlla la rete e riapri la stanza dal menu." if net.is_client()
+				else "UN GIOCATORE SI È DISCONNESSO: la partita resta in attesa. (La riconnessione a partita in corso non è ancora supportata.)")
+			_show_notify_banner(m)
+			if _notify_timer:
+				_notify_timer.stop())
 		if net.is_host():
 			net.command_received.connect(_on_net_command)
 			# HEARTBEAT: l'host ribroadcasta lo stato corrente a intervalli. Gli snapshot sono
@@ -4620,7 +4636,12 @@ func _refresh() -> void:
 	elif i_acting and _free_activate_asset:
 		# Vantaggio Operativo: istruzione qui, la carta Asset si tocca direttamente in mano.
 		_show_free_activate_bar()
-	elif i_acting and _aftermath_choice_p != null and not _aftermath_subchoice:
+	elif i_acting and _aftermath_choice_p != null and _aftermath_subchoice_active():
+		# Sotto-scelta Engage token in corso (money/Difesa): non ricostruire la barra sopra.
+		# _aftermath_subchoice_active() si auto-azzera quando il token scelto non esiste più
+		# (l'host ha applicato la scelta): al refresh successivo si rientra nel ramo sotto.
+		pass
+	elif i_acting and _aftermath_choice_p != null:
 		# AFTERMATH: ricostruisce la barra delle scelte dallo stato (come Commercio/Produce),
 		# così anche il CLIENT vede «Continua»/Prosperità e può chiudere il proprio turno di
 		# Aftermath (prima la barra la creava solo l'host: a fine round il client si bloccava).
@@ -5683,7 +5704,9 @@ func _build_growth_section(p: PlayerState, is_active: bool, parent: Control) -> 
 		var used := tag != "" and _ongoing_used(p.power, tag)
 		# Usabile: click DIRETTO sulla carta (bordo acceso), come le Nazioni/Commerce - niente
 		# più bottone "Usa" separato. Si gira/ingrigisce quando usata, torna normale al round dopo.
-		var usable: bool = is_active and tag != "" and not used and playing_card.is_empty()
+		# _is_my_turn(): come per la carta Commercio - la plancia si vede anche dalla linguetta
+		# di un'ALTRA potenza, ma usarne le abilità può solo chi è di turno su quella potenza.
+		var usable: bool = is_active and _is_my_turn() and tag != "" and not used and playing_card.is_empty()
 		var card := _country_card_button(g, gsz, usable)
 		card.disabled = not usable
 		# SHRINK: senza, il bottone si allarga a tutta la riga del contenitore e l'evidenziazione
@@ -6503,6 +6526,9 @@ func _ui_snapshot() -> Dictionary:
 		# Vantaggio Operativo: attivazione gratuita di un Asset Strategico in corso (tocca la
 		# carta già mostrata in mano - _hand_strategic_token, free_mode).
 		"free_activate_asset": _free_activate_asset,
+		# Abilità Growth 1x/round già usate (power -> [tag]): senza, sul client una carta già
+		# usata restava "Usabile" per sempre (bordo verde, click a vuoto) - trovato in audit.
+		"used_ongoing": _used_ongoing.duplicate(true),
 		# AFTERMATH: seggio del giocatore in scelta (-1 = nessuno). Serve al client per sapere
 		# CHI agisce (in Aftermath non è active_seat) e per ricostruire la barra delle scelte.
 		"aftermath_seat": gs.players.find(_aftermath_choice_p) if _aftermath_choice_p != null else -1,
@@ -6604,6 +6630,7 @@ func _apply_ui_snapshot(ui: Dictionary) -> void:
 	_free_increase_remaining = int(ui.get("free_increase_remaining", 0))
 	_free_increase_done = (ui.get("free_increase_done", []) as Array).duplicate()
 	_free_activate_asset = bool(ui.get("free_activate_asset", false))
+	_used_ongoing = (ui.get("used_ongoing", {}) as Dictionary).duplicate(true)
 	# AFTERMATH: ricostruisce il giocatore in scelta dal seggio sincronizzato (gs è già il
 	# nuovo stato qui), così _acting_seat() e la barra delle scelte sono corretti sul client.
 	var aseat := int(ui.get("aftermath_seat", -1))
@@ -6756,6 +6783,9 @@ func _cmd_play_strategic_asset(asset: Dictionary) -> void:
 
 
 func _cmd_use_ongoing(tag: String) -> void:
+	# Le Growth 1x/round si toccano sulla plancia, visibile anche aprendo la LINGUETTA di
+	# un'altra potenza: senza guardia l'host poteva consumare l'abilità del client (audit).
+	if not _i_acting(): return
 	apply_command(GameCommands.use_ongoing(active_seat, _next_seq(), tag))
 
 
@@ -6869,19 +6899,26 @@ func _cmd_growth_skip() -> void:
 	apply_command(GameCommands.growth_skip(active_seat, _next_seq()))
 
 
+# Il pannello Market (Research) è visibile su ENTRAMBE le finestre in rete: senza la guardia
+# _i_acting() l'host poteva comprare/rimescolare/esaurire/«Continua» DURANTE il passo Research
+# del client, spendendo i punti del giocatore sbagliato (trovato in audit).
 func _cmd_buy_market(card: Dictionary) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.buy_market(active_seat, _next_seq(), String(card.get("id", ""))))
 
 
 func _cmd_research_exhaust_ally(country: Dictionary) -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.research_exhaust_ally(active_seat, _next_seq(), String(country.get("id", ""))))
 
 
 func _cmd_research_reshuffle() -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.research_reshuffle(active_seat, _next_seq()))
 
 
 func _cmd_research_continue() -> void:
+	if not _i_acting(): return
 	apply_command(GameCommands.research_continue(active_seat, _next_seq()))
 
 
@@ -7147,6 +7184,9 @@ func _prep_ready_skip() -> void:
 
 
 func _cmd_prep_ready_pick(cn: Dictionary) -> void:
+	# Le Nazioni esaurite si toccano sulla plancia, visibile anche dalla linguetta di un'altra
+	# potenza: senza guardia l'host poteva consumare i "ready" del client (audit).
+	if not _i_acting(): return
 	apply_command(GameCommands.prep_ready_pick(active_seat, _next_seq(), String(cn.get("id", ""))))
 
 
@@ -7939,7 +7979,7 @@ func _show_aftermath_choices(p: PlayerState) -> void:
 
 ## Barra in alto dell'Aftermath: intestazione, eventuale "Aumenta Prosperità" e "Continua".
 func _aftermath_bar(p: PlayerState) -> void:
-	_aftermath_subchoice = false   # barra principale: nessuna sotto-scelta token in corso
+	_aftermath_subchoice = ""   # barra principale: nessuna sotto-scelta token in corso
 	_clear_choice_bar()
 	var head := Label.new()
 	head.text = "Aftermath - %s  -  round %d" % [p.power.to_upper(), gs.round]
@@ -7981,11 +8021,23 @@ func _aftermath_continue() -> void:
 	_aftermath_player_step()
 
 
+## True se la sotto-scelta Engage token è ANCORA valida: il token scelto deve esistere ancora.
+## Quando l'host applica la scelta (money/Difesa) il token sparisce da engage_tokens e il
+## latch si azzera da solo — sul client il refresh successivo ricostruisce la barra principale.
+func _aftermath_subchoice_active() -> bool:
+	if _aftermath_subchoice == "":
+		return false
+	if _aftermath_choice_p == null or _aftermath_subchoice not in _aftermath_choice_p.engage_tokens:
+		_aftermath_subchoice = ""
+		return false
+	return true
+
+
 ## Tocco su un Engage token in Aftermath: sotto-scelta money vs Difesa nella barra.
 func _on_aftermath_token(p: PlayerState, region: String) -> void:
 	if not _i_acting() or _aftermath_choice_p != p or region not in p.engage_tokens:
 		return
-	_aftermath_subchoice = true    # sotto-scelta in corso: _refresh non ricostruisce la barra
+	_aftermath_subchoice = region   # sotto-scelta in corso: _refresh non ricostruisce la barra
 	_clear_choice_bar()
 	var n := _allied_count_in_region(p, region)
 	var lab := Label.new()
