@@ -4640,8 +4640,13 @@ func _refresh() -> void:
 	# GROWTH: selettore a carte (overlay) per CHI agisce, ricostruito dallo stato sincronizzato.
 	# Si costruisce una sola volta (evita sfarfallio/ricostruzioni a ogni refresh) e si chiude
 	# quando lo stato si svuota. In rete così compare sul client, non sull'host che arbitra.
+	# AUTO-RIPARANTE (segnalato in partita online: "selettore aperto ma nessuna carta"): se
+	# qualcosa svuota popup_layer mentre la scelta è in corso (un riepilogo, un _close_popup di
+	# passaggio), il flag _growth_pick_shown restava true e il selettore non tornava MAI più -
+	# ora, se la scelta è attiva ma l'overlay non c'è, si ricostruisce al refresh successivo
+	# (l'heartbeat di rete ne garantisce uno entro ~1s).
 	if not _growth_pick.is_empty() and i_acting:
-		if not _growth_pick_shown:
+		if not _growth_pick_shown or popup_layer.get_child_count() == 0:
 			_render_growth_pick()
 			_growth_pick_shown = true
 	elif _growth_pick_shown:
