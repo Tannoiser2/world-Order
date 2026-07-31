@@ -43,6 +43,42 @@ static func from_setup(power: String, difficulty: String = "normal", card_types:
 	return a
 
 
+## Serializzazione (per il salvataggio della partita): l'Automa è tutto dati, nessun
+## riferimento a oggetti vivi, quindi il round-trip è fedele.
+func to_dict() -> Dictionary:
+	return {
+		"power": power,
+		"money": money,
+		"focus": focus,
+		"vp": vp,
+		"prosperity_level": prosperity_level,
+		"allied_countries": allied_countries.duplicate(true),
+		"fdi": fdi.duplicate(true),
+		"bases": bases.duplicate(true),
+		"action_cubes": action_cubes.duplicate(true),
+		"deck": deck.duplicate(true),
+		"card_types": card_types.duplicate(true),
+		"difficulty_hard": difficulty_hard,
+	}
+
+
+static func from_dict(d: Dictionary) -> Automa:
+	var a := Automa.new()
+	a.power = String(d.get("power", ""))
+	a.money = int(d.get("money", 0))
+	a.focus = int(d.get("focus", WO.Focus.DOMESTIC))
+	a.vp = int(d.get("vp", 10))
+	a.prosperity_level = int(d.get("prosperity_level", 0))
+	a.allied_countries = (d.get("allied_countries", []) as Array).duplicate(true)
+	a.fdi = (d.get("fdi", {}) as Dictionary).duplicate(true)
+	a.bases = (d.get("bases", {}) as Dictionary).duplicate(true)
+	a.action_cubes = (d.get("action_cubes", {}) as Dictionary).duplicate(true)
+	a.deck = (d.get("deck", []) as Array).duplicate(true)
+	a.card_types = (d.get("card_types", []) as Array).duplicate(true)
+	a.difficulty_hard = bool(d.get("difficulty_hard", false))
+	return a
+
+
 ## Pesca (consuma) il TIPO della prossima carta Ability del mazzo dell'Automa. Quando il mazzo
 ## e' vuoto lo rimischia dai 12 tipi originali (o, se ignoti, dai 4 tipi uniformi).
 func pop_card_type() -> String:

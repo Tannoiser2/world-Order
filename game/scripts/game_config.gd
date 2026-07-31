@@ -22,6 +22,9 @@ static var automa_difficulty: String = "normal"
 ## Simulazione headless: salta il lavoro UI (refresh/overlay) per girare molte partite
 ## tutte-Bot velocemente. Default false (gioco normale invariato).
 static var fast_sim: bool = false
+## RIPRESA: il menu lo mette a true con "Riprendi partita"; la board, in _ready, carica il
+## salvataggio invece di iniziare una partita nuova. Si azzera subito dopo l'uso.
+static var resume_save: bool = false
 
 
 ## Vero se la potenza indicata e' controllata da un Automa (bot).
