@@ -108,6 +108,21 @@ func _init() -> void:
 		"OK" if s4 else "FAIL", avail2.size(), str(client._growth_pick_shown), str(card_btn2 != null)])
 	if not s4: fails += 1
 
+	# AUTO-RIPARAZIONE (il bug segnalato in partita online: "selettore aperto ma nessuna
+	# carta"): se qualcosa svuota popup_layer mentre la scelta è in corso (un riepilogo, un
+	# _close_popup di passaggio), prima il selettore non tornava MAI più (il flag
+	# _growth_pick_shown restava true). Ora un refresh successivo (l'heartbeat di rete ne
+	# garantisce uno entro ~1s) lo ricostruisce da solo.
+	client._close_popup()
+	await process_frame
+	client._refresh()
+	await process_frame
+	var s5: bool = client._growth_pick_shown and client.popup_layer.get_child_count() > 0 \
+		and _find_buy_growth_button(client.popup_layer) != null
+	print("[%s] selettore svuotato da un overlay di passaggio: si RICOSTRUISCE da solo al refresh (children=%d)" % [
+		"OK" if s5 else "FAIL", client.popup_layer.get_child_count()])
+	if not s5: fails += 1
+
 	host.queue_free()
 	client.queue_free()
 	await process_frame
