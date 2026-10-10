@@ -1,5 +1,8 @@
 # Relay `wss://` per World Order
 
+> **Dalla v0.7.172 il gioco online passa da Firebase** (vedi `docs/multiplayer-firebase.md`):
+> il relay resta come alternativa, usato solo se nella lobby si scrive un URL `wss://…`.
+
 Piccolo server che permette di giocare **da browser/telefono** e **via Internet** (non solo in LAN).
 
 ## Perché serve
