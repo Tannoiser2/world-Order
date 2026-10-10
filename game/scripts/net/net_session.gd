@@ -6,7 +6,8 @@ extends Node
 ## li applica e RIBROADCASTA a ciascun client lo stato REDATTO (state_for_seat). I client
 ## inviano comandi e renderizzano gli snapshot ricevuti.
 ##
-## Trasporto: WebSocket (LAN ora; Internet poi con un relay - cambia solo l'indirizzo).
+## Trasporto: WebSocket (LAN), relay wss:// (Internet) oppure FIREBASE (Internet, consigliato:
+## nessun server da tenere acceso, vedi fb_transport.gd).
 ## Per i TEST esiste un trasporto LOOPBACK in-process (link_loopback): il protocollo si
 ## verifica senza socket reali.
 
@@ -54,6 +55,10 @@ var _relay_role := ""        # "host" | "client"
 var _relay_room := ""        # codice stanza richiesto/assegnato
 var _relay_hello_sent := false
 var _relay_open := false
+
+# Trasporto FIREBASE: i messaggi passano dal Realtime Database (fb_transport.gd). Usa gli stessi
+# segnali del relay (relay_ready/relay_error) cosi' la lobby li tratta allo stesso modo.
+var _fb: FbTransport = null
 
 
 # --- Avvio (WebSocket reale) -------------------------------------------------
@@ -134,6 +139,36 @@ func _relay_send_envelope(env: Dictionary) -> void:
 		_relay.send_text(JSON.stringify(env))
 
 
+# --- Avvio (FIREBASE) --------------------------------------------------------
+
+## HOST via Firebase: crea una stanza con un codice di 4 caratteri (segnale relay_ready).
+func host_firebase(host_name := "Host") -> int:
+	role = Role.HOST
+	my_seat = 0
+	_seats[HOST_ID] = {"seat": 0, "name": host_name}
+	_next_seat = 1
+	_fb = FbTransport.new()
+	_fb.session = self
+	add_child(_fb)
+	_fb.start_host(host_name)
+	return OK
+
+
+## CLIENT via Firebase: entra nella stanza `room` (chi rientra dallo stesso dispositivo ritrova
+## il suo posto e l'ultimo stato della partita).
+func join_firebase(room: String, player_name := "Giocatore") -> int:
+	role = Role.CLIENT
+	_fb = FbTransport.new()
+	_fb.session = self
+	add_child(_fb)
+	_fb.start_client(room, player_name)
+	return OK
+
+
+func is_firebase() -> bool:
+	return _fb != null
+
+
 ## HOST senza socket (test / setup locale): seggio 0, pronto per link_loopback.
 func host_loopback() -> void:
 	role = Role.HOST
@@ -158,6 +193,10 @@ func close() -> void:
 		_relay = null
 	_relay_open = false
 	_relay_hello_sent = false
+	if _fb != null:
+		_fb.alive = false
+		_fb.queue_free()
+		_fb = null
 	role = Role.NONE
 	_started = false
 
@@ -322,6 +361,9 @@ func _send(to_id: int, msg: Dictionary) -> void:
 	if _relay != null:
 		_relay_send_envelope({"t": "to", "id": to_id, "d": Marshalls.variant_to_base64(msg)})
 		return
+	if _fb != null:
+		_fb.send(to_id, msg)
+		return
 	if _peer:
 		_peer.set_target_peer(to_id)
 		_peer.put_packet(var_to_bytes(msg))
@@ -335,6 +377,9 @@ func _broadcast(msg: Dictionary) -> void:
 	if _relay != null:
 		# Solo l'host fa broadcast; il relay lo recapita a tutti i client.
 		_relay_send_envelope({"t": "all", "d": Marshalls.variant_to_base64(msg)})
+		return
+	if _fb != null:
+		_fb.broadcast(msg)
 		return
 	if _peer:
 		_peer.set_target_peer(MultiplayerPeer.TARGET_PEER_BROADCAST)

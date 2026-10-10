@@ -4,8 +4,9 @@ extends Control
 ## Online), Opzioni (placeholder) e avvio partita.
 
 ## Versione e changelog mostrati nello splash. Aggiornare a ogni rilascio.
-const VERSION := "v0.7.171"
+const VERSION := "v0.7.172"
 const CHANGELOG := [
+	"v0.7.172 - ONLINE VIA FIREBASE (predefinito): «Ospita (Internet)» / «Entra (Internet)» ora passano dal Realtime Database di Firebase (stesso progetto degli altri giochi, piano gratuito) invece che dal relay su Render. Niente piu' server che si addormenta: nessuna attesa di 30-60 s e niente 'Relay irraggiungibile'. L'host resta l'arbitro e ognuno riceve solo il proprio stato REDATTO: le regole di Firebase fanno si' che nessuno possa leggere la casella privata (e quindi la mano) di un altro. Il mittente di un comando e' riconosciuto dall'accesso Firebase, non dal contenuto. Chi perde la linea rientra con lo stesso codice dallo stesso dispositivo e ritrova il suo posto e l'ultimo stato. Nuovo campo «Il tuo nome» nella lobby. Il relay resta disponibile: basta scrivere un URL wss:// nel campo relay. +1 test end-to-end (verify_firebase: lobby, comando, stato redatto e privacy, su un finto Firebase locale). Blocco test di rete 32/32 verde.",
 	"v0.7.171 - SALVA E RIPRENDI LA PARTITA (mancava del tutto: una partita dura 6 round e non si poteva interrompere). Nuovo tasto «Salva» nella barra in alto, accanto a «Fine turno»; nel menu principale compare «Riprendi partita» con round e potenze del salvataggio. Si salva TUTTO, non solo il punteggio: mano, alleati, Influenza e Armate sul tabellone, Produzione, carte Crescita, mazzi Country/Market scoperti, carte Commercio già girate, abilità 1 volta per round già usate, Registro delle azioni e lo stato dei Bot (che riprendono da dove erano, senza ripartire da zero). Il salvataggio è consentito solo in un momento PULITO (non a metà di una carta o di una scelta aperta): il tasto lo dice se non è il momento. Su iPad il salvataggio resta anche chiudendo la scheda. NOTA: in partita ONLINE il salvataggio non è disponibile (riprendere richiederebbe di ricostruire la stanza e i seggi). +1 test nuovo (verify_save_load, 22 check sul round-trip completo). Suite motore 140/140.",
 	"v0.7.170 - CARTE CHE NON FACEVANO QUELLO CHE PROMETTONO: l'audit ha trovato 5 effetti scritti nei dati che nessuna parte del codice leggeva. 1) GLOBAL CURRENCY (USA): il «guadagna 5 money per ogni tipo di risorsa importato» non è mai esistito - la carta faceva solo un Commercio normale. Ora paga il bonus (5 x tipi importati). 2) BELT AND ROAD INITIATIVE (Cina): pagavi i 10 money e l'Invest aggiuntivo NON avveniva mai (veniva scartato in silenzio) - ora si risolve davvero, scegliendo la Nazione. 3) POLITICA DI VICINATO UE e PRINCIPALE CONTRIBUTORE ONU: l'Engage senza una Nazione Alleata nella Regione falliva sempre, cioè proprio nel caso per cui esistono quelle carte. 4) THE WORLD'S FACTORY (Cina): «Produce fino a 2 Beni di Consumo» ne produceva quanti ne consentiva l'intera Produzione (anche 5). 5) MINIMIZE BUREAUCRACY chiedeva quale carta della mano eliminare invece di eliminare SE STESSA, e le due opzioni di INITIATE RESTRUCTURING (mano / scarti) erano identiche - ora la pila degli scarti è una scelta vera. +1 test nuovo (verify_card_modifiers_fix, 9 check: sul codice precedente fallisce esattamente sui 5 punti). Suite motore 140/140.",
 	"v0.7.169 - MULTIPLAYER: corretti i soft-lock e i buchi di autorizzazione trovati nell'audit. 1) AFTERMATH: sul client, dopo aver scartato un Engage token (scelta money/Difesa), la barra restava VUOTA per sempre - niente 'Continua', round bloccato: il latch della sotto-scelta ora si auto-azzera appena l'host applica la scelta. 2) RESEARCH: l'host poteva comprare carte, rimescolare, esaurire alleate o premere 'Continua' DURANTE il passo Research del client, spendendo i punti del giocatore sbagliato - aggiunte le guardie mancanti. 3) Le abilità Growth 1x/round gia' usate ora si sincronizzano al client (prima restavano 'Usabili' per sempre sul suo schermo). 4) L'host non può più consumare abilità 1x/round o riattivazioni (ready) del client aprendo la sua linguetta. 5) DISCONNESSIONI VISIBILI: prima, se un giocatore cadeva (wifi, standby del tablet, relay addormentato), l'altro vedeva solo un gioco congelato senza alcun messaggio - ora un banner PERSISTENTE lo dice subito su entrambi i lati. +1 test di rete nuovo (verify_net_softlocks, 10 check, riproduce i blocchi sul codice vecchio). Suite motore 140/140, blocco test di rete tutto verde.",
@@ -319,6 +320,10 @@ var _relay_host_btn: Button
 var _relay_join_btn: Button
 var _is_relay := false        # true se la sessione corrente passa dal relay
 var _relay_room := ""         # codice stanza (host: assegnato dal relay; client: digitato)
+## Internet via FIREBASE (predefinito): niente server da tenere acceso. Il relay resta come
+## alternativa: basta scrivere un URL wss:// nel campo relay.
+const NAME_SAVE := "user://online_name.txt"
+var _online_name_edit: LineEdit
 
 
 func _ready() -> void:
@@ -747,13 +752,20 @@ func _build_lobby(box: VBoxContainer) -> void:
 
 	# --- Online via Internet (relay wss://): funziona anche da browser e fuori dalla LAN ---
 	var sep := Label.new()
-	sep.text = "— oppure via Internet (relay) —"
+	sep.text = "— oppure via Internet —"
 	sep.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sep.add_theme_color_override("font_color", Color(0.7, 0.8, 0.95))
 	_lobby_box.add_child(sep)
 
+	_online_name_edit = LineEdit.new()
+	_online_name_edit.placeholder_text = "Il tuo nome"
+	_online_name_edit.max_length = 20
+	_online_name_edit.custom_minimum_size = Vector2(440, 36)
+	_online_name_edit.text = _load_text(NAME_SAVE)
+	_lobby_box.add_child(_online_name_edit)
+
 	_relay_url_edit = LineEdit.new()
-	_relay_url_edit.placeholder_text = "URL relay (es. wss://tuo-relay.onrender.com)"
+	_relay_url_edit.placeholder_text = "Relay (facoltativo): vuoto = Firebase, oppure wss://…"
 	_relay_url_edit.custom_minimum_size = Vector2(440, 36)
 	_relay_url_edit.text = _load_relay_url()
 	_lobby_box.add_child(_relay_url_edit)
@@ -848,7 +860,7 @@ func _on_join() -> void:
 func _on_relay_host() -> void:
 	var url := _relay_url_edit.text.strip_edges()
 	if url == "":
-		_lobby_status.text = "Inserisci l'URL del relay (es. wss://tuo-relay.onrender.com)."
+		_on_firebase_host()
 		return
 	_free_net()
 	_is_relay = true
@@ -875,7 +887,7 @@ func _on_relay_join() -> void:
 	var url := _relay_url_edit.text.strip_edges()
 	var room := _relay_room_edit.text.strip_edges().to_upper()
 	if url == "":
-		_lobby_status.text = "Inserisci l'URL del relay."
+		_on_firebase_join(room)
 		return
 	if room == "":
 		_lobby_status.text = "Inserisci il codice stanza dato dall'host."
@@ -899,6 +911,64 @@ func _on_relay_join() -> void:
 	_net.connection_failed.connect(func(): _lobby_status.text = "Relay irraggiungibile: controlla l'URL.")
 	_set_lobby_busy(true)
 	_lobby_status.text = "Connessione alla stanza %s…" % room
+
+
+## HOST via Firebase: crea la stanza e ottiene il codice da condividere (anche dal browser).
+func _on_firebase_host() -> void:
+	_free_net()
+	_is_relay = true
+	_save_text(NAME_SAVE, _online_name())
+	_net = NetSession.new()
+	_net.name = "NetSession"
+	get_tree().root.add_child(_net)
+	GameConfig.net = _net
+	_net.lobby_changed.connect(_on_lobby_changed)
+	_net.relay_ready.connect(_on_relay_ready)
+	_net.relay_error.connect(_on_relay_err)
+	_set_lobby_busy(true)
+	_lobby_status.text = "Creo la stanza…"
+	_net.host_firebase(_online_name())
+
+
+## CLIENT via Firebase: entra nella stanza con il codice dato dall'host. Chi rientra dallo
+## stesso dispositivo ritrova il suo posto e l'ultimo stato della partita.
+func _on_firebase_join(room: String) -> void:
+	if room == "":
+		_lobby_status.text = "Inserisci il codice stanza dato dall'host."
+		return
+	_free_net()
+	_is_relay = true
+	_save_text(NAME_SAVE, _online_name())
+	_net = NetSession.new()
+	_net.name = "NetSession"
+	get_tree().root.add_child(_net)
+	GameConfig.net = _net
+	_net.lobby_changed.connect(_on_lobby_changed)
+	_net.started.connect(_on_started)
+	_net.relay_ready.connect(_on_relay_ready)
+	_net.relay_error.connect(_on_relay_err)
+	_set_lobby_busy(true)
+	_lobby_status.text = "Entro nella stanza %s…" % room
+	_net.join_firebase(room, _online_name())
+
+
+func _online_name() -> String:
+	var n := _online_name_edit.text.strip_edges() if _online_name_edit != null else ""
+	return n if n != "" else "Giocatore"
+
+
+func _load_text(path: String) -> String:
+	if FileAccess.file_exists(path):
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f != null:
+			return f.get_as_text().strip_edges()
+	return ""
+
+
+func _save_text(path: String, txt: String) -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(txt)
 
 
 ## Relay: stanza pronta. Host -> mostra il codice da condividere; client -> attende l'host.
@@ -965,6 +1035,7 @@ func _set_lobby_busy(busy: bool) -> void:
 	if _relay_join_btn != null: _relay_join_btn.disabled = busy
 	if _relay_url_edit != null: _relay_url_edit.editable = not busy
 	if _relay_room_edit != null: _relay_room_edit.editable = not busy
+	if _online_name_edit != null: _online_name_edit.editable = not busy
 
 
 ## Ricorda l'ultimo URL di relay usato (così non va reincollato ogni volta).
@@ -972,8 +1043,10 @@ func _load_relay_url() -> String:
 	if FileAccess.file_exists(RELAY_URL_SAVE):
 		var f := FileAccess.open(RELAY_URL_SAVE, FileAccess.READ)
 		if f != null:
-			return f.get_as_text().strip_edges()
-	return RELAY_URL_DEFAULT
+			var saved := f.get_as_text().strip_edges()
+			# il vecchio relay su Render era il default: ora il default e' Firebase (campo vuoto)
+			return "" if saved == RELAY_URL_DEFAULT else saved
+	return ""
 
 
 func _save_relay_url(url: String) -> void:
